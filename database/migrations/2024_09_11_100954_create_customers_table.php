@@ -13,12 +13,13 @@ return new class extends Migration
     {
         Schema::create('customers', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->string('full_name');
             $table->string('display_name')->nullable();
             $table->string('salutation')->nullable();
             $table->string('customerID');
-            $table->string('category_id')->nullable();
+            $table->unsignedBigInteger('category_id')->nullable();
             $table->string('type')->comment('business, individual');
-            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('company_id');
             $table->string('primary_phone_ext');
             $table->string('primary_phone_number');
@@ -32,8 +33,9 @@ return new class extends Migration
             $table->string('primary_address');
             $table->string('secondary_address')->nullable();
             $table->string('zip_code')->nullable();
+            $table->mediumText('statement_document_link')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->foreign('category_id')->references('id')->on('categories')->onDelete('set null');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
             $table->softDeletes();
             $table->timestamps();
