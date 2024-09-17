@@ -25,6 +25,8 @@ return new class extends Migration
             $table->string('share_status')->default('not-shared')->comment('shared, not-shared');
             $table->decimal('quote_total', 15, 2)->default(0.00);
             $table->string('description')->nullable();
+            $table->mediumText('terms_and_conditions')->nullable();
+            $table->mediumText('additional_comment')->nullable();
             $table->mediumText('preview_link')->nullable();
             $table->unsignedBigInteger('parent_id')->nullable();
             $table->unsignedBigInteger('customer_id');

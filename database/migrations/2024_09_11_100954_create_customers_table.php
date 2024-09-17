@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('primary_phone_number');
             $table->string('secondary_phone_ext')->nullable();
             $table->string('secondary_phone_number')->nullable();
-            $table->string('primary_email');
+            $table->string('primary_email')->unique();
             $table->string('secondary_email')->nullable();
             $table->unsignedBigInteger('currency_id');
             $table->unsignedBigInteger('country_id');
