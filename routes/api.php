@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 // })->middleware('auth:sanctum'); 
 
 Route::group([
-    'middleware' => 'api/v1',
+    'prefix' => 'v1',
     "namespace" => 'App\Http\Controllers\v1'
 ], function () {
     Route::group([
@@ -23,9 +23,24 @@ Route::group([
         Route::post('/refresh', 'AuthController@refresh')->middleware('auth:api');
     });
     Route::group([
-        'middleware' => 'auth:api'
+        'prefix' => 'admin',
+        "namespace" => "Admin"
     ], function () {
+        Route::group([
+            'prefix' => 'company',
+            "namespace" => "Company"
+        ], function () {
+            Route::post('/create', 'CompanyManagementController@create');
+        });
+    });
+    // Route::group([
+    //     'middleware' => 'auth:api'
+    // ], function () {
 
+    Route::group([
+        'prefix' => 'company',
+        "namespace" => "Company"
+    ], function () {
         Route::group([
             'prefix' => 'dashboard',
         ], function () {});
@@ -42,7 +57,7 @@ Route::group([
         });
 
         Route::group([
-            'prefix' => 'purchase',
+            'prefix' => 'purchases',
             "namespace" => "Purchase"
         ], function () {});
 
@@ -62,12 +77,12 @@ Route::group([
         ], function () {});
 
         Route::group([
-            'prefix' => 'budget',
+            'prefix' => 'budgets',
             "namespace" => "Budget"
         ], function () {});
 
         Route::group([
-            'prefix' => 'report',
+            'prefix' => 'reports',
             "namespace" => "Report"
         ], function () {});
 
@@ -79,7 +94,8 @@ Route::group([
             'prefix' => 'shared',
             "namespace" => "SharedActions"
         ], function () {
-            Route::post('{model}/{id}/{action}', 'SharedActionController');
+            Route::post('{prefix}/{model}/{id}/{action}', 'SharedActionController');
         });
     });
+    // });
 });
