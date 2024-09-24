@@ -1,9 +1,0 @@
-Todo:
-  ☐ Item
-
-Notes: 
-  ☐ 
-
-Packages:
-  ☐ phpstan: e.g. vendor/bin/phpstan analyse src tests (find bugs in code)
-  ☐ PHP-CS-Fixer: e.g. tools/php-cs-fixer/vendor/bin/php-cs-fixer fix src (fixes your code to follow standards)
