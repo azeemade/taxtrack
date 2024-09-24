@@ -33,8 +33,8 @@ return new class extends Migration
             $table->date('recurring_start_date')->nullable();
             $table->date('recurring_end_date')->nullable();
             $table->unsignedInteger('repeat')->default(1);
-            $table->string('repeat_period')->comment('month, day, week, year');
-            $table->string('payment_status')->comment('pending, partial-payment, full-payment');
+            $table->string('repeat_period')->nullable()->comment('month, day, week, year');
+            $table->string('payment_status')->default('pending')->comment('pending, partial-payment, full-payment');
             $table->unsignedBigInteger('parent_id')->nullable();
             $table->unsignedBigInteger('customer_id');
             $table->unsignedBigInteger('currency_id');

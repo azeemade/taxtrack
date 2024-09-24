@@ -9,8 +9,9 @@ class Invoice extends Model
 {
     use HasFactory;
     protected $guarded = ['id'];
+    protected $append = ['allowed_actions', 'previewables'];
 
-    public function previewables()
+    public function getPreviewablesAttribute()
     {
         return [
             'entity' => 'customer',
@@ -18,6 +19,7 @@ class Invoice extends Model
             'id' => $this->referenceID,
             'additional_reference' => $this->additional_referenceID,
             'entity_data' => [
+                'id' => $this->customer->customerID,
                 'name' => $this->customer->full_name,
                 'address' => $this->customer->primary_address,
                 'email' => $this->customer->primary_email,
@@ -49,7 +51,7 @@ class Invoice extends Model
         ];
     }
 
-    public function allowedActions()
+    public function getAllowedActionsAttribute()
     {
         return ['duplicate', 'delete', 'preview', 'export', 'emailEntity', 'download', 'sendRemainder'];
     }
