@@ -42,7 +42,7 @@ class UsersController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', null, 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
         }
     }
 
@@ -71,11 +71,11 @@ class UsersController extends Controller
     {
         try {
             $record = $user;
-            $record->load(['role' => ['permissions']]);
+            $record->load(['roles:id,name' => ['permissions:id,name']]);
 
             return JsonResponser::send(false, 'Record(s) found successfully', $record);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', null, 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
         }
     }
 

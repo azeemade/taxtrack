@@ -23,11 +23,16 @@ class RoleTableSeeder extends Seeder
         ]);
 
         foreach ($roles as $role) {
-            Role::create([
+            $record = Role::create([
                 'name' => $role,
                 'roleID' => $roleID,
-                'guard_name' => $role == 'client' ? 'client' : 'admin'
+                'guard_name' => 'api'
             ]);
+            if ($role != 'client') {
+                $record->givePermissionTo('access admin app');
+            } else {
+                $record->givePermissionTo('access client app');
+            }
         }
     }
 }
