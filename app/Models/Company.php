@@ -9,4 +9,14 @@ class Company extends Model
 {
     use HasFactory;
     protected $guarded = ['id'];
+
+    public function staff()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function companyAdmin()
+    {
+        return $this->staff->where('contact_person', true)->first();
+    }
 }

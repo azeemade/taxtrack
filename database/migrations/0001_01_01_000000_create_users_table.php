@@ -23,6 +23,7 @@ return new class extends Migration
             $table->dateTime('last_login')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('company_id')->nullable();
+            $table->boolean('contact_person')->default(false);
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->softDeletes();
             $table->timestamps();

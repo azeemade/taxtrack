@@ -7,14 +7,10 @@ use App\Helpers\FileUploadHelper;
 use App\Mail\Shared\EntityDocumentEmail;
 use App\Mail\Shared\VendorRemainderEmail;
 use App\Models\Vendor;
-use App\Traits\SharedActionTrait;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\View;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class SharedActionService
 {

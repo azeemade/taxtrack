@@ -4,17 +4,24 @@ namespace App\Services\UserServices;
 
 use App\Enums\GeneralEnums;
 use App\Exports\GeneralReportExport;
+use App\Mail\Company\ClientOnboardingEmail;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class UserService
 {
     public function overview($request)
     {
-        $records = User::query()
-            ->with('role:id,roleID,name')
+        $currentUser = Auth::user();
+        $currentUserCompany = $currentUser?->company;
+
+        $records = User::query()->where('created_by', $currentUser->id)
+            ->orWhere('company_id', $currentUserCompany?->id)
+            ->with('roles:id,roleID,name')
             ->withCount('permissions as permissions_count')
             ->when($request->q, function ($query) use ($request) {
                 $query->where('name', 'LIKE', '%' . $request->q . '%');
@@ -37,7 +44,11 @@ class UserService
 
     public function stats()
     {
-        $records = User::query();
+        $currentUser = Auth::user();
+        $currentUserCompany = $currentUser?->company;
+
+        $records = User::query()->where('created_by', $currentUser->id)
+            ->orWhere('company_id', $currentUserCompany?->id);
 
         return [
             'total' => (clone $records)->count(), // Count total records
@@ -68,14 +79,25 @@ class UserService
         $currentUser = auth()->user();
         $currentUserCompany = $currentUser?->company;
 
+        $password = $currentUserCompany->name . rand(100, 999);
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'phone_number' => $data['phone_number'],
-            'password' => Hash::make($currentUserCompany->name . rand(100, 999))
+            'password' => Hash::make($password)
         ]);
+        $user->assignRole(['client', $data['role']]);
 
-        $user->assignRole($data['role']);
+        $data = [
+            'entity_name' => $data['name'],
+            'company_name' => $currentUserCompany->name,
+            'email' => $data['email'],
+            'password' => $password,
+        ];
+
+        Mail::to($data['email'])
+            ->send(new ClientOnboardingEmail($data));
+
         return $user;
     }
 

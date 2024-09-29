@@ -18,16 +18,8 @@ class User extends Authenticatable implements JWTSubject
     use Auditable;
     use Companyable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-    ];
+    protected $guarded = ['id'];
+    protected $guard_name = ['api'];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -38,8 +30,6 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'remember_token',
     ];
-
-    protected $guard_name = ['api', 'admin', 'client'];
 
     /**
      * Get the attributes that should be cast.

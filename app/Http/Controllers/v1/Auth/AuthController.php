@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\v1\Auth;
 
+use App\Enums\GeneralEnums;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Models\User;
+use App\Responser\JsonResponser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,50 +22,50 @@ class AuthController extends Controller
      *
      * @param  Illuminate\Http\Request
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return \App\Responser\JsonResponser
      */
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginRequest $request)
     {
         try {
             $credentials = $request->only('email', 'password');
 
             $token = Auth::attempt($credentials);
             if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unauthorized',
-                    'data' => []
-                ], 401);
+                return JsonResponser::send(true, 'Unauthorized', [], 401);
             }
 
             $user = Auth::user();
+            if ($user?->status != GeneralEnums::ACTIVE->value) {
+                return JsonResponser::send(true, 'Account is inactive. Contact admin', [], 401);
+            }
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'User successfully logged in',
-                'data' => [
-                    'user' => $user,
-                    'token' => $token,
-                    'type' => 'bearer',
-                ],
+            if ($user->hasRole('client') && $user?->company?->status != GeneralEnums::APPROVED->value) {
+                return JsonResponser::send(true, 'Company is inactive. Contact admin', [], 401);
+            }
+
+            $user->update([
+                'last_login' => now()
             ]);
+
+            $data = [
+                'user' => $user,
+                'token' => $token,
+                'type' => 'bearer',
+            ];
+            return JsonResponser::send(false, 'User successfully logged in', $data);
         } catch (\Throwable $th) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Internal server error',
-                'data' => $th->getMessage()
-            ]);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500);
         }
     }
 
     /**
-     * Register.
+     * Register for admins
      *
      * @param  Illuminate\Http\Request
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function signup(SignupRequest $request): JsonResponse
+    public function signup(SignupRequest $request)
     {
         try {
             DB::beginTransaction();
@@ -71,22 +73,16 @@ class AuthController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
+                'phone_number' => $request->phone_number,
                 'password' => Hash::make($request->password),
+                'created_by' => Auth::id()
             ]);
 
+
             DB::commit();
-            return response()->json([
-                'status' => 'success',
-                'message' => 'User created successfully. Please login!',
-                'data' => $user,
-            ]);
+            return JsonResponser::send(false, 'User created successfully. Please login!', $user);
         } catch (\Throwable $th) {
-            DB::rollBack();
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Internal server error',
-                'data' => []
-            ]);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500);
         }
     }
 
@@ -96,48 +92,13 @@ class AuthController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function logout(): JsonResponse
+    public function logout()
     {
         try {
             Auth::logout();
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Successfully logged out',
-                'data' => []
-            ]);
+            return JsonResponser::send(false, 'Successfully logged out', []);
         } catch (\Throwable $th) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Internal server error',
-                'data' => []
-            ]);
-        }
-    }
-
-    /**
-     * Refresh.
-     *
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function refresh(): JsonResponse
-    {
-        try {
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Token refreshed successfully',
-                'data' => [
-                    'user' => Auth::user(),
-                    'token' => Auth::refresh(),
-                    'type' => 'bearer',
-                ],
-            ]);
-        } catch (\Throwable $th) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Internal server error',
-                'data' => []
-            ]);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500);
         }
     }
 }
