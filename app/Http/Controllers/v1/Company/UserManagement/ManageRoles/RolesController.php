@@ -9,7 +9,7 @@ use App\Http\Requests\UpdateRoleRequest;
 use App\Responser\JsonResponser;
 use App\Services\RoleServices\RoleService;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 
 class RolesController extends Controller
 {
@@ -60,7 +60,7 @@ class RolesController extends Controller
             return JsonResponser::send(false, 'Role created successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
         }
     }
 
@@ -71,6 +71,7 @@ class RolesController extends Controller
     {
         try {
             $record = $role;
+            $record->load('permissions');
 
             return JsonResponser::send(false, 'Record(s) found successfully', $record);
         } catch (\Throwable $th) {
@@ -97,7 +98,7 @@ class RolesController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the status specified resource in storage.
      */
     public function toggleStatus(Role $role)
     {
@@ -129,6 +130,19 @@ class RolesController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get all permissions related to specified resource.
+     */
+    public function permissions(Role $role)
+    {
+        try {
+            $records = $this->roleService->delete($role);
+            return JsonResponser::send(false, 'Permission(s) retrieved successfully', $records);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], 500);
         }
     }
 }
