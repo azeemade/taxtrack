@@ -1,20 +1,20 @@
 <?php
 
-namespace App\Services\RoleServices;
+namespace App\Services\UserServices;
 
 use App\Enums\GeneralEnums;
 use App\Exports\GeneralReportExport;
-use App\Helpers\GeneralHelper;
+use App\Models\User;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Models\Role;
+use Illuminate\Support\Facades\Hash;
 
-class RoleService
+class UserService
 {
     public function overview($request)
     {
-        $records = Role::query()
-            ->withCount('users as users_count')
+        $records = User::query()
+            ->with('role:id,roleID,name')
             ->withCount('permissions as permissions_count')
             ->when($request->q, function ($query) use ($request) {
                 $query->where('name', 'LIKE', '%' . $request->q . '%');
@@ -37,7 +37,7 @@ class RoleService
 
     public function stats()
     {
-        $records = Role::query();
+        $records = User::query();
 
         return [
             'total' => (clone $records)->count(), // Count total records
@@ -48,65 +48,59 @@ class RoleService
 
     public function export($records)
     {
-        $recordHeadings = ['RoleID', 'Name', 'Status', 'No of users', 'No of permissions', 'Date created'];
+        $recordHeadings = ['ID', 'Name', 'Status', 'Role ID', 'Role', 'No of permissions', 'Date created'];
         $records = $records->map(function ($record) {
             return [
-                $record->roleID,
+                $record->id,
                 $record->name,
                 $record->status,
-                $record->users_count,
+                $record->role->roleID,
+                $record->role->name,
                 $record->permissions_count,
                 Carbon::parse($record->created_at)->toFormattedDayDateString()
             ];
         });
-        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'role_report.xlsx');
+        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'users_report.xlsx');
     }
 
     public function create(array $data)
     {
-        $roleID = GeneralHelper::getModelUniqueOrderlyId([
-            'modelNamespace' => 'Spatie\Permission\Models\Role',
-            'modelField' => 'roleID',
-            'prefix' => 'R-',
-            'idLength' => 3
-        ]);
+        $currentUser = auth()->user();
+        $currentUserCompany = $currentUser?->company;
 
-        $role = Role::create([
+        $user = User::create([
             'name' => $data['name'],
-            'description' => $data['description'],
-            'guard_name' => 'client',
-            'roleID' => $roleID
-
+            'email' => $data['email'],
+            'phone_number' => $data['phone_number'],
+            'password' => Hash::make($currentUserCompany->name . rand(100, 999))
         ]);
-        $role->givePermissionTo($data['permissions']);
-        return $role;
+
+        $user->assignRole($data['role']);
+        return $user;
     }
 
-    public function update(array $data, Role $role)
+    public function update(array $data, User $user)
     {
-        $role->update([
+        $user->update([
             'name' => $data['name'],
-            'description' => $data['description'],
+            'email' => $data['email'],
+            'phone_number' => $data['phone_number'],
         ]);
-        $role->syncPermissions($data['permissions']);
-        return $role;
+
+        $user->assignRole($data['role']);
+        return $user;
     }
 
-    public function toggle(Role $role)
+    public function toggle(User $user)
     {
-        $role->update([
-            'status' => $role->status == GeneralEnums::ACTIVE->value ? GeneralEnums::INACTIVE->value : GeneralEnums::ACTIVE->value
+        $user->update([
+            'status' => $user->status == GeneralEnums::ACTIVE->value ? GeneralEnums::INACTIVE->value : GeneralEnums::ACTIVE->value
         ]);
-        return $role;
+        return $user;
     }
 
-    public function delete(Role $role)
+    public function delete(User $user)
     {
-        $role->delete();
-    }
-
-    public function permissions(Role $role)
-    {
-        return $role->permissions;
+        $user->delete();
     }
 }

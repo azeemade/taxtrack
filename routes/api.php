@@ -94,16 +94,21 @@ Route::group([
             Route::group([
                 "namespace" => "ManageUsers"
             ], function () {
-                Route::apiResource('users', 'UserController');
+                Route::apiResource('users', 'UserController')
+                    ->missing(function () {
+                        return JsonResponser::send(true, 'Resource not found', null, 404);
+                    });
+                Route::put('users/toggle-status/{user}', 'UserController@toggleStatus');
             });
             Route::group([
                 "namespace" => "ManageRoles"
             ], function () {
-                Route::put('roles/toggle-status/{role}', 'RolesController@toggleStatus');
                 Route::apiResource('roles', 'RolesController')
                     ->missing(function () {
                         return JsonResponser::send(true, 'Resource not found', null, 404);
                     });
+                Route::get('roles/{role}/permissions', 'RolesController@permissions');
+                Route::put('roles/toggle-status/{role}', 'RolesController@toggleStatus');
             });
         });
         Route::group([
