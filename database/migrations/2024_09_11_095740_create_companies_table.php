@@ -13,7 +13,11 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('companyUUID');
+            $table->string('name')->unique();
+            $table->text('address')->nullable();
+            $table->string('phone_number')->nullable();
+            $table->string('companyUUID')->unique();
+            $table->string('domain')->unique();
             $table->string('status')->default('approved')->comment('pending, approved, declined, suspended');
             $table->boolean('is_active')->default(true);
             $table->softDeletes();
