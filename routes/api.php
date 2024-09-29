@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\v1\SharedActions\SharedActionController;
+use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -38,7 +39,7 @@ Route::group([
     // ], function () {
 
     Route::group([
-        'prefix' => 'company',
+        'prefix' => 'client',
         "namespace" => "Company"
     ], function () {
         Route::group([
@@ -89,7 +90,22 @@ Route::group([
         Route::group([
             'prefix' => 'user-management',
             "namespace" => "UserManagement"
-        ], function () {});
+        ], function () {
+            Route::group([
+                "namespace" => "ManageUsers"
+            ], function () {
+                Route::apiResource('users', 'UserController');
+            });
+            Route::group([
+                "namespace" => "ManageRoles"
+            ], function () {
+                Route::put('roles/toggle-status/{role}', 'RolesController@toggleStatus');
+                Route::apiResource('roles', 'RolesController')
+                    ->missing(function () {
+                        return JsonResponser::send(true, 'Resource not found', null, 404);
+                    });
+            });
+        });
         Route::group([
             'prefix' => 'shared',
             "namespace" => "SharedActions"

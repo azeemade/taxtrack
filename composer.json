@@ -11,6 +11,7 @@
         "laravel/framework": "^11.9",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
+        "maatwebsite/excel": "^3.1",
         "nnjeim/world": "^1.1",
         "php-open-source-saver/jwt-auth": "^2.7",
         "spatie/laravel-permission": "^6.9"
