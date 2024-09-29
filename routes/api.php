@@ -11,30 +11,18 @@ use Illuminate\Support\Facades\Route;
 // })->middleware('auth:sanctum'); 
 
 Route::group([
-    'prefix' => 'v1',
-    "namespace" => 'App\Http\Controllers\v1'
+    'middleware' => 'api',
 ], function () {
     Route::group([
-        'prefix' => 'auth',
-        "namespace" => "Auth"
+        'prefix' => 'auth'
     ], function () {
-        Route::post('/login', 'AuthController@login');
-        Route::post('/signup', 'AuthController@signup');
-        Route::post('/logout', 'AuthController@logout')->middleware('auth:api');
-        Route::post('/refresh', 'AuthController@refresh')->middleware('auth:api');
-    });
-    Route::group([
-        'prefix' => 'admin',
-        "namespace" => "Admin"
-    ], function () {
-        Route::group([
-            'prefix' => 'company',
-            "namespace" => "Company"
-        ], function () {
-            Route::post('/create', 'CompanyManagementController@create');
-        });
+        Route::post('/login', [AuthController::class, 'login']);
+        Route::post('/signup', [AuthController::class, 'signup']);
+        Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:api');
+        Route::post('/refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
     });
     // Route::group([
+    //     'prefix' => 'tasks',
     //     'middleware' => 'auth:api'
     // ], function () {
 
