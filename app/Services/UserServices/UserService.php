@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class UserService
 {
@@ -79,7 +80,7 @@ class UserService
         $currentUser = auth()->user();
         $currentUserCompany = $currentUser?->company;
 
-        $password = $currentUserCompany->name . rand(100, 999);
+        $password = Str::slug($currentUserCompany->name) . rand(100, 999);
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],

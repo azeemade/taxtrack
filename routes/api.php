@@ -35,7 +35,7 @@ Route::group([
 
         Route::group([
             'prefix' => 'client',
-            // 'middleware' => ['permission:access client app,api'],
+            'middleware' => ['permission:access client app,api'],
             "namespace" => "Company"
         ], function () {
             Route::group([
@@ -46,11 +46,38 @@ Route::group([
                 'prefix' => 'sales',
                 "namespace" => "Sales"
             ], function () {
-
                 Route::group([
-                    'prefix' => 'dashboard',
-                    "namespace" => "Dashboard"
-                ], function () {});
+                    "namespace" => "SalesInvoice"
+                ], function () {
+                    Route::apiResource('invoices', 'InvoiceController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                });
+                Route::group([
+                    "namespace" => "SalesQuote"
+                ], function () {
+                    Route::apiResource('quotes', 'QuoteController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                });
+                Route::group([
+                    "namespace" => "Customer"
+                ], function () {
+                    Route::apiResource('customers', 'CustomerController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                });
+                Route::group([
+                    "namespace" => "CreditNote"
+                ], function () {
+                    Route::apiResource('credit-notes', 'CreditNoteController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                });
             });
 
             Route::group([
