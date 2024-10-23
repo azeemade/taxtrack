@@ -16,4 +16,4 @@ jobs:
         with:
           server: ftp.jkp.mje.mybluehost.me
           username: developer@api.taxtrack.sbscuk.co.uk
-          password: 6U;PWcQKwtFY
+          password: ${{ secrets.ftp_password }}
