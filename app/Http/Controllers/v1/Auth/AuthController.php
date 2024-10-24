@@ -31,7 +31,7 @@ class AuthController extends Controller
 
             $token = Auth::attempt($credentials);
             if (!$token) {
-                return JsonResponser::send(true, 'Unauthorized', [], 401);
+                return JsonResponser::send(true, 'Invalid email or password', [], 400);
             }
 
             $user = Auth::user();

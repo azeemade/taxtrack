@@ -6,6 +6,7 @@ use App\Helpers\GeneralHelper;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
 
 class RoleTableSeeder extends Seeder
 {
@@ -14,7 +15,7 @@ class RoleTableSeeder extends Seeder
      */
     public function run(): void
     {
-        $roles = ['super admin', 'admin', 'developer', 'client'];
+        $roles = ['super admin', 'admin', 'developer', 'client', 'company admin', 'company user'];
         $roleID = GeneralHelper::getModelUniqueOrderlyId([
             'modelNamespace' => 'Spatie\Permission\Models\Role',
             'modelField' => 'roleID',
@@ -23,12 +24,15 @@ class RoleTableSeeder extends Seeder
         ]);
 
         foreach ($roles as $role) {
-            $record = Role::create([
+            $record = Role::firstOrCreate([
                 'name' => $role,
+            ], [
+                'name' => $role,
+                'slug' => Str::slug($role, ''),
                 'roleID' => $roleID,
                 'guard_name' => 'api'
             ]);
-            if ($role != 'client') {
+            if (!in_array($role, ['client', 'company admin', 'company user'])) {
                 $record->givePermissionTo('access admin app');
             } else {
                 $record->givePermissionTo('access client app');

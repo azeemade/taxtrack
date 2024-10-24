@@ -5,6 +5,7 @@ namespace App\Services\UserServices;
 use App\Enums\GeneralEnums;
 use App\Exports\GeneralReportExport;
 use App\Mail\Company\ClientOnboardingEmail;
+use App\Models\Company;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -75,19 +76,28 @@ class UserService
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'users_report.xlsx');
     }
 
-    public function create(array $data)
+    public function create(array $data, int $company_id = null, int $created_by = null)
     {
         $currentUser = auth()->user();
-        $currentUserCompany = $currentUser?->company;
+        if (isset($data['company_id'])) {
+            $company_id = $data['company_id'][0];
+        }
+        $company = Company::find($company_id);
+
+        $currentUserCompany = $currentUser?->company ?: $company;
 
         $password = Str::slug($currentUserCompany->name) . rand(100, 999);
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'phone_number' => $data['phone_number'],
-            'password' => Hash::make($password)
+            'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
+            'password' => Hash::make($password),
+            'created_by' => $currentUser?->id ?: $created_by
         ]);
-        $user->assignRole(['client', $data['role']]);
+        $user->assignRole(['client', 'company user', $data['role']]);
+
+        $cid = isset($data['company_id']) ? $data['company_id'] : $currentUserCompany->id;
+        $user->companies()->attach($cid, ["uei_id" => (string) Str::uuid()]);
 
         $data = [
             'entity_name' => $data['name'],

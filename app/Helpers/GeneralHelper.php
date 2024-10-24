@@ -2,12 +2,7 @@
 
 namespace App\Helpers;
 
-use App\Enums\ModuleEnums;
-use App\Enums\TransactionEnums;
-use App\Models\AuditLog;
-use App\Models\AuditLogTransaction;
 use App\Models\Company;
-use App\Models\CustomerAccount;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -21,28 +16,6 @@ class GeneralHelper
     {
         $userInstance = Auth::user();
         return $userInstance;
-    }
-
-    //Store Audit Log
-    public static function storeAuditLog($dataToLog)
-    {
-        if (!is_null($dataToLog)) {
-            $auditLog = AuditLog::create([
-                'causer_id' => $dataToLog['causer_id'],
-                'action_type' => $dataToLog['action_type'],
-                'action_module' => isset($dataToLog['action_module']) ? $dataToLog['action_module'] : ModuleEnums::CUSTOMER->value,
-                'action_id' => $dataToLog['action_id'],
-                'action' => isset($dataToLog['action']) ? $dataToLog['action'] : 'Update',
-                'log_name' => $dataToLog['log_name'],
-                'description' => $dataToLog['description']
-            ]);
-
-            $auditLogTransaction = AuditLogTransaction::create([
-                'audit_log_id' => $auditLog->id,
-                'old_data' => isset($dataToLog['old_data']) ? json_encode($dataToLog['old_data']) : json_encode([]),
-                'new_data' => isset($dataToLog['new_data']) ? json_encode($dataToLog['new_data']) : json_encode([]),
-            ]);
-        }
     }
 
     public static function getModelUniqueOrderlyId($data)
