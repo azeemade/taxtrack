@@ -71,15 +71,16 @@ class CompanyService
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'company_report.xlsx');
     }
 
-    public function create(array $data)
+    public function create(array $data, int $created_by = null)
     {
         return Company::create([
             'name' => $data['name'],
             'address' => $data['address'],
-            'phone_number' => $data['phone_number'],
+            'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
             'companyUUID' => GeneralHelper::generateCompanyUUID(),
-            'domain' => $data['domain'],
-            'status' => CompanyStatusEnums::PENDING->value
+            'domain' => isset($data['domain']) ? $data['domain'] : null,
+            'status' => CompanyStatusEnums::PENDING->value,
+            'created_by' => auth()->user()?->id ?: $created_by
         ]);
     }
 

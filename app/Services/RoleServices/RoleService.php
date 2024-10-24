@@ -8,6 +8,7 @@ use App\Helpers\GeneralHelper;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Role;
+use Illuminate\Support\Str;
 
 class RoleService
 {
@@ -62,7 +63,7 @@ class RoleService
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'role_report.xlsx');
     }
 
-    public function create(array $data)
+    public function create(array $data, int $created_by = null, int $company_id = null)
     {
         $roleID = GeneralHelper::getModelUniqueOrderlyId([
             'modelNamespace' => 'Spatie\Permission\Models\Role',
@@ -71,14 +72,22 @@ class RoleService
             'idLength' => 3
         ]);
 
-        $role = Role::create([
-            'name' => $data['name'],
-            'description' => $data['description'],
-            'guard_name' => 'client',
-            'roleID' => $roleID
+        $role = Role::where('slug', Str::slug($data['name']))->first();
+        if (!$role) {
+            $role = Role::create([
+                'name' => $data['name'],
+                'slug' => Str::slug($data['name']),
+                'description' => isset($data['description']) ? $data['description'] : null,
+                'guard_name' => 'api',
+                'roleID' => $roleID
+            ]);
+        }
+        if ($created_by && $company_id) {
+            $role->companies()->attach($company_id, ["created_by" => $created_by]);
+        }
 
-        ]);
-        $role->givePermissionTo($data['permissions']);
+        $permissions = isset($data['permissions']) ? $data['description'] : [];
+        $role->givePermissionTo($permissions);
         return $role;
     }
 

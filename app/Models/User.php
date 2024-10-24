@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
+use App\Traits\UniqueEntityIdentifierTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -17,6 +18,7 @@ class User extends Authenticatable implements JWTSubject
     use HasFactory, Notifiable, HasRoles;
     use Auditable;
     use Companyable;
+    use UniqueEntityIdentifierTrait;
 
     protected $guarded = ['id'];
     protected $guard_name = ['api'];
@@ -66,6 +68,11 @@ class User extends Authenticatable implements JWTSubject
 
     public function company()
     {
-        return $this->belongsTo(Company::class);
+        return $this->belongsTo(Company::class, 'current_company_id');
+    }
+
+    public function companies()
+    {
+        return $this->belongsToMany(Company::class, 'clients', 'user_id', 'company_id')->withPivot(['uei_id', 'company_type']);
     }
 }

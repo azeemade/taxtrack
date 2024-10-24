@@ -17,6 +17,17 @@ Route::group([
         Route::get('/logout', 'AuthController@logout')->middleware('auth:api');
         Route::post('/refresh', 'AuthController@refresh')->middleware('auth:api');
         Route::group([
+            'prefix' => 'onboarding',
+            "namespace" => "Onboarding"
+        ], function () {
+            Route::post('/basic-information', 'RegisterController@basicInformation');
+            Route::post('/verify-token/{id}', 'RegisterController@verifyToken');
+            Route::get('/resend-token/{id}', 'RegisterController@resendToken');
+            Route::post('/add-company/{id}', 'RegisterController@addCompany');
+            Route::post('/add-role/{id}', 'RegisterController@addRole');
+            Route::post('/invite-users/{id}', 'RegisterController@inviteUsers');
+        });
+        Route::group([
             "namespace" => "ResetPassword"
         ], function () {
             Route::post('/send-reset-email', 'ResetPasswordController@sendResetLink');
@@ -152,7 +163,9 @@ Route::group([
         'prefix' => 'guests',
         "namespace" => "Guest"
     ], function () {
-        Route::post('/', 'GuestController@index');
+        Route::get('/industries', 'GuestController@industries');
+        Route::get('/user/{id}/companies', 'GuestController@getUserCompanies');
+        Route::get('/company/{id}/roles', 'GuestController@getCompanyRoles');
         Route::get('/error-logs', 'GuestController@errorLogs');
     });
 });

@@ -2,16 +2,28 @@
 
 namespace App\Models;
 
-use App\Models\Scopes\ModelUserScope;
 use App\Traits\AuditLogs\Auditable;
-use App\Traits\Companyable;
-use Illuminate\Database\Eloquent\Attributes\ScopedBy;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role as SpatieRole;
 
-#[ScopedBy([ModelUserScope::class])]
 class Role extends SpatieRole
 {
     use Auditable;
-    use Companyable;
+    protected static function booted()
+    {
+        static::addGlobalScope('companyable', function (\Illuminate\Database\Eloquent\Builder $builder) {
+            $currentUser = Auth::user();
+            if ($currentUser) {
+                $currentUserCompany = $currentUser?->company;
+                if ($currentUser->hasRole(['client'])) {
+                    $builder->whereRelation('companies', 'company_id', $currentUserCompany?->id);
+                }
+            }
+        });
+    }
+
+    public function companies()
+    {
+        return $this->belongsToMany(Company::class, 'company_roles', 'role_id', 'company_id')->withPivot(['created_by']);
+    }
 }
