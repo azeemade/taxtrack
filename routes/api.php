@@ -16,6 +16,12 @@ Route::group([
         Route::post('/signup', 'AuthController@signup');
         Route::get('/logout', 'AuthController@logout')->middleware('auth:api');
         Route::post('/refresh', 'AuthController@refresh')->middleware('auth:api');
+        Route::group([
+            "namespace" => "ResetPassword"
+        ], function () {
+            Route::post('/send-reset-email', 'ResetPasswordController@sendResetLink');
+            Route::put('/reset-password', 'ResetPasswordController@resetPassword');
+        });
     });
     Route::group(['middleware' => ["auth:api"]], function () {
         Route::group([
@@ -121,7 +127,7 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, 404);
                         });
-                    Route::put('users/toggle-status/{user}', 'UserControllers@toggleStatus');
+                    Route::put('users/toggle-status/{user}', 'UsersController@toggleStatus');
                 });
                 Route::group([
                     "namespace" => "ManageRoles"
@@ -141,5 +147,11 @@ Route::group([
                 Route::post('{prefix}/{model}/{id}/{action}', 'SharedActionController');
             });
         });
+    });
+    Route::group([
+        'prefix' => 'guests',
+        "namespace" => "Guest"
+    ], function () {
+        Route::post('/', 'GuestController@index');
     });
 });
