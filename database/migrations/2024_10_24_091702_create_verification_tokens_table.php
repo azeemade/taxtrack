@@ -11,13 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('error_logs', function (Blueprint $table) {
+        Schema::create('verification_tokens', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('causer')->nullable();
-            $table->string('model')->nullable();
-            $table->text('error_message');
-            $table->integer('error_line')->nullable();
-            $table->text('error_trace')->nullable();
+            $table->morphs('tokenable');
+            $table->string('token');
+            $table->dateTime('last_used_at')->nullable();
+            $table->dateTime('expires_at')->nullable();
             $table->timestamps();
         });
     }
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('error_logs');
+        Schema::dropIfExists('verification_tokens');
     }
 };
