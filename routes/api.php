@@ -153,5 +153,6 @@ Route::group([
         "namespace" => "Guest"
     ], function () {
         Route::post('/', 'GuestController@index');
+        Route::get('/error-logs', 'GuestController@errorLogs');
     });
 });
