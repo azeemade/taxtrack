@@ -70,8 +70,10 @@ class UsersController extends Controller
     public function show(User $user)
     {
         try {
-            $record = $user;
-            $record->load(['roles:id,name' => ['permissions:id,name']]);
+            $record = User::whereRelation('companies', 'company_id', $user->company->id)->first();
+            if ($record) {
+                $record->load(['roles:id,name' => ['permissions:id,name']]);
+            }
 
             return JsonResponser::send(false, 'Record(s) found successfully', $record);
         } catch (\Throwable $th) {

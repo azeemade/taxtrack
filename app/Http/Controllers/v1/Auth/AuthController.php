@@ -54,8 +54,6 @@ class AuthController extends Controller
             ]);
 
             $user['companies'] = $user->companies;
-            $user['permissions'] = User::find($user->id)->getAllPermissions();
-
             $data = [
                 'user' => $user,
                 'token' => $token,

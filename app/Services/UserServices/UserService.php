@@ -20,11 +20,14 @@ class UserService
     {
         $currentUser = Auth::user();
         $currentUserCompany = $currentUser?->company;
+        // dump($currentUserCompany);
 
-        $records = User::query()->where('created_by', $currentUser->id)
-            ->orWhere('company_id', $currentUserCompany?->id)
+        $records = User::query()
+            // ->where('created_by', $currentUser->id)
+            ->whereRelation('companies', 'company_id', $currentUserCompany?->id)
             ->with('roles:id,roleID,name')
-            ->withCount('permissions as permissions_count')
+            // ->with('permissions:id,name')
+            // ->withCount('permissions as permissions_count')
             ->when($request->q, function ($query) use ($request) {
                 $query->where('name', 'LIKE', '%' . $request->q . '%');
             })
@@ -49,8 +52,10 @@ class UserService
         $currentUser = Auth::user();
         $currentUserCompany = $currentUser?->company;
 
-        $records = User::query()->where('created_by', $currentUser->id)
-            ->orWhere('company_id', $currentUserCompany?->id);
+        $records = User::query()
+            ->whereRelation('companies', 'company_id', $currentUserCompany?->id);
+        // ->where('created_by', $currentUser->id)
+        // ->orWhere('company_id', $currentUserCompany?->id);
 
         return [
             'total' => (clone $records)->count(), // Count total records
