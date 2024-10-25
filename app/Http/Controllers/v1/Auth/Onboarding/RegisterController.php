@@ -48,6 +48,7 @@ class RegisterController extends Controller
                 'phone_number' => $request->phone_number,
                 'country_id' => $request->country_id,
                 'currency_id' => $request->currency_id,
+                'company_type' => $request->company_type,
                 'password' => Hash::make($request->password)
             ]);
             $user->assignRole(['client', 'company admin']);
@@ -134,8 +135,7 @@ class RegisterController extends Controller
             foreach ($request->companies as $company) {
                 $company = $this->companyService->create($company, $id);
 
-                $companyType = count($request->companies) > 1 ? 'accountant' : 'small-business';
-                $user->companies()->attach($company->id, ['company_type' => $companyType, "uei_id" => (string) Str::uuid()]);
+                $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
                 $company->currencies()->attach($user->currency_id);
             }
 
