@@ -126,10 +126,13 @@ class RegisterController extends Controller
         try {
             DB::beginTransaction();
 
+            $user = User::find($id);
+            $user->update([
+                "current_company_id" => $request->companies[0]
+            ]);
+
             foreach ($request->companies as $company) {
                 $company = $this->companyService->create($company, $id);
-
-                $user = User::find($id);
 
                 $companyType = count($request->companies) > 1 ? 'accountant' : 'small-business';
                 $user->companies()->attach($company->id, ['company_type' => $companyType, "uei_id" => (string) Str::uuid()]);

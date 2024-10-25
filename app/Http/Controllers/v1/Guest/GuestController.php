@@ -8,6 +8,7 @@ use App\Models\ErrorLog;
 use App\Models\User;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Permission;
 
 class GuestController extends Controller
 {
@@ -84,18 +85,36 @@ class GuestController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Display the specified resource.
      */
-    public function update(Request $request, string $id)
+    public function getUserPermissions(Request $request, int $id)
     {
-        //
-    }
+        try {
+            $records = User::find($id)
+                ->getAllPermissions();
 
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, 200);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, 500, $th);
+        }
+    }
     /**
-     * Remove the specified resource from storage.
+     * Display a listing of the resource.
      */
-    public function destroy(string $id)
+    public function allPermissions(Request $request)
     {
-        //
+        try {
+            $records = Permission::when(isset($request->module), function ($query) use ($request) {
+                $query->where('module', $request->module);
+            })
+                ->when(isset($request->submodule), function ($query) use ($request) {
+                    $query->where('submodule', $request->submodule);
+                })
+                ->get();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, 200);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, 500, $th);
+        }
     }
 }
