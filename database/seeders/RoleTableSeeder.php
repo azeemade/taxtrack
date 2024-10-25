@@ -33,9 +33,9 @@ class RoleTableSeeder extends Seeder
                 'guard_name' => 'api'
             ]);
             if (!in_array($role, ['client', 'company admin', 'company user'])) {
-                $record->givePermissionTo('access admin app');
+                $record->givePermissionTo('access_admin_app');
             } else {
-                $record->givePermissionTo('access client app');
+                $record->givePermissionTo('access_client_app');
             }
         }
     }

@@ -43,9 +43,18 @@ class AuthController extends Controller
                 return JsonResponser::send(true, 'Company is inactive. Contact admin', [], 401);
             }
 
+            if (!$user->company) {
+                $user->update([
+                    'current_company_id' => $user->companies[0]
+                ]);
+            }
+
             $user->update([
                 'last_login' => now()
             ]);
+
+            $user['companies'] = $user->companies;
+            $user['permissions'] = User::find($user->id)->getAllPermissions();
 
             $data = [
                 'user' => $user,
@@ -53,6 +62,35 @@ class AuthController extends Controller
                 'type' => 'bearer',
             ];
             return JsonResponser::send(false, 'User successfully logged in', $data);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+        }
+    }
+    /**
+     * Switch companies.
+     *
+     * @param  int $id //company id
+     *
+     * @return \App\Responser\JsonResponser
+     */
+    public function switchCompany($id)
+    {
+        try {
+            $user = Auth::user();
+            $company = $user->companies->where('id', $id)->first();
+            if (!$company) {
+                return JsonResponser::send(true, 'Company does not exist', [], 400);
+            }
+
+            $user->update([
+                'current_company_id' => $id
+            ]);
+
+            $user['company'] = $user->company;
+            $user['companies'] = $user->companies;
+            $user['permissions'] = User::find($user->id)->getAllPermissions();
+
+            return JsonResponser::send(false, 'Company switched successfully', $user);
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', [], 500);
         }

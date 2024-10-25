@@ -79,7 +79,7 @@ class CompanyService
             'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
             'companyUUID' => GeneralHelper::generateCompanyUUID(),
             'domain' => isset($data['domain']) ? $data['domain'] : null,
-            'status' => CompanyStatusEnums::PENDING->value,
+            'status' => CompanyStatusEnums::APPROVED->value,
             'created_by' => auth()->user()?->id ?: $created_by
         ]);
     }

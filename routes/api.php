@@ -14,6 +14,7 @@ Route::group([
     ], function () {
         Route::post('/login', 'AuthController@login');
         Route::post('/signup', 'AuthController@signup');
+        Route::get('/switch-company/{id}', 'AuthController@switchCompany')->middleware('auth:api');
         Route::get('/logout', 'AuthController@logout')->middleware('auth:api');
         Route::post('/refresh', 'AuthController@refresh')->middleware('auth:api');
         Route::group([
@@ -164,6 +165,8 @@ Route::group([
         "namespace" => "Guest"
     ], function () {
         Route::get('/industries', 'GuestController@industries');
+        Route::get('/permissions', 'GuestController@allPermissions');
+        Route::get('/user/{id}/permissions', 'GuestController@getUserPermissions');
         Route::get('/user/{id}/companies', 'GuestController@getUserCompanies');
         Route::get('/company/{id}/roles', 'GuestController@getCompanyRoles');
         Route::get('/error-logs', 'GuestController@errorLogs');
