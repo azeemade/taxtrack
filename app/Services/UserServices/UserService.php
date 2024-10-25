@@ -87,15 +87,19 @@ class UserService
         $currentUserCompany = $currentUser?->company ?: $company;
 
         $password = Str::slug($currentUserCompany->name) . rand(100, 999);
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
-            'password' => Hash::make($password),
-            'created_by' => $currentUser?->id ?: $created_by
-        ]);
-        $user->assignRole(['client', 'company user', $data['role']]);
 
+        $user = User::where('email', $data['email'])->first();
+        if (!$user) {
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
+                'password' => Hash::make($password),
+                'created_by' => $currentUser?->id ?: $created_by
+            ]);
+        }
+        $user->assignRole(['client', 'company user', $data['role']]);
+        //TODO: consider user role for different companies
         $cid = isset($data['company_id']) ? $data['company_id'] : $currentUserCompany->id;
         $user->companies()->attach($cid, ["uei_id" => (string) Str::uuid()]);
 

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->rememberToken();
             $table->uuid('uei_id')->index();
             $table->dateTime('last_login')->nullable();
+            $table->string('company_type')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('country_id')->nullable();
             $table->unsignedBigInteger('currency_id')->nullable();
