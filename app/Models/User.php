@@ -22,6 +22,10 @@ class User extends Authenticatable implements JWTSubject
 
     protected $guarded = ['id'];
     protected $guard_name = ['api'];
+    protected $appends = [
+        'user_permissions',
+        'user_permissions_count'
+    ];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -64,6 +68,15 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [];
+    }
+    public function getUserPermissionsAttribute()
+    {
+        return $this->getAllPermissions();
+    }
+
+    public function getUserPermissionsCountAttribute()
+    {
+        return count($this->getAllPermissions());
     }
 
     public function company()
