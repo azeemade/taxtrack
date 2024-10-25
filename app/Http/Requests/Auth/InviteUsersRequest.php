@@ -27,8 +27,8 @@ class InviteUsersRequest extends FormRequest
         return [
             'users' => 'nullable|array',
             'users.*.name' => 'required|string',
-            'users.*.role' => 'nullable|array',
-            'users.*.role.*' => 'required|integer|exists:roles,id',
+            'users.*.roles' => 'nullable|array',
+            'users.*.roles.*' => 'required|integer|exists:roles,id',
             'users.*.company_id' => 'nullable|array',
             'users.*.company_id.*' => 'nullable|exists:companies,id',
             'users.*.email' => [

@@ -19,13 +19,13 @@ trait VerificationTrait
             'expires_at' => now()->addMinutes($duration)
         ]);
 
-        $verification = $this->findToken($type, $token);
+        $verification = $this->findToken($type, $token, $type_id);
         return $verification->token;
     }
 
-    public function verify($type, $token)
+    public function verify($type, $token, $type_id)
     {
-        $verification = $this->findToken($type, $token);
+        $verification = $this->findToken($type, $token, $type_id);
 
         if (Carbon::parse($verification->expires_at) < now()) {
             $this->updatedToken($token);
@@ -46,11 +46,14 @@ trait VerificationTrait
             ]);
     }
 
-    protected function findToken(string $type, string $token)
+    protected function findToken(string $type, string $token, $type_id = null)
     {
         return DB::table('verification_tokens')
             ->where('tokenable_type', $type)
             ->where('token', $token)
+            ->when($type_id, function ($query) use ($type_id) {
+                $query->where($type_id, 'tokenable_id');
+            })
             ->latest()
             ->first();
     }

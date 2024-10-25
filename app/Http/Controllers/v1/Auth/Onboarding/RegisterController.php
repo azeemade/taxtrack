@@ -128,12 +128,14 @@ class RegisterController extends Controller
             DB::beginTransaction();
 
             $user = User::find($id);
-            $user->update([
-                "current_company_id" => $request->companies[0]
-            ]);
 
-            foreach ($request->companies as $company) {
+            foreach ($request->companies as $key => $company) {
                 $company = $this->companyService->create($company, $id);
+                if ($key === array_key_first($request->companies)) {
+                    $user->update([
+                        "current_company_id" => $company->id
+                    ]);
+                }
 
                 $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
                 $company->currencies()->attach($user->currency_id);
