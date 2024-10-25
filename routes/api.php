@@ -38,7 +38,7 @@ Route::group([
     Route::group(['middleware' => ["auth:api"]], function () {
         Route::group([
             'prefix' => 'admin',
-            'middleware' => ['permission:access admin app,api'],
+            'middleware' => ['permission:access_admin_app,api'],
             "namespace" => "Admin"
         ], function () {
             Route::group([
@@ -53,7 +53,7 @@ Route::group([
 
         Route::group([
             'prefix' => 'client',
-            'middleware' => ['permission:access client app,api'],
+            'middleware' => ['permission:access_client_app,api'],
             "namespace" => "Company"
         ], function () {
             Route::group([
