@@ -11,7 +11,7 @@ use App\Http\Requests\Auth\InviteUsersRequest;
 use App\Models\User;
 use App\Notifications\Auth\OnboardingOtpNotification;
 use App\Responser\JsonResponser;
-use App\Services\CompanyServices\CompanyService;
+use App\Services\Company\CompanyService;
 use App\Services\RoleServices\RoleService;
 use App\Services\UserServices\UserService;
 use App\Traits\VerificationTrait;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\CompanyServices;
+namespace App\Services\Company;
 
 use App\Enums\CompanyStatusEnums;
 use App\Enums\GeneralEnums;
