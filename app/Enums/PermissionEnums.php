@@ -30,10 +30,10 @@ enum PermissionEnums: string
         // case DEACTIVATE_CUSTOMER = 'deactivate_customer';
 
         // -- Sales Quote
-    case ACCESS_SALES_QUOTES = 'access__sales_quotes';
-    case VIEW_SALES_QUOTES = 'view__sales_quotes';
-    case CREATE_SALES_QUOTE = 'create__sales_quote';
-    case MANAGE_SALES_QUOTE = 'manage__sales_quote';
+    case ACCESS_SALES_QUOTES = 'access_sales_quotes';
+    case VIEW_SALES_QUOTES = 'view_sales_quotes';
+    case CREATE_SALES_QUOTE = 'create_sales_quote';
+    case MANAGE_SALES_QUOTE = 'manage_sales_quote';
         // case EDIT_QUOTE = 'edit_quote';
         // case DELETE_QUOTE = 'delete_quote';
         // case PREVIEW_QUOTE = 'preview_quote';

@@ -8,8 +8,6 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Models\User;
 use App\Responser\JsonResponser;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -36,11 +34,11 @@ class AuthController extends Controller
 
             $user = Auth::user();
             if ($user?->status != GeneralEnums::ACTIVE->value) {
-                return JsonResponser::send(true, 'Account is inactive. Contact admin', [], 401);
+                return JsonResponser::send(true, 'Account is inactive. Contact admin', [], 400);
             }
 
             if ($user->hasRole('client') && $user?->company?->status != GeneralEnums::APPROVED->value) {
-                return JsonResponser::send(true, 'Company is inactive. Contact admin', [], 401);
+                return JsonResponser::send(true, 'Company is inactive. Contact admin', [], 400);
             }
 
             if (!$user->company) {

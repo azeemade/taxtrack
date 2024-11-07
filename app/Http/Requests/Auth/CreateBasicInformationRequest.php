@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -23,9 +24,21 @@ class CreateBasicInformationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string',
-            'email' => 'required|string|email|unique:users,email',
-            'phone_number' => 'required|string|unique:users,phone_number',
+            'name' => 'required|string|max:250',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:250',
+                function ($attribute, $value, $fail) {
+                    $user = User::where('email', $value)
+                        ->first();
+                    if ($user && count($user->companies) > 0) {
+                        $fail('Email already exist in this company.');
+                    }
+                }
+            ],
+            'phone_number' => 'required|string',
             'country_id' => 'required|integer|exists:countries,id',
             'currency_id' => 'required|integer|exists:countries,id',
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
