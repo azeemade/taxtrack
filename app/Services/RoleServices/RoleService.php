@@ -75,7 +75,7 @@ class RoleService
         $role = Role::where('slug', Str::slug($data['name']))->first();
         if (!$role) {
             $role = Role::create([
-                'name' => $data['name'],
+                'name' => Str::title($data['name']),
                 'slug' => Str::slug($data['name']),
                 'description' => isset($data['description']) ? $data['description'] : null,
                 'guard_name' => 'api',

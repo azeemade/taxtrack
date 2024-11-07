@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-
 use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use App\Traits\UniqueEntityIdentifierTrait;

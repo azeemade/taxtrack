@@ -7,6 +7,7 @@ use App\Exports\GeneralReportExport;
 use App\Mail\Company\ClientOnboardingEmail;
 use App\Models\Company;
 use App\Models\User;
+use App\Services\RoleServices\RoleService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
@@ -16,18 +17,22 @@ use Illuminate\Support\Str;
 
 class UserService
 {
+
+    protected RoleService $roleService;
+
+    public function __construct(RoleService $roleService)
+    {
+        $this->roleService = $roleService;
+    }
+
     public function overview($request)
     {
         $currentUser = Auth::user();
         $currentUserCompany = $currentUser?->company;
-        // dump($currentUserCompany);
 
         $records = User::query()
-            // ->where('created_by', $currentUser->id)
             ->whereRelation('companies', 'company_id', $currentUserCompany?->id)
             ->with('roles:id,roleID,name')
-            // ->with('permissions:id,name')
-            // ->withCount('permissions as permissions_count')
             ->when($request->q, function ($query) use ($request) {
                 $query->where('name', 'LIKE', '%' . $request->q . '%');
             })
@@ -54,8 +59,6 @@ class UserService
 
         $records = User::query()
             ->whereRelation('companies', 'company_id', $currentUserCompany?->id);
-        // ->where('created_by', $currentUser->id)
-        // ->orWhere('company_id', $currentUserCompany?->id);
 
         return [
             'total' => (clone $records)->count(), // Count total records
@@ -84,14 +87,19 @@ class UserService
     public function create(array $data, int $company_id = null, int $created_by = null)
     {
         $currentUser = auth()->user();
-        if (isset($data['company_id'])) {
-            $company_id = $data['company_id'][0];
+        if (isset($data['company'])) {
+            $companyField = $data['company'][0];
         }
-        $company = Company::find($company_id);
+        $company = Company::where('name', $companyField)
+            ->orWhere('id', $companyField)
+            ->when($company_id, function ($query) use ($company_id) {
+                $query->where('id', $company_id);
+            })
+            ->first();
 
         $currentUserCompany = $currentUser?->company ?: $company;
 
-        $password = Str::slug($currentUserCompany->name) . rand(100, 999);
+        $password = isset($data['password']) ? $data['password'] : Str::slug($currentUserCompany->name) . rand(100, 999);
 
         $user = User::where('email', $data['email'])->first();
         if (!$user) {
@@ -100,10 +108,26 @@ class UserService
                 'email' => $data['email'],
                 'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
                 'password' => Hash::make($password),
-                'created_by' => $currentUser?->id ?: $created_by
+                'created_by' => $currentUser?->id ?: $created_by,
+                'current_company_id' => $currentUserCompany->id
             ]);
         }
-        $user->assignRole(['client', 'company user', $data['role']]);
+
+        $user->assignRole(['client', 'company user']);
+
+        if (is_array($data['roles'])) {
+            foreach ($data['roles'] as $role) {
+                if (is_numeric($role) && (int)$role == $role) {
+                    $user->assignRole($role);
+                } else {
+                    $role = $this->roleService->create(["name" => $role]);
+                    $user->assignRole($role);
+                }
+            }
+        } else {
+            $user->assignRole($data['roles']);
+        }
+
         //TODO: consider user role for different companies
         $cid = isset($data['company_id']) ? $data['company_id'] : $currentUserCompany->id;
         $user->companies()->attach($cid, ["uei_id" => (string) Str::uuid()]);

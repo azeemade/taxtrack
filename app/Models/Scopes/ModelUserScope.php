@@ -15,7 +15,6 @@ class ModelUserScope implements Scope
     public function apply(Builder $builder, Model $model): void
     {
         $currentUser = Auth::user();
-        dump($currentUser);
         if ($currentUser) {
             $currentUserCompany = $currentUser?->company;
             if ($currentUser->hasRole(['client'])) {

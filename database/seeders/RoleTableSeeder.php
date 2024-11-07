@@ -27,7 +27,7 @@ class RoleTableSeeder extends Seeder
             $record = Role::firstOrCreate([
                 'name' => $role,
             ], [
-                'name' => $role,
+                'name' => Str::title($role),
                 'slug' => Str::slug($role, ''),
                 'roleID' => $roleID,
                 'guard_name' => 'api'

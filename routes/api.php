@@ -21,12 +21,14 @@ Route::group([
             'prefix' => 'onboarding',
             "namespace" => "Onboarding"
         ], function () {
+            Route::post('/user-check', 'RegisterController@userCheck');
             Route::post('/basic-information', 'RegisterController@basicInformation');
-            Route::post('/verify-token/{id}', 'RegisterController@verifyToken');
-            Route::get('/resend-token/{id}', 'RegisterController@resendToken');
+            Route::post('/verify-token', 'RegisterController@verifyToken');
+            Route::post('/resend-token', 'RegisterController@resendToken');
             Route::post('/add-company/{id}', 'RegisterController@addCompany');
             Route::post('/add-role/{id}', 'RegisterController@addRole');
             Route::post('/invite-users/{id}', 'RegisterController@inviteUsers');
+            Route::post('/complete/{id}', 'RegisterController@completeOnboarding');
         });
         Route::group([
             "namespace" => "ResetPassword"
@@ -81,12 +83,16 @@ Route::group([
                         });
                 });
                 Route::group([
+                    "prefix" => "customers",
                     "namespace" => "Customer"
                 ], function () {
-                    Route::apiResource('customers', 'CustomerController')
-                        ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
-                        });
+                    Route::post('', 'CustomerController@overview');
+                    Route::get('/{id}', 'CustomerController@view');
+                    Route::get('/create-individual', 'CustomerController@createIndividualCustomer');
+                    Route::post('/create-organization', 'CustomerController@createOrganizationCustomer');
+                    Route::post('/create-organization', 'CustomerController@createOrganizationCustomer');
+                    Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
+                    Route::delete('/delete{id}', 'CustomerController@delete');
                 });
                 Route::group([
                     "namespace" => "CreditNote"
