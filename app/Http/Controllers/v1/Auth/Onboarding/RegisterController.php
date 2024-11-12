@@ -57,7 +57,7 @@ class RegisterController extends Controller
                 $request->email
             )->first();
 
-            if ($record && count($record->companies) > 0) {
+            if ($record?->onboarding_completed) {
                 throw new BadRequestException('Account exist, please login', 400);
             }
 
@@ -76,7 +76,8 @@ class RegisterController extends Controller
 
             $response = [
                 'started_onboarding' => $onboarding,
-                'email' => $request->email
+                'email' => $request->email,
+                'onboarded_companies' => $record?->companies ?? []
             ];
 
             DB::commit();
@@ -214,6 +215,21 @@ class RegisterController extends Controller
             DB::beginTransaction();
 
             $user = User::find($id);
+            if (!$user) {
+                throw new BadRequestException("User doesn't exist", 404);
+            }
+            $user->update([
+                'can_login' => true,
+                'is_active' => true
+            ]);
+
+            if (
+                (isset($request->companies) &&
+                    count($request->companies) > 1) &&
+                $user->company_type != CustomerTypeEnums::ACCOUNTANT->value
+            ) {
+                throw new BadRequestException("Multiple companies not allowed for small business", 400);
+            }
 
             foreach ($request->companies as $key => $company) {
                 $company = $this->companyService->create($company, $id);
@@ -244,6 +260,14 @@ class RegisterController extends Controller
     {
         try {
             DB::beginTransaction();
+
+            $user = User::find($id);
+            if (!$user) {
+                throw new BadRequestException("User doesn't exist", 404);
+            }
+            $user->update([
+                'onboarding_completed' => true
+            ]);
 
             foreach ($request->users as $user) {
                 $this->userService->create($user, null, $id);
@@ -284,6 +308,14 @@ class RegisterController extends Controller
             DB::beginTransaction();
 
             $user = User::find($id);
+            if (!$user) {
+                throw new BadRequestException("User doesn't exist", 404);
+            }
+            $user->update([
+                'onboarding_completed' => true,
+                'can_login' => true,
+                'is_active' => true
+            ]);
 
             if (
                 (isset($request->companies) &&
