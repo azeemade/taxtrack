@@ -14,8 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             Route::middleware(['auth:api', 'permission:access_admin_app,api'])
-                ->prefix('admin')
-                ->namespace('Admin')
+                ->prefix('api/v1/admin')
+                ->namespace('App\Http\Controllers\v1\Admin')
                 ->group(base_path('routes/admin/api.php'));
         }
     )
