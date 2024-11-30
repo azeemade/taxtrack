@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('company_entity_contact_people', function (Blueprint $table) {
+        Schema::create('company_contact_people', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->morphs('entitiable');
+            $table->morphs('contactable');
             $table->string('full_name');
             $table->string('entity_reference');
             $table->string('salutation')->nullable();
@@ -40,6 +40,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('company_entity_contact_people');
+        Schema::dropIfExists('company_contact_people');
     }
 };

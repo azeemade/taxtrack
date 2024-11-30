@@ -11,10 +11,10 @@ class Company extends Model
     use HasFactory;
     protected $guarded = ['id'];
 
-    // public function staff()
-    // {
-    //     return $this->hasMany(User::class);
-    // }
+    public function staff()
+    {
+        return $this->belongsToMany(User::class, 'clients', 'user_id', 'company_id');
+    }
 
     // public function companyAdmin()
     // {

@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('customers', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('company_name')->nullable();
-            // $table->string('salutation')->nullable();
             $table->string('customerID');
             $table->string('business_registration_number')->nullable();
             $table->string('vat_number')->nullable();
@@ -27,17 +26,13 @@ return new class extends Migration
             $table->unsignedBigInteger('company_id');
             $table->string('phone_ext');
             $table->string('phone_number');
-            // $table->string('secondary_phone_ext')->nullable();
-            // $table->string('secondary_phone_number')->nullable();
             $table->string('email')->unique();
-            $table->decimal('current_balance', 20, 2);
-            // $table->string('secondary_email')->nullable();
-            $table->string('payment_term')->nullable();
+            $table->decimal('current_balance', 20, 2)->default(0.00);
+            $table->string('payment_term')->nullable(); // in days
             $table->unsignedBigInteger('currency_id');
-            $table->unsignedBigInteger('country_id');
-            $table->unsignedBigInteger('city_id');
+            $table->unsignedBigInteger('country_id')->nullable();
+            $table->unsignedBigInteger('city_id')->nullable();
             $table->string('address');
-            // $table->string('secondary_address')->nullable();
             $table->string('zip_code')->nullable();
             $table->mediumText('special_instruction')->nullable();
             $table->mediumText('customer_logo')->nullable();

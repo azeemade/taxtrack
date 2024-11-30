@@ -73,11 +73,11 @@ class RegisterController extends Controller
                 $onboarding = true;
             }
 
-
             $response = [
                 'started_onboarding' => $onboarding,
                 'email' => $request->email,
-                'onboarded_companies' => $record?->companies ?? []
+                'onboarded_companies' => $record?->hasRole('company admin') && count($record?->companies) > 0 ? $record?->companies : [],
+                'user_id' => $record?->id ?? null,
             ];
 
             DB::commit();

@@ -3,15 +3,21 @@
 namespace App\Services\Customer;
 
 use App\Enums\GeneralEnums;
+use App\Exceptions\BadRequestException;
+use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
 use App\Models\Customer;
+use Carbon\Carbon;
+use Illuminate\Http\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CustomerService
 {
     public function list($request)
     {
-        return Customer::query()
-            ->with('contactPerson')
+        $records = Customer::query()
+            ->select('id', 'company_name', 'customerID', 'current_balance', 'is_active', 'currency_id')
+            ->with('contactPerson:id,full_name,company_contact_people.contactable_id')
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
                     return $query->orderBy('company_name', 'asc');
@@ -36,52 +42,106 @@ class CustomerService
             ->when(isset($request->start_date) && $request->start_date && $request->end_date, function ($query) use ($request) {
                 return $query->where('created_at', [$request?->start_date, $request->end_date]);
             })
-            ->latest()
-            ->paginate($request->limit);
+            ->latest();
+
+        if (!$request->paginate) {
+            return $records->get();
+        }
+
+        return $records->paginate($request->limit);
+    }
+
+    public function stats($request)
+    {
+        $records = Customer::query()
+            ->when(isset($request->start_date) && $request->start_date && $request->end_date, function ($query) use ($request) {
+                return $query->where('created_at', [$request?->start_date, $request->end_date]);
+            });
+
+        return [
+            'total' => (clone $records)->count(), // Count total records
+            'active' => (clone $records)->where('is_active', true)->count(), // Count active records
+            'inactive' => (clone $records)->where('is_active', false)->count(),
+        ];
     }
 
     public function view($id)
     {
-        return Customer::find($id);
+        $record = Customer::select(
+            'id',
+            'company_name',
+            'category_id',
+            'customer_type',
+            'business_type',
+            'currency_id',
+            'customer_logo'
+        )
+            ->with(['currency:id,name,symbol', 'category:id,name', 'contactPersons'])
+            ->find($id);
+        if (!$record) {
+            throw new BadRequestException("Customer not found.", Response::HTTP_NOT_FOUND);
+        }
+        return $record;
     }
 
     public function createCustomer($request)
     {
-        $record = Customer::create([
-            "company_name" => $request->company_name,
+        $record = Customer::updateOrCreate([
+            "id" => $request["id"] ?? null
+        ], [
+            "company_name" => $request['company_name'],
             "customerID" => $this->generateCompanyReference(),
-            "business_registration_number" => $request->business_registration_number,
-            "vat_number" => $request->vat_number,
-            "category_id" => $request->category_id,
-            "customer_type" => $request->customer_type,
-            "business_type" => $request->business_type,
-            "industry" => $request->industry,
-            "employee_count" => $request->employee_count,
-            "currency_id" => $request->currency_id,
-            "customer_logo" => $request->customer_logo,
+            "business_registration_number" => $request['business_registration_number'] ?? null,
+            "vat_number" => $request['vat_number'] ?? null,
+            "category_id" => $request['category_id'] ?? null,
+            "customer_type" => $request['customer_type'] ?? null,
+            "business_type" => $request['business_type'] ?? null,
+            "industry" => $request['industry'] ?? null,
+            "phone_ext" => $request['phone_ext'],
+            "phone_number" => $request['phone_number'],
+            "email" => $request['email'],
+            "employee_count" => $request['employee_count'] ?? 0,
+            "currency_id" => $request['currency_id'],
+            "country_id" => $request['country_id'] ?? null,
+            "address" => $request['address'],
+            "city_id" => $request['city_id'] ?? null,
+            "customer_logo" => $request['customer_logo'],
+            "payment_term" => $request['payment_term'] ?? null,
+            "special_instruction" => $request['special_instruction'] ?? null,
         ]);
 
-        $this->createContactPerson($record, $request);
+        if (isset($request["id"]) && $request["id"]) {
+            $this->updateContactPerson($record, $request);
+        } else {
+            $this->createContactPerson($record, $request);
+        }
+
+        return $record->only('id', 'company_name', 'phone_number', 'email');
     }
 
     protected function createContactPerson($record, $request)
     {
-        foreach ($request->contact_persons as $person) {
+        foreach ($request['contact_persons'] as $person) {
             $record->addContactPerson([
                 "full_name" => $person['full_name'],
-                "salutation" => $person['salutation'],
+                "salutation" => $person['salutation'] ?? null,
                 "primary_email" => $person['primary_email'],
                 "secondary_email" => $person['secondary_email'],
                 "primary_phone_number" => $person['primary_phone_number'],
                 "secondary_phone_number" => $person['secondary_phone_number'],
                 "country_id" => $person['country_id'],
-                "state_id" => $person['state_id'],
+                "state_id" => $person['state_id'] ?? null,
                 "city_id" => $person['city_id'],
                 "primary_address" => $person['primary_address'],
                 "secondary_address" => $person['secondary_address'],
                 "post_code" => $person['post_code'],
             ]);
         }
+    }
+
+    protected function updateContactPerson($record, $request)
+    {
+        $record->editContactPerson($request['contact_persons']);
     }
 
     protected function generateCompanyReference()
@@ -92,5 +152,20 @@ class CustomerService
             "prefix" => 'c-',
             "idLength" => 3,
         ]);
+    }
+
+    public function export($records)
+    {
+        $recordHeadings = ['Customer name', 'Company name', 'Reference', 'Balance', 'Status', 'Date created'];
+        $records = $records->map(function ($record) {
+            return [
+                $record->companyUUID,
+                $record->name,
+                $record->staff_count,
+                $record->status,
+                Carbon::parse($record->created_at)->toFormattedDayDateString()
+            ];
+        });
+        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'customer_report.xlsx');
     }
 }

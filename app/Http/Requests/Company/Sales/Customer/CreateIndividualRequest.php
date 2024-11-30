@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Company\Sales\Customer;
 
+use App\Models\CompanyContactPerson;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CreateIndividualRequest extends FormRequest
@@ -27,17 +28,26 @@ class CreateIndividualRequest extends FormRequest
             "salutation" => 'nullable|string|max:225',
             "category_id" => 'nullable|integer',
             "customer_type" => 'required|in:business,individual',
-            "currency_id" => 'required|integer',
+            "currency_id" => 'required|integer|exists:currencies,id',
             "image" => 'nullable|string',
+            "phone_ext" => 'required|string||exists:countries,phone_code',
             "primary_phone_number" => 'required|string',
             "secondary_phone_number" => 'nullable|string',
-            "primary_email" => 'required|string',
-            "secondary_email" => 'nullable|string',
-            "country_id" => 'nullable|integer',
-            "city_id" => 'nullable|integer',
+            "primary_email" => 'required|string|email',
+            "secondary_email" => 'nullable|string|email',
+            "country_id" => 'nullable|integer|exists:countries,id',
+            "city_id" => 'nullable|integer|exists:cities,id',
             "primary_address" => 'nullable|string',
             "secondary_address" => 'nullable|string',
             "zip_code" => 'nullable|string',
+            "contact_person_id" => ['sometimes', 'required', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
+                $person = CompanyContactPerson::where('company_id', auth()->user()?->company?->id)
+                    ->where('id', $value)
+                    ->first();
+                if (!$person) {
+                    $fail('Contact person not found.');
+                }
+            }],
         ];
     }
 }

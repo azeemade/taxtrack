@@ -13,7 +13,7 @@ class SharedFilterRequest extends FormRequest
         $sort_by = $this->input('sort_by');
         $start_date = $this->input('start_date');
         $end_date = $this->input('end_date');
-        $paginate = $this->input('paginate');
+        $paginate = (bool) $this->input('paginate');
         $limit = $this->input('limit', 10);
         $export = $this->input('export');
 

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SharedActionService
 {
@@ -58,6 +59,10 @@ class SharedActionService
     {
         if (method_exists($model, 'deactivate')) {
             $model->deactivate();
+            return true;
+        } else {
+            $model->is_active = !$model->is_active;
+            $model->save();
             return true;
         }
         throw new BadRequestException("Model does not support deactivation");

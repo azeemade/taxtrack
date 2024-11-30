@@ -7,8 +7,9 @@ use App\Http\Requests\Company\AttachUserRequest;
 use App\Http\Requests\Company\CreateCompanyRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
-use App\Services\CompanyServices\CompanyService;
+use App\Services\Company\CompanyService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class CompanyManagementController extends Controller
@@ -39,7 +40,7 @@ class CompanyManagementController extends Controller
 
             return JsonResponser::send(false, 'Company(s) retrieved successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
