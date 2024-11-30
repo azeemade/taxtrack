@@ -3,11 +3,10 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\Client;
-use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
-class InviteUsersRequest extends FormRequest
+class CompanyUserRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,16 +24,27 @@ class InviteUsersRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'companies' => 'required|array',
+            'companies.*.name' => 'required|string|unique:companies,name||max:250',
+            'companies.*.address' => 'required|string||max:250',
+            'companies.*.country_id' => 'required|exists:countries,id',
+            'companies.*.industry' => 'required|string||max:250',
+            'companies.*.tax_id' => 'nullable|string|max:20',
+            'companies.*.registration_id' => 'nullable|string||max:20',
+            'companies.*.fiscal_year_start' => 'nullable|date_format:m-d',
+            'companies.*.fiscal_year_end' => 'nullable|date_format:m-d',
             'users' => 'nullable|array',
-            'users.*.name' => 'required|string',
+            'users.*.name' => 'required|string|max:250',
             'users.*.roles' => 'nullable|array',
+            // 'users.*.roles.*' => 'required|integer|exists:roles,id',
             'users.*.roles.*' => 'required|string|max:50',
             'users.*.company' => 'nullable|array',
-            'users.*.company.*' => 'nullable|integer|exists:companies,id',
+            'users.*.company.*' => 'required|string|max:50',
             'users.*.email' => [
                 'required',
                 'string',
                 'email',
+                'max:250',
                 function ($attribute, $value, $fail) {
                     foreach ($this->users as $user) {
                         $userCheck = User::where('email', $user['email'])

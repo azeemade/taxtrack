@@ -13,28 +13,32 @@ return new class extends Migration
     {
         Schema::create('customers', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('full_name');
-            $table->string('display_name')->nullable();
-            $table->string('salutation')->nullable();
+            $table->string('company_name')->nullable();
             $table->string('customerID');
+            $table->string('business_registration_number')->nullable();
+            $table->string('vat_number')->nullable();
             $table->unsignedBigInteger('category_id')->nullable();
-            $table->string('type')->comment('business, individual');
+            $table->string('customer_type')->comment('business, individual, organization');
+            $table->string('business_type')->nullable()->comment('proprietorship, partnership, corporation');
+            $table->string('industry')->nullable();
+            $table->unsignedInteger('employee_count')->default(1);
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('company_id');
-            $table->string('primary_phone_ext');
-            $table->string('primary_phone_number');
-            $table->string('secondary_phone_ext')->nullable();
-            $table->string('secondary_phone_number')->nullable();
-            $table->string('primary_email')->unique();
-            $table->string('secondary_email')->nullable();
+            $table->string('phone_ext');
+            $table->string('phone_number');
+            $table->string('email')->unique();
+            $table->decimal('current_balance', 20, 2)->default(0.00);
+            $table->string('payment_term')->nullable(); // in days
             $table->unsignedBigInteger('currency_id');
-            $table->unsignedBigInteger('country_id');
-            $table->unsignedBigInteger('city_id');
-            $table->string('primary_address');
-            $table->string('secondary_address')->nullable();
+            $table->unsignedBigInteger('country_id')->nullable();
+            $table->unsignedBigInteger('city_id')->nullable();
+            $table->string('address');
             $table->string('zip_code')->nullable();
+            $table->mediumText('special_instruction')->nullable();
+            $table->mediumText('customer_logo')->nullable();
             $table->mediumText('statement_document_link')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('category_id')->references('id')->on('categories')->onDelete('set null');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
             $table->softDeletes();

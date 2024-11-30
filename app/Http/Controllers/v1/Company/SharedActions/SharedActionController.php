@@ -4,10 +4,12 @@ namespace App\Http\Controllers\v1\Company\SharedActions;
 
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Responser\JsonResponser;
 use App\Services\SharedServices\SharedActionService;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Response;
 
 class SharedActionController extends Controller
 {
@@ -20,113 +22,90 @@ class SharedActionController extends Controller
 
     public function __invoke(Request $request, $prefix,  $modelName, $id, $action)
     {
-        $modelClass = config("route_model_map.$modelName");
+        try {
+            $modelClass = config("route_model_map.$modelName");
 
-        $model = $this->getModel($modelClass, $id);
-        return $this->getAction($action, $model);
+            $model = $this->getModel($modelClass, $id);
+            $response = $this->getAction($action, $model);
+
+
+            return JsonResponser::send(false, $response["message"], $response["record"], Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
     }
 
     protected function getModel($modelClass, $id)
     {
         if ($modelClass && class_exists($modelClass)) {
             $model = new $modelClass();
+
             $modelRecord = $model::find($id);
             if (!$modelRecord) {
-                throw new BadRequestException("Record not found");
+                throw new BadRequestException("Record not found", Response::HTTP_NOT_FOUND);
             }
             return $modelRecord;
         }
-        throw new BadRequestException("Model not found");
+        throw new BadRequestException("Model not found", Response::HTTP_NOT_FOUND);
     }
 
     protected function getAction($action, $model)
     {
-        if (method_exists($this, $action) && in_array($action, $model->allowedActions)) {
+        if ($model->allowedActions && method_exists($this, $action) && in_array($action, $model->allowedActions)) {
             return $this->$action($model);
         }
 
-        throw new BadRequestException("Action not found");
+        throw new BadRequestException("Action not found", Response::HTTP_NOT_FOUND);
     }
 
     public function duplicate(Model $model)
     {
-        try {
-            $record = $this->sharedActionService->duplicate($model);
+        $record = $this->sharedActionService->duplicate($model);
 
-            return JsonResponser::send(false, 'Duplication successful', $record);
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', [], 500, $th);
-        }
+        return ["message" => 'Duplication successful', "record" => $record];
     }
 
     public function sendReminder(Request $request)
     {
-        try {
-            $this->sharedActionService->sendReminder($request);
+        $this->sharedActionService->sendReminder($request);
 
-            return JsonResponser::send(false, 'Reminder sent successfully', null);
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', [], 500, $th);
-        }
+        return ["message" => 'Reminder sent successfully', "record" => null];
     }
 
     public function emailEntity(Model $model)
     {
-        try {
-            $this->sharedActionService->emailEntity($model);
+        $this->sharedActionService->emailEntity($model);
 
-            return JsonResponser::send(false, 'Email sent to customer', null);
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', [], 500, $th);
-        }
+        return ["message" => 'Email sent to customer', "record" => null];
     }
 
     public function deactivate(Model $model)
     {
-        try {
-            $this->sharedActionService->deactivate($model);
+        $this->sharedActionService->deactivate($model);
 
-            return JsonResponser::send(false, 'Deactivation successful', null);
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', [], 500, $th);
-        }
+        return ["message" => 'Deactivation successful', "record" => null];
     }
 
     public function delete(Model $model)
     {
-        try {
-            $this->sharedActionService->delete($model);
+        $this->sharedActionService->delete($model);
 
-            return JsonResponser::send(false, 'Delete action successful', null);
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', [], 500, $th);
-        }
+        return ["message" => 'Deleted successful', "record" => null];
     }
 
     public function preview(Model $model)
     {
-        try {
-            return $preview = $this->sharedActionService->preview($model);
-
-            // return JsonResponser::send(false, 'Preview generated successful', $preview);
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, $th->getMessage() . $th->getLine(), [], 500, $th);
-        }
+        return $this->sharedActionService->preview($model);
     }
 
     public function download(Model $model)
     {
-        try {
-            $preview = $this->sharedActionService->preview($model);
+        $preview = $this->sharedActionService->preview($model);
 
-            return response($preview['file_contents'])
-                ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'attachment; filename="' . $preview['file_name'] . '"');
-
-
-            // return JsonResponser::send(false, 'Preview generated successful', $download);
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', [], 500, $th);
-        }
+        return response($preview['file_contents'])
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $preview['file_name'] . '"');
     }
 }

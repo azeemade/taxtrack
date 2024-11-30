@@ -8,8 +8,6 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Models\User;
 use App\Responser\JsonResponser;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -36,14 +34,14 @@ class AuthController extends Controller
 
             $user = Auth::user();
             if ($user?->status != GeneralEnums::ACTIVE->value) {
-                return JsonResponser::send(true, 'Account is inactive. Contact admin', [], 401);
+                return JsonResponser::send(true, 'Account is inactive. Contact admin', [], 400);
             }
 
             if ($user->hasRole('client') && $user?->company?->status != GeneralEnums::APPROVED->value) {
-                return JsonResponser::send(true, 'Company is inactive. Contact admin', [], 401);
+                return JsonResponser::send(true, 'Company is inactive. Contact admin', [], 400);
             }
 
-            if (!$user->company) {
+            if ($user->hasRole('client') && !$user->company) {
                 $user->update([
                     'current_company_id' => $user->companies[0]
                 ]);
@@ -61,7 +59,7 @@ class AuthController extends Controller
             ];
             return JsonResponser::send(false, 'User successfully logged in', $data);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
     /**

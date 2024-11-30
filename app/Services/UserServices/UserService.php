@@ -87,14 +87,23 @@ class UserService
     public function create(array $data, int $company_id = null, int $created_by = null)
     {
         $currentUser = auth()->user();
-        if (isset($data['company_id'])) {
-            $company_id = $data['company_id'][0];
+        if (isset($data['company'])) {
+            $companyField = $data['company'][0];
         }
-        $company = Company::find($company_id);
+
+        $company = Company::query();
+        if (isset($companyField) && $companyField) {
+            $company->where('name', $companyField)
+                ->orWhere('id', $companyField);
+        }
+        if (isset($company_id) && $company_id) {
+            $company->where('id', $company_id);
+        }
+        $company = $company->first();
 
         $currentUserCompany = $currentUser?->company ?: $company;
 
-        $password = Str::slug($currentUserCompany->name) . rand(100, 999);
+        $password = isset($data['password']) ? $data['password'] : Str::slug($currentUserCompany->name) . rand(100, 999);
 
         $user = User::where('email', $data['email'])->first();
         if (!$user) {
@@ -103,7 +112,8 @@ class UserService
                 'email' => $data['email'],
                 'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
                 'password' => Hash::make($password),
-                'created_by' => $currentUser?->id ?: $created_by
+                'created_by' => $currentUser?->id ?: $created_by,
+                'current_company_id' => $currentUserCompany->id
             ]);
         }
 
