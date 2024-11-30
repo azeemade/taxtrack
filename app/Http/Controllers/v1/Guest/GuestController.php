@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\v1\Guest;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Company;
 use App\Models\ErrorLog;
 use App\Models\User;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Spatie\Permission\Models\Permission;
 
 class GuestController extends Controller
@@ -73,6 +75,18 @@ class GuestController extends Controller
     /**
      * Display the specified resource.
      */
+    public function categories(Request $request)
+    {
+        try {
+            $records = Category::select('id', 'name', 'slug')
+                ->where('table', $request->table)
+                ->get();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
     public function getCompanyRoles(int $id)
     {
         try {

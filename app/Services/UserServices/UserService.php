@@ -90,12 +90,16 @@ class UserService
         if (isset($data['company'])) {
             $companyField = $data['company'][0];
         }
-        $company = Company::where('name', $companyField)
-            ->orWhere('id', $companyField)
-            ->when($company_id, function ($query) use ($company_id) {
-                $query->where('id', $company_id);
-            })
-            ->first();
+
+        $company = Company::query();
+        if (isset($companyField) && $companyField) {
+            $company->where('name', $companyField)
+                ->orWhere('id', $companyField);
+        }
+        if (isset($company_id) && $company_id) {
+            $company->where('id', $company_id);
+        }
+        $company = $company->first();
 
         $currentUserCompany = $currentUser?->company ?: $company;
 

@@ -39,21 +39,6 @@ Route::group([
     });
     Route::group(['middleware' => ["auth:api"]], function () {
         Route::group([
-            'prefix' => 'admin',
-            'middleware' => ['permission:access_admin_app,api'],
-            "namespace" => "Admin"
-        ], function () {
-            Route::group([
-                'prefix' => 'company',
-                "namespace" => "Company"
-            ], function () {
-                Route::get('/', 'CompanyManagementController@overview');
-                Route::post('/create', 'CompanyManagementController@create');
-                Route::post('/attach-user', 'CompanyManagementController@attachUser');
-            });
-        });
-
-        Route::group([
             'prefix' => 'client',
             'middleware' => ['permission:access_client_app,api'],
             "namespace" => "Company"
@@ -86,11 +71,12 @@ Route::group([
                     "prefix" => "customers",
                     "namespace" => "Customer"
                 ], function () {
-                    Route::post('', 'CustomerController@overview');
+                    Route::get('', 'CustomerController@overview');
                     Route::get('/{id}', 'CustomerController@view');
-                    Route::get('/create-individual', 'CustomerController@createIndividualCustomer');
+                    Route::post('/create-individual', 'CustomerController@createIndividualCustomer');
                     Route::post('/create-organization', 'CustomerController@createOrganizationCustomer');
-                    Route::post('/create-organization', 'CustomerController@createOrganizationCustomer');
+                    Route::put('/{id}/update-individual', 'CustomerController@updateIndividualCustomer');
+                    Route::put('/{id}/update-organization', 'CustomerController@updateOrganizationCustomer');
                     Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
                     Route::delete('/delete{id}', 'CustomerController@delete');
                 });
@@ -170,6 +156,7 @@ Route::group([
         'prefix' => 'guests',
         "namespace" => "Guest"
     ], function () {
+        Route::get('/categories', 'GuestController@categories');
         Route::get('/industries', 'GuestController@industries');
         Route::get('/permissions', 'GuestController@allPermissions');
         Route::get('/user/{id}/permissions', 'GuestController@getUserPermissions');

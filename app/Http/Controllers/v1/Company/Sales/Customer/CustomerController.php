@@ -11,11 +11,11 @@ use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\Customer\CustomerService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
-
     protected CustomerService $customerService;
 
     public function __construct(CustomerService $customerService)
@@ -26,12 +26,26 @@ class CustomerController extends Controller
     public function overview(SharedFilterRequest $request)
     {
         try {
-            $records = $this->customerService->list($request->validated());
+            $records = $this->customerService->list($request);
+            if ($request->export) {
+                return $this->customerService->export($records);
+            }
+
+            $stats = $this->customerService->stats($request);
+            $records = [
+                ...$stats,
+                'data' => $records
+            ];
+
+            if (!$request["paginate"]) {
+                $records = $records["data"];
+            }
+
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -43,7 +57,7 @@ class CustomerController extends Controller
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -53,7 +67,13 @@ class CustomerController extends Controller
             DB::beginTransaction();
 
             $data = [
-                ...$request->only('category_id', 'customer_type', 'currency_id'),
+                ...$request->only(
+                    'category_id',
+                    'customer_type',
+                    'currency_id',
+                    'phone_ext',
+                    'payment_term'
+                ),
                 "company_name" => $request->display_name,
                 "customer_logo" => $request->image,
                 "phone_number" => $request->primary_phone_number,
@@ -85,7 +105,7 @@ class CustomerController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -95,7 +115,21 @@ class CustomerController extends Controller
             DB::beginTransaction();
 
             $data = [
-                ...$request->validated(),
+                ...$request->only(
+                    'company_name',
+                    'category_id',
+                    'customer_type',
+                    'currency_id',
+                    'phone_ext',
+                    'address',
+                    'city_id',
+                    'state_id',
+                    'country_id',
+                    'city_id'
+                ),
+                "customer_logo" => $request->image,
+                "email" => $request->primary_email,
+                "phone_number" => $request->primary_phone_number,
                 "customer_type" => CustomerTypeEnums::ORGANIZATION->value,
                 "customer_logo" => $request->image,
                 "contact_persons" => $request->contact_persons
@@ -103,13 +137,102 @@ class CustomerController extends Controller
             $record = $this->customerService->createCustomer($data);
 
             DB::commit();
-            return JsonResponser::send(false, 'Role created successfully', $record);
+            return JsonResponser::send(false, 'Company created successfully', $record);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function updateIndividualCustomer(CreateIndividualRequest $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $data = [
+                ...$request->only(
+                    'category_id',
+                    'customer_type',
+                    'currency_id',
+                    'phone_ext',
+                    'payment_term'
+                ),
+                "id" => $id,
+                "company_name" => $request->display_name,
+                "customer_logo" => $request->image,
+                "phone_number" => $request->primary_phone_number,
+                "email" => $request->primary_email,
+                "country_id" => $request->country_id,
+                "city_id" => $request->city_id,
+                "zip_code" => $request->zip_code,
+                "address" => $request->primary_address,
+                "contact_persons" => [[
+                    "id" => $request->contact_person_id,
+                    "full_name" => $request->full_name,
+                    "salutation" => $request->salutation,
+                    "primary_phone_number" => $request->primary_phone_number,
+                    "secondary_phone_number" => $request->secondary_phone_number,
+                    "primary_email" => $request->primary_email,
+                    "secondary_email" => $request->secondary_email,
+                    "country_id" => $request->country_id,
+                    "city_id" => $request->city_id,
+                    "primary_address" => $request->primary_address,
+                    "secondary_address" => $request->secondary_address,
+                    "post_code" => $request->zip_code
+                ]]
+            ];
+            $record = $this->customerService->createCustomer($data);
+
+            DB::commit();
+            return JsonResponser::send(false, 'Individual customer created successfully', $record);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function updateOrganizationCustomer(CreateOrganizationRequest $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $data = [
+                ...$request->only(
+                    'company_name',
+                    'category_id',
+                    'customer_type',
+                    'currency_id',
+                    'phone_ext',
+                    'address',
+                    'city_id',
+                    'state_id',
+                    'country_id',
+                    'city_id'
+                ),
+                "id" => $id,
+                "customer_logo" => $request->image,
+                "email" => $request->primary_email,
+                "phone_number" => $request->primary_phone_number,
+                "customer_type" => CustomerTypeEnums::ORGANIZATION->value,
+                "customer_logo" => $request->image,
+                "contact_persons" => $request->contact_persons
+            ];
+            $record = $this->customerService->createCustomer($data);
+
+            DB::commit();
+            return JsonResponser::send(false, 'Company created successfully', $record);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -124,7 +247,7 @@ class CustomerController extends Controller
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -137,7 +260,7 @@ class CustomerController extends Controller
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 }
