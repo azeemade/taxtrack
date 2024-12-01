@@ -19,6 +19,8 @@ return new class extends Migration
             $table->unsignedBigInteger('invoice_id');
             $table->unsignedBigInteger('company_id');
             $table->foreign('credit_note_id')->references('id')->on('credit_notes')->onDelete('cascade');
+            $table->unsignedBigInteger('line_item_id');
+            $table->foreign('line_item_id')->references('id')->on('line_items')->onDelete('cascade');
             $table->foreign('invoice_id')->references('id')->on('invoices')->onDelete('cascade');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
