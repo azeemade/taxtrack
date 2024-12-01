@@ -67,8 +67,8 @@
                     <tr>
                         <td>{{ $item['item_details'] }}</td>
                         <td>{{ $item['quantity'] }}</td>
-                        <td>{{ $item['price'] }}</td>
-                        <td>{{ $item['amount'] }}</td>
+                        <td>{{ $entity_data['currency'] }}{{ $item['price'] }}</td>
+                        <td>{{ $entity_data['currency'] }}{{ $item['amount'] }}</td>
                     </tr>
                 @empty
                 @endforelse
@@ -82,7 +82,7 @@
                 <td>Sub Total</td>
                 <td>
                     <div class="amount">
-                        £8000
+                        {{ $entity_data['currency'] }}{{ $previewables['sub_total'] }}
                     </div>
                 </td>
             </tr>
@@ -95,7 +95,7 @@
                                 <b>{{ $key }}:</b>
                             </span>
                             <span>
-                                {{ $item }}
+                                {{ $entity_data['currency'] }}{{ $item }}
                             </span>
                         </div>
                     @empty
@@ -107,7 +107,7 @@
                 <td>Total</td>
                 <td>
                     <div class="amount">
-                        {{ $previewables['total'] }}
+                        {{ $entity_data['currency'] }}{{ $previewables['total'] }}
                     </div>
                 </td>
             </tr>

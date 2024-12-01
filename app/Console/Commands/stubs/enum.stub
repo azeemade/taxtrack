@@ -1,0 +1,13 @@
+<?php
+
+namespace App\Enums{{ folder }};
+
+/**
+ * Enum {{ enum }}
+ * 
+ * This enum defines defined all available options for {{ enum }}.
+ */
+enum {{ enum }}: string
+{
+    {{ enumOptions }}
+}

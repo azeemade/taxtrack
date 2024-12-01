@@ -20,9 +20,9 @@ class Invoice extends Model
             'additional_reference' => $this->additional_referenceID,
             'entity_data' => [
                 'id' => $this->customer->customerID,
-                'name' => $this->customer->full_name,
-                'address' => $this->customer->primary_address,
-                'email' => $this->customer->primary_email,
+                'name' => $this->customer->company_name,
+                'address' => $this->customer->address,
+                'email' => $this->customer->email,
                 'currency' => $this->customer->currency->symbol,
             ],
             'issued_date' => $this->created_at,

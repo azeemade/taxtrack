@@ -36,6 +36,7 @@ return new class extends Migration
             $table->foreign('category_id')->references('id')->on('categories')->onDelete('set null');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
             $table->softDeletes();
             $table->timestamps();
         });

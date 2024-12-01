@@ -1,57 +1,42 @@
 <?php
 
-namespace App\Services\Quotes;
+namespace App\Services\Invoices;
 
-use App\Enums\DocumentableModelEnums;
+use App\Enums\DocumentableTypeEnums;
 use App\Enums\FinancialDocumentStatusEnums;
 use App\Enums\GeneralEnums;
 use App\Enums\ShareStatusEnums;
 use App\Helpers\GeneralHelper;
-use App\Models\Quote;
-use App\Services\Invoices\InvoiceService;
-use App\Services\SharedServices\SharedActionService;
+use App\Models\Invoice;
 
-class QuoteService
+class InvoiceService
 {
-    protected InvoiceService $invoiceService;
-    protected SharedActionService $sharedActionServices;
-
-    public function __construct(
-        InvoiceService $invoiceService,
-        SharedActionService $sharedActionServices
-    ) {
-        $this->invoiceService = $invoiceService;
-        $this->sharedActionServices = $sharedActionServices;
-    }
-
     public function create($request)
     {
-        $record = Quote::create([
+        $record = Invoice::create([
             ...$request,
             'quote_date' => $request['quote_date'] ?? now(),
-            'quoteID' => $this->generateQuoteId(),
+            'invoiceID' => $this->generateInvoiceId(),
             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
             'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
         ]);
 
         foreach ($request['line_items'] as $value) {
             $record->lineItems()->create([
-                'documentable_type' => DocumentableModelEnums::QUOTE->value,
+                'documentable_type' => DocumentableTypeEnums::INVOICE->value,
                 'category_id' => $value['category_id'],
                 'quantity' => $value['quantity'],
                 'price' => $value['unit_price'],
                 'discount' => $value['discount'],
                 'vat' => $value['vat'],
-                'amount' => $value['line_total']
+                'amount' => $value['line_item_total']
             ]);
         }
 
         if ($request['save_status'] == 'send') {
-            $this->sharedActionServices->emailEntity($record);
         }
 
         if ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value) {
-            $this->invoiceService->create($request);
         }
 
         return $record;
@@ -85,12 +70,12 @@ class QuoteService
         return round($quoteTotal, 4);
     }
 
-    public function generateQuoteId()
+    protected function generateInvoiceId()
     {
         return GeneralHelper::getModelUniqueOrderlyId([
-            "modelNamespace" => 'App\Models\Quote',
-            "modelField" => 'quoteID',
-            "prefix" => 'qte-',
+            "modelNamespace" => 'App\Models\Invoice',
+            "modelField" => 'invoiceID',
+            "prefix" => 'inv-',
             "idLength" => 4,
         ]);
     }
