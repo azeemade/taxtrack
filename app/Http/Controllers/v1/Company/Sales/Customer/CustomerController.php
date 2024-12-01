@@ -28,7 +28,7 @@ class CustomerController extends Controller
         try {
             $records = $this->customerService->list($request);
             if ($request->export) {
-                return $this->customerService->export($records);
+                return $this->customerService->export($records, $request->export);
             }
 
             $stats = $this->customerService->stats($request);

@@ -154,7 +154,7 @@ class CustomerService
         ]);
     }
 
-    public function export($records)
+    public function export($records, $exportType)
     {
         $recordHeadings = ['Customer name', 'Company name', 'Reference', 'Balance', 'Status', 'Date created'];
         $records = $records->map(function ($record) {
@@ -166,6 +166,10 @@ class CustomerService
                 Carbon::parse($record->created_at)->toFormattedDayDateString()
             ];
         });
-        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'customer_report.xlsx');
+
+        if ($exportType == 'pdf') {
+            return Excel::download(new GeneralReportExport($records, $recordHeadings), 'customer_report.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        }
+        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'customer_report.csv', \Maatwebsite\Excel\Excel::CSV);
     }
 }
