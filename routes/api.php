@@ -58,6 +58,8 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, 404);
                         });
+                    Route::get('/invoices/create/generateId', 'InvoiceController@generateInvoiceId');
+                    Route::post('/invoices/record-payment/{id}', 'InvoiceController@recordPayment');
                 });
                 Route::group([
                     "namespace" => "SalesQuote"
