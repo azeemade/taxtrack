@@ -13,4 +13,14 @@ class LineItem extends Model
 {
     use HasFactory, Companyable;
     protected $guarded = ['id'];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 }

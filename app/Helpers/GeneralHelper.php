@@ -33,18 +33,19 @@ class GeneralHelper
         }
 
         $record = $modelClass::latest()->first();
-        $fieldId = $record->{$modelField} ?? '';
+        // $fieldId = $record->{$modelField} ?? '';
+        $fieldId = $record->id ?? '';
         if (!$fieldId) {
             return $prefix . str_pad(1, $idLength, '0', STR_PAD_LEFT) . $suffix;
         }
 
-        $escapedPrefix = preg_quote($prefix, '/');
-        $escapedSuffix = preg_quote($suffix, '/');
-        $pattern = "/^{$escapedPrefix}(.*?){$escapedSuffix}$/";
+        // $escapedPrefix = preg_quote($prefix, '/'); 
+        // $escapedSuffix = preg_quote($suffix, '/');
+        // $pattern = "/^{$escapedPrefix}(.*?){$escapedSuffix}$/";
 
-        $currentId = preg_replace($pattern, '$1', $fieldId);
-        $idLength = strlen($currentId);
-        $incrementedId = intval($currentId) + 1;
+        // $currentId = preg_replace($pattern, '$1', $fieldId);
+        // $idLength = strlen($currentId);
+        $incrementedId = intval($fieldId) + 1;
 
         return $prefix . str_pad($incrementedId, $idLength, '0', STR_PAD_LEFT) . $suffix;
     }

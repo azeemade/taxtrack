@@ -67,8 +67,8 @@
                     <tr>
                         <td>{{ $item['item_details'] }}</td>
                         <td>{{ $item['quantity'] }}</td>
-                        <td>{{ $entity_data['currency'] }}{{ $item['price'] }}</td>
-                        <td>{{ $entity_data['currency'] }}{{ $item['amount'] }}</td>
+                        <td>{{ $previewables['entity_data']['currency'] }}{{ $item['price'] }}</td>
+                        <td>{{ $previewables['entity_data']['currency'] }}{{ $item['amount'] }}</td>
                     </tr>
                 @empty
                 @endforelse
@@ -82,11 +82,11 @@
                 <td>Sub Total</td>
                 <td>
                     <div class="amount">
-                        {{ $entity_data['currency'] }}{{ $previewables['sub_total'] }}
+                        {{ $previewables['entity_data']['currency'] }}{{ $previewables['sub_total'] }}
                     </div>
                 </td>
             </tr>
-            <tr class="addtional-charges">
+            <tr class="additional-charges">
                 <td>Additional charges</td>
                 <td style="text-align: end;">
                     @forelse ($previewables['additional_charges'] as $key => $item)
@@ -95,7 +95,7 @@
                                 <b>{{ $key }}:</b>
                             </span>
                             <span>
-                                {{ $entity_data['currency'] }}{{ $item }}
+                                {{ $previewables['entity_data']['currency'] }}{{ $item }}
                             </span>
                         </div>
                     @empty
@@ -107,7 +107,7 @@
                 <td>Total</td>
                 <td>
                     <div class="amount">
-                        {{ $entity_data['currency'] }}{{ $previewables['total'] }}
+                        {{ $previewables['entity_data']['currency'] }}{{ $previewables['total'] }}
                     </div>
                 </td>
             </tr>
@@ -116,7 +116,9 @@
 
     <div class="terms">
         <p>Terms and Conditions</p>
-        <textarea placeholder="Enter your T&C here"></textarea>
+        <textarea placeholder="Enter your T&C here">
+            {{ $previewables['terms_and_conditions'] }}
+        </textarea>
     </div>
     </div>
 </body>

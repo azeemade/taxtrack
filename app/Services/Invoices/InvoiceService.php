@@ -6,42 +6,89 @@ use App\Enums\DocumentableTypeEnums;
 use App\Enums\FinancialDocumentStatusEnums;
 use App\Enums\GeneralEnums;
 use App\Enums\ShareStatusEnums;
+use App\Exceptions\BadRequestException;
 use App\Helpers\GeneralHelper;
 use App\Models\Invoice;
+use App\Services\PaymentRecords\PaymentRecordService;
+use App\Services\SharedServices\SharedActionService;
+use Illuminate\Http\Response;
 
 class InvoiceService
 {
+    protected SharedActionService $sharedActionServices;
+    protected PaymentRecordService $paymentRecordService;
+    public function __construct(
+        SharedActionService $sharedActionServices,
+        PaymentRecordService $paymentRecordService
+    ) {
+        $this->sharedActionServices = $sharedActionServices;
+        $this->paymentRecordService = $paymentRecordService;
+    }
+
     public function create($request)
     {
         $record = Invoice::create([
             ...$request,
             'quote_date' => $request['quote_date'] ?? now(),
+            'referenceID' => $this->generateRefId(),
             'invoiceID' => $this->generateInvoiceId(),
+            'is_recurring' => $request['save_status'] == 'recur' ? true : false,
             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-            'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
+            'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
         ]);
 
         foreach ($request['line_items'] as $value) {
             $record->lineItems()->create([
                 'documentable_type' => DocumentableTypeEnums::INVOICE->value,
+                'item_details' => $value['name'],
                 'category_id' => $value['category_id'],
                 'quantity' => $value['quantity'],
                 'price' => $value['unit_price'],
                 'discount' => $value['discount'],
                 'vat' => $value['vat'],
-                'amount' => $value['line_item_total']
+                'amount' => $value['line_total']
             ]);
         }
 
         if ($request['save_status'] == 'send') {
-        }
-
-        if ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value) {
+            $this->sharedActionServices->emailEntity($record);
         }
 
         return $record;
     }
 
+    public function view(int $id)
+    {
+        $record = Invoice::select(
+            'id',
+            'invoiceID',
+            'additional_referenceID',
+            'start_date',
+            'due_date',
+            'terms_and_conditions',
+            'customer_note',
+            'sub_total',
+            'shipping_charge',
+            'additional_charge',
+            'invoice_value',
+            'customer_id',
+            'currency_id',
+        )
+            ->with([
+                'customer:id,company_name',
+                'currency:id,name,symbol',
+                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
+                    'category:id,name'
+                ]
+            ])
+            ->find($id);
+
+        if (!$record) {
+            throw new BadRequestException("Invoice not found!", Response::HTTP_NOT_FOUND);
+        }
+
+        return $record;
+    }
 
     public function calculateLineItemTotalUnitPrice(float $unit, int $quantity)
     {
@@ -70,13 +117,23 @@ class InvoiceService
         return round($quoteTotal, 4);
     }
 
-    protected function generateInvoiceId()
+    public function generateInvoiceId()
     {
         return GeneralHelper::getModelUniqueOrderlyId([
             "modelNamespace" => 'App\Models\Invoice',
             "modelField" => 'invoiceID',
-            "prefix" => 'inv-',
+            "prefix" => 'Inv-',
             "idLength" => 4,
+        ]);
+    }
+
+    public function generateRefId()
+    {
+        return GeneralHelper::getModelUniqueOrderlyId([
+            "modelNamespace" => 'App\Models\Invoice',
+            "modelField" => 'referenceID',
+            "prefix" => 'ref-',
+            "idLength" => 6,
         ]);
     }
 }
