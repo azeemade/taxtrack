@@ -36,7 +36,7 @@ class CreateQuoteRequest extends FormRequest
                 $customerCurrency = Customer::where('currency_id', $value)
                     ->where('id', $this->input('customer_id'))
                     ->first();
-                    
+
                 if (!$customerCurrency) {
                     $fail('Invalid customer currency selected');
                 }
@@ -60,12 +60,12 @@ class CreateQuoteRequest extends FormRequest
                 }
             }],
             'save_status' => 'required|string|in:draft,save,send',
-            'line_items' => 'nullable|array',
+            'line_items' => 'required|array',
             'line_items.*.name' => 'required|string|max:50',
-            'line_items.*.category_id' => 'nullable|integer|exists:categories,id',
-            'line_items.*.quantity' => 'nullable|integer|min:0',
-            'line_items.*.unit_price' => 'nullable|numeric|min:0.00',
-            'line_items.*.total_unit_price' => ['nullable', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
+            'line_items.*.category_id' => 'required|integer|exists:categories,id',
+            'line_items.*.quantity' => 'required|integer|min:0',
+            'line_items.*.unit_price' => 'required|numeric|min:0.00',
+            'line_items.*.total_unit_price' => ['required', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
                 $index = explode('.', $attribute)[1];
                 $item = $this->input("line_items.$index");
 
@@ -74,8 +74,8 @@ class CreateQuoteRequest extends FormRequest
                     $fail('Total unit price does not match the provided');
                 }
             }],
-            'line_items.*.discount' => 'nullable|numeric|min:0',
-            'line_items.*.vat' => 'nullable|numeric|min:0',
+            'line_items.*.discount' => 'required|numeric|min:0',
+            'line_items.*.vat' => 'required|numeric|min:0',
             'line_items.*.line_total' => ['required', 'numeric', 'min:0', function ($attribute, $value, $fail) {
                 $index = explode('.', $attribute)[1];
                 $item = $this->input("line_items.$index");
