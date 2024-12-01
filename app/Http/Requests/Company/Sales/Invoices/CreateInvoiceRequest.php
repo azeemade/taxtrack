@@ -65,12 +65,12 @@ class CreateInvoiceRequest extends FormRequest
             'repeat' => 'nullable|required_if:save_status,recur|integer',
             'repeat_period' => 'nullable|required_if:save_status,recur|string|in:month,day,week,year',
             'save_status' => 'required|string|in:draft,save,send,recur',
-            'line_items' => 'nullable|array',
+            'line_items' => 'required|array',
             'line_items.*.name' => 'required|string|max:50',
             'line_items.*.category_id' => 'nullable|integer|exists:categories,id',
-            'line_items.*.quantity' => 'nullable|integer|min:0',
-            'line_items.*.unit_price' => 'nullable|numeric|min:0.00',
-            'line_items.*.total_unit_price' => ['nullable', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
+            'line_items.*.quantity' => 'required|integer|min:1',
+            'line_items.*.unit_price' => 'required|numeric|min:0.00',
+            'line_items.*.total_unit_price' => ['required', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
                 $index = explode('.', $attribute)[1];
                 $item = $this->input("line_items.$index");
 

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class LineItem extends Model
 {
     use HasFactory, Companyable;
+    
     protected $guarded = ['id'];
 
     public function category()

@@ -6,6 +6,7 @@ use App\Enums\DocumentableModelEnums;
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Sales\Invoices\CreateInvoiceRequest;
+use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\Invoices\InvoiceService;
 use App\Services\PaymentRecords\PaymentRecordService;
@@ -15,7 +16,6 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
-
     protected InvoiceService $invoiceService;
     protected PaymentRecordService $paymentRecordService;
 
@@ -31,14 +31,28 @@ class InvoiceController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(SharedFilterRequest $request)
     {
         try {
-            $records = [];
+            $records = $this->invoiceService->list($request);
 
-            return JsonResponser::send(false, 'Record(s) found successfully', $records);
+            if ($request->export) {
+                return $this->invoiceService->export($records, $request->export);
+            }
+
+            if ($request["paginate"]) {
+                $stats = $this->invoiceService->stats($request);
+                $records = [
+                    ...$stats,
+                    'data' => $records
+                ];
+            }
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -110,6 +124,7 @@ class InvoiceController extends Controller
     {
         try {
             $record = $this->invoiceService->view($id);
+            
             return JsonResponser::send(false, 'Record retrieved successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
