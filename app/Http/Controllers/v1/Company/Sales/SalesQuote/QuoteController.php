@@ -20,6 +20,19 @@ class QuoteController extends Controller
         $this->quoteService = $quoteService;
     }
 
+    public function generateQuoteId()
+    {
+        try {
+            $record = $this->quoteService->generateQuoteId();
+            return JsonResponser::send(false, 'Quote ID generated successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+
     public function store(CreateQuoteRequest $request)
     {
         try {
