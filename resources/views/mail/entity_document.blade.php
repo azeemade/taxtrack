@@ -5,8 +5,12 @@
 
     Please find the attached {{ strtolower($data['model']) }} for your reference.
 
+    @component('mail::button', ['url' => $data['document_url']])
+        View attachment
+    @endcomponent
+
     Best regards,
     {{ $data['company']['name'] }},
-    {{ $data['company']['adress'] }}
-    Contact: {{ $data['company']['phone_number'] }}
+    {{ $data['company']['address'] }}
+    {{ $data['company']['phone_number'] }}
 @endcomponent

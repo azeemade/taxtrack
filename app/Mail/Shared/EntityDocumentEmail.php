@@ -40,7 +40,8 @@ class EntityDocumentEmail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mail.entity_document',
+            // view: 'mail.entity_document',
+            markdown: 'mail.entity_document',
             with: [
                 'data' => $this->data,
             ]

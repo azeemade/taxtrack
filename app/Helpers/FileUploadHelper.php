@@ -40,7 +40,6 @@ class FileUploadHelper
 
     public static function singleStringFileUpload($requestFile, $fileKey)
     {
-
         $fileUrl = '';
         // decode the base64 file
         $fileData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $requestFile));

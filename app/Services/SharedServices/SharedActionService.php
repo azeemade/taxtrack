@@ -45,7 +45,7 @@ class SharedActionService
 
         $data = [
             'document_url' => $preview['url'],
-            'document_name' => $preview['name'],
+            'document_name' => $preview['filename'],
             'model' => $model->previewables['model'],
             'company' => $model->previewables['company'],
             'entity' => $model->previewables['entity_data'],
