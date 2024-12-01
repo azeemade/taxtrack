@@ -66,6 +66,7 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, 404);
                         });
+                    Route::get('/quotes/create/generateId', 'QuoteController@generateQuoteId');
                 });
                 Route::group([
                     "prefix" => "customers",
