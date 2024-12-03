@@ -16,4 +16,9 @@ class PaymentRecord extends Model
     {
         return $this->morphTo('recordable', 'recordable_type');
     }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class);
+    }
 }

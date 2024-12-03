@@ -7,6 +7,7 @@ use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
 use App\Models\Customer;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -171,5 +172,50 @@ class CustomerService
             return Excel::download(new GeneralReportExport($records, $recordHeadings), 'customer_report.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
         }
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'customer_report.csv', \Maatwebsite\Excel\Excel::CSV);
+    }
+
+    public function generateCustomerStatement($id)
+    {
+        $record = Customer::select(
+            'id',
+            'company_name',
+            'address',
+            'customerID',
+            'email',
+            'currency_id',
+            'company_id'
+        )
+            ->with([
+                'currency:id,name,symbol',
+                'company:id,name,address',
+                'quotes:id,quote_date,quote_total,status,quoteID,customer_id' => [
+                    'lineItems:id,item_details,quantity,price,discount,vat,amount,documentable_id,documentable_type'
+                ],
+                'invoices:id,due_date,invoice_value,status,invoiceID,customer_id' => [
+                    'lineItems:id,item_details,quantity,price,discount,vat,amount,credit_amount,documentable_id,documentable_type',
+                    'paymentRecords:id,amount_paid,amount_due,paymentID,paid_on,payment_method_id' => [
+                        'paymentMethod:id,method_type'
+                    ]
+                ]
+            ])
+            ->withSum('invoices as total_invoice_value', 'invoice_value')
+            ->find($id);
+        if (!$record) {
+            throw new BadRequestException("Customer not found.", Response::HTTP_NOT_FOUND);
+        }
+
+        $record['total_credit_amount'] = $record->invoices->sum(function ($invoice) {
+            return $invoice->lineItems->sum('credit_amount');
+        });
+        $record['total_amount_paid'] = $record->invoices->sum(function ($invoice) {
+            return $invoice->paymentRecords->sum('amount_paid');
+        });
+        $record['generated_on'] = Carbon::parse(now())->toFormattedDateString();
+
+        // return $record;
+
+
+        $pdf = Pdf::loadView('company.sales.customer.statement', ['record' => $record])->setPaper('a4', 'portrait');
+        return $pdf->download('statement.pdf');
     }
 }
