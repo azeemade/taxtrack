@@ -80,6 +80,11 @@ class Invoice extends Model
         return $this->belongsTo(Company::class);
     }
 
+    public function paymentRecords()
+    {
+        return $this->morphMany(PaymentRecord::class, 'recordable', 'recordable_type', 'recordable_id');
+    }
+
     public function lineItems()
     {
         return $this->morphMany(LineItem::class, 'documentable', 'documentable_type', 'documentable_id');

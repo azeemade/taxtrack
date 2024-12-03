@@ -263,4 +263,17 @@ class CustomerController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function generateCustomerStatement($id)
+    {
+        try {
+            return  $this->customerService->generateCustomerStatement($id);
+
+            // return JsonResponser::send(false, 'Customer statement generated successfully', );
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 }
