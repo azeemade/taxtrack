@@ -192,6 +192,8 @@ enum PermissionEnums: string
     public static function getModulePermissions(string $module): array
     {
         return match ($module) {
+            'dashboard' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_dashboard')),
             'sales' => array_filter(self::cases(), fn($permission) =>
             str_contains($permission->value, '_customer') ||
                 str_contains($permission->value, '_sales_quote') ||
