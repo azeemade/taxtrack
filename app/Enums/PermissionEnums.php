@@ -188,12 +188,46 @@ enum PermissionEnums: string
     case CREATE_ROLES = 'create_roles';
     case MANAGE_ROLES = 'manage_roles';
 
+
+
+        /// ADMIN PERMISSIONS
+
+        // Module Level Permissions
+    case ACCESS_ADMIN_DASHBOARD_MODULE = 'access_admin_dashboard_module';
+    case ACCESS_ADMIN_SUBSCRIPTION_MODULE = 'access_admin_subscription_module';
+    case ACCESS_ADMIN_REFUND_MODULE = 'access_admin_refund_module';
+    case ACCESS_ADMIN_USER_MANAGEMENT_MODULE = 'access_admin_user_management_module';
+
+        //Subscription Module Permissions
+    case VIEW_ADMIN_SUBSCRIPTION_DASHBOARD = 'view_admin_subscription_dashboard';
+    case VIEW_ADMIN_SUBSCRIPTION_PLANS = 'view_admin_subscription_plans';
+    case CREATE_ADMIN_SUBSCRIPTION_PLANS = 'create_admin_subscription_plans';
+    case MANAGE_ADMIN_SUBSCRIPTION_PLANS = 'manage_admin_subscription_plans';
+
+    case VIEW_ADMIN_SUBSCRIBERS = 'view_admin_subscribers';
+    case APPROVE_ADMIN_REFUND_REQUEST = 'approve_admin_refund_request';
+
+        // Manage User Module Permissions
+    case ACCESS_ADMIN_USERS = 'access_admin_users';
+    case VIEW_ADMIN_USERS = 'view_admin_users';
+    case CREATE_ADMIN_USERS = 'create_admin_users';
+    case MANAGE_ADMIN_USERS = 'manage_admin_users';
+
+        // Manage Role Module Permissions
+    case ACCESS_ADMIN_ROLES = 'access_admin_roles';
+    case VIEW_ADMIN_ROLES = 'view_admin_roles';
+    case CREATE_ADMIN_ROLES = 'create_admin_roles';
+    case MANAGE_ADMIN_ROLES = 'manage_admin_roles';
+
+
     // Helper method to get all permissions for a module
     public static function getModulePermissions(string $module): array
     {
         return match ($module) {
             'dashboard' => array_filter(self::cases(), fn($permission) =>
             str_contains($permission->value, '_dashboard')),
+            'admin_dashboard' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_dashboard')),
             'sales' => array_filter(self::cases(), fn($permission) =>
             str_contains($permission->value, '_customer') ||
                 str_contains($permission->value, '_sales_quote') ||
@@ -215,9 +249,17 @@ enum PermissionEnums: string
                 str_contains($permission->value, '_journal_entr')),
             'budget' => array_filter(self::cases(), fn($permission) =>
             str_contains($permission->value, '_budget')),
+            'admin_refund' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_refund')),
             'user_management' => array_filter(self::cases(), fn($permission) =>
             str_contains($permission->value, '_user') ||
                 str_contains($permission->value, '_role')),
+            'admin_user_management' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_user') ||
+                str_contains($permission->value, '_admin_role')),
+            'admin_subscription' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_subscription') ||
+                str_contains($permission->value, '_admin_subscribers')),
             default => [],
         };
     }
@@ -261,6 +303,20 @@ enum PermissionEnums: string
             str_contains($permission->value, '_user')),
             'role' => array_filter(self::cases(), fn($permission) =>
             str_contains($permission->value, '_role')),
+            'admin_subscribers' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_subscribers')),
+            'admin_subscription' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_subscription')),
+            'admin_role' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_role')),
+            'admin_user' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_user')),
+            'admin_refund' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_refund')),
+            'admin_dashboard' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_admin_dashboard')),
+            'dashboard' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_dashboard')),
             default => [],
         };
     }
@@ -285,7 +341,14 @@ enum PermissionEnums: string
             'transaction',
             'budget',
             'user',
-            'role'
+            'role',
+            'admin_subscribers',
+            'admin_subscription',
+            'admin_role',
+            'admin_user',
+            'admin_refund',
+            'admin_dashboard',
+            'dashboard',
         ];
 
         foreach ($availableSubmodules as $submodule) {
@@ -327,7 +390,18 @@ enum PermissionEnums: string
             'user_management' => [
                 'user',
                 'role'
-            ]
+            ],
+            'admin_subscription' => [
+                'admin_subscription',
+                'admin_subscribers'
+            ],
+            'admin_user_management' => [
+                'admin_user',
+                'admin_role'
+            ],
+            'admin_refund' => ['admin_refund'],
+            'admin_dashboard' => ['admin_dashboard'],
+            'dashboard' => ['dashboard']
         ];
 
         foreach ($availableModules as $key => $module) {
