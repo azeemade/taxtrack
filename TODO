@@ -2,7 +2,8 @@ Todo:
   ☐ Item
 
 Notes: 
-  ☐ 
+  ☐ Generate customer statement not done
+  ☐ Duplicate invoice not done
 
 Packages:
   ☐ phpstan: e.g. vendor/bin/phpstan analyse src tests (find bugs in code)
