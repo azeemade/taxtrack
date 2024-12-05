@@ -18,11 +18,12 @@ class PermissionTableSeeder extends Seeder
         // $role = Role::where('name', 'company admin')->first();
         // $role->givePermissionTo(Permission::where('app', 'client')->get());
         foreach (PermissionEnums::cases() as $permission) {
-            Permission::updateOrCreate([
+            // Permission::updateOrCreate([
+            Permission::firstOrCreate([
                 'name' => $permission->value
             ], [
                 'guard_name' => 'api',
-                'app' => $permission->value == 'access_admin_app' ? 'app' : 'client',
+                'app' => str_contains($permission->value, 'admin') ? 'admin' : 'client',
                 'module' => in_array($permission->value, [
                     "access_dashboard_module",
                     'access_sales_module',

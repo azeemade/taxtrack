@@ -15,7 +15,7 @@ use Nnjeim\World\Models\Currency;
 class Customer extends Model
 {
     use HasFactory, ContactPersonTrait, Companyable, SoftDeletes;
-    
+
     protected $guarded = ['id'];
     protected $casts = ["is_active" => "boolean"];
     protected $append = ['allowed_actions'];
@@ -34,5 +34,25 @@ class Customer extends Model
     public function category()
     {
         return $this->belongsTo(Currency::class);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function quotes()
+    {
+        return $this->hasMany(Quote::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function creditNotes()
+    {
+        return $this->hasMany(CreditNote::class);
     }
 }

@@ -15,7 +15,7 @@ class Quote extends Model
 {
     use HasFactory, Companyable, SoftDeletes;
     protected $guarded = ['id'];
-    protected $append = ['allowed_actions', 'previewables'];
+    // protected $append = ['allowed_actions', 'previewables'];
 
     public function company()
     {

@@ -58,6 +58,8 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, 404);
                         });
+                    Route::get('/invoices/create/generateId', 'InvoiceController@generateInvoiceId');
+                    Route::post('/invoices/record-payment/{id}', 'InvoiceController@recordPayment');
                 });
                 Route::group([
                     "namespace" => "SalesQuote"
@@ -80,6 +82,7 @@ Route::group([
                     Route::put('/{id}/update-organization', 'CustomerController@updateOrganizationCustomer');
                     Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
                     Route::delete('/delete{id}', 'CustomerController@delete');
+                    Route::get('{id}/generate-statement', 'CustomerController@generateCustomerStatement');
                 });
                 Route::group([
                     "namespace" => "CreditNote"

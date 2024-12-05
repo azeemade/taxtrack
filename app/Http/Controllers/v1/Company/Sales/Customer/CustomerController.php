@@ -28,7 +28,7 @@ class CustomerController extends Controller
         try {
             $records = $this->customerService->list($request);
             if ($request->export) {
-                return $this->customerService->export($records);
+                return $this->customerService->export($records, $request->export);
             }
 
             $stats = $this->customerService->stats($request);
@@ -257,6 +257,19 @@ class CustomerController extends Controller
             $record = $this->customerService->view($id);
             $record->delete();
             return JsonResponser::send(false, 'Customer status updated successfully');
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function generateCustomerStatement($id)
+    {
+        try {
+            return  $this->customerService->generateCustomerStatement($id);
+
+            // return JsonResponser::send(false, 'Customer statement generated successfully', );
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {

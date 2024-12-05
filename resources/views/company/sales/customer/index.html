@@ -1,0 +1,205 @@
+Here's an updated version of the HTML code that includes line items for quotes and invoices, as well as invoice and line
+item details for credit notes:
+
+```
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Customer Statement</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Customer Statement</h1>
+    <p>Statement Date: December 31, 2024</p>
+    <p>Statement Period: January 1, 2024 - December 31, 2024</p>
+    <p>Account Number: #12345</p>
+    <p>Customer Name: John Doe</p>
+    <p>Customer Address: 123 Main St, Anytown, USA</p>
+
+    <h2>Summary</h2>
+    <table>
+        <tr>
+            <th>Opening Balance</th>
+            <td>$1,000.00</td>
+        </tr>
+        <tr>
+            <th>Total Invoices</th>
+            <td>$5,000.00</td>
+        </tr>
+        <tr>
+            <th>Total Payments</th>
+            <td>$3,000.00</td>
+        </tr>
+        <tr>
+            <th>Total Credit Notes</th>
+            <td>$500.00</td>
+        </tr>
+        <tr>
+            <th>Closing Balance</th>
+            <td>$2,500.00</td>
+        </tr>
+    </table>
+
+    <h2>Invoice Details</h2>
+    <table>
+        <tr>
+            <th>Invoice Number</th>
+            <th>Invoice Date</th>
+            <th>Invoice Amount</th>
+            <th>Payment Status</th>
+        </tr>
+        <tr>
+            <td>INV001</td>
+            <td>January 15, 2024</td>
+            <td>$1,000.00</td>
+            <td>Paid</td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <h3>Invoice Line Items</h3>
+                <table>
+                    <tr>
+                        <th>Item Description</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
+                    </tr>
+                    <tr>
+                        <td>Product A</td>
+                        <td>2</td>
+                        <td>$100.00</td>
+                        <td>$200.00</td>
+                    </tr>
+                    <tr>
+                        <td>Product B</td>
+                        <td>3</td>
+                        <td>$50.00</td>
+                        <td>$150.00</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Quote Details</h2>
+    <table>
+        <tr>
+            <th>Quote Number</th>
+            <th>Quote Date</th>
+            <th>Quote Amount</th>
+            <th>Status</th>
+        </tr>
+        <tr>
+            <td>QT001</td>
+            <td>April 15, 2024</td>
+            <td>$1,500.00</td>
+            <td>Accepted</td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <h3>Quote Line Items</h3>
+                <table>
+                    <tr>
+                        <th>Item Description</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
+                    </tr>
+                    <tr>
+                        <td>Service A</td>
+                        <td>1</td>
+                        <td>$500.00</td>
+                        <td>$500.00</td>
+                    </tr>
+                    <tr>
+                        <td>Service B</td>
+                        <td>2</td>
+                        <td>$250.00</td>
+                        <td>$500.00</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Credit Note Details</h2>
+    <table>
+        <tr>
+            <th>Credit Note Number</th>
+            <th>Credit Note Date</th>
+            <th>Credit Note Amount</th>
+        </tr>
+        <tr>
+            <td>CRN001</td>
+            <td>March 10, 2024</td>
+            <td>$500.00</td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                <h3>Credit Note Line Items</h3>
+                <table>
+                    <tr>
+                        <th>Invoice Number</th>
+                        <th>Item Description</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
+                    </tr>
+                    <tr>
+                        <td>INV001</td>
+                        <td>Product A</td>
+                        <td>1</td>
+                        <td>$100.00</td>
+                        <td>$100.00</td>
+                    </tr>
+                    <tr>
+                        <td>INV002</td>
+                        <td>Product B</td>
+                        <td>2</td>
+                        <td>$50.00</td>
+                        <td>$100.00</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Payment Details</h2>
+    <table>
+        <tr>
+            <th>Payment Date</th>
+            <th>Payment Amount</th>
+            <th>Payment Method</th>
+        </tr>
+        <tr>
+            <td>January 20, 2024</td>
+            <td>$500.00</td>
+            <td>Bank Transfer</td>
+        </tr>
+        <tr>
+            <td>February 15, 2024</td>
+            <td>$1,500.00</td>
+            <td>Credit Card</td>
+        </tr>
+    </table>
+     ⁠
+</body>
+
+</html>

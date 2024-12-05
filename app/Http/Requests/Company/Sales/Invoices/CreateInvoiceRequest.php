@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Http\Requests\Company\Sales\Quotes;
+namespace App\Http\Requests\Company\Sales\Invoices;
 
 use App\Models\Customer;
-use App\Services\Quotes\QuoteService;
+use App\Services\Invoices\InvoiceService;
 use Illuminate\Foundation\Http\FormRequest;
 
-class CreateQuoteRequest extends FormRequest
+class CreateInvoiceRequest extends FormRequest
 {
-    protected QuoteService $quoteService;
+    protected InvoiceService $invoiceService;
 
-    public function __construct(QuoteService $quoteService)
+    public function __construct(InvoiceService $invoiceService)
     {
-        $this->quoteService = $quoteService;
+        $this->invoiceService = $invoiceService;
     }
 
     /**
@@ -41,46 +41,51 @@ class CreateQuoteRequest extends FormRequest
                     $fail('Invalid customer currency selected');
                 }
             }],
-            'quote_date' => 'nullable|string|date:Y-m-d',
+            'start_date' => 'required|string|date:Y-m-d',
+            'due_date' => 'required|string|date:Y-m-d|after_or_equal:start_date',
             'additional_referenceID' => 'nullable|string|max:20',
             'terms_and_conditions' => 'nullable|string|max:250',
             'customer_note' => 'nullable|string|max:250',
             'shipping_charge' => 'nullable|numeric|min:0.00',
             'additional_charge' => 'nullable|numeric|min:0.00',
             'sub_total' => ['required', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
-                $calculatedSubTotal = $this->quoteService->calculateQuoteSubTotal($this->input('line_items'));
+                $calculatedSubTotal = $this->invoiceService->calculateQuoteSubTotal($this->input('line_items'));
                 if ($calculatedSubTotal != round($value, 4)) {
                     $fail('Sub total does not match the total of line items');
                 }
             }],
-            'quote_total' => ['required', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
-                $calculatedTotal = $this->quoteService->calculateQuoteTotal($this->input('sub_total'), $this->input('shipping_charge'), $this->input('additional_charge'));
+            'invoice_value' => ['required', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
+                $calculatedTotal = $this->invoiceService->calculateQuoteTotal($this->input('sub_total'), $this->input('shipping_charge'), $this->input('additional_charge'));
                 if ($calculatedTotal != round($value, 4)) {
-                    $fail('Quote total does not match the provided');
+                    $fail('Invoice total does not match the provided');
                 }
             }],
-            'save_status' => 'required|string|in:draft,save,send',
+            'recurring_start_date' => 'nullable|required_if:save_status,recur|string|date:Y-m-d',
+            'recurring_end_date' => 'nullable|required_if:save_status,recur|string|date:Y-m-d',
+            'repeat' => 'nullable|required_if:save_status,recur|integer',
+            'repeat_period' => 'nullable|required_if:save_status,recur|string|in:month,day,week,year',
+            'save_status' => 'required|string|in:draft,save,send,recur',
             'line_items' => 'required|array',
             'line_items.*.name' => 'required|string|max:50',
-            'line_items.*.category_id' => 'required|integer|exists:categories,id',
-            'line_items.*.quantity' => 'required|integer|min:0',
+            'line_items.*.category_id' => 'nullable|integer|exists:categories,id',
+            'line_items.*.quantity' => 'required|integer|min:1',
             'line_items.*.unit_price' => 'required|numeric|min:0.00',
             'line_items.*.total_unit_price' => ['required', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
                 $index = explode('.', $attribute)[1];
                 $item = $this->input("line_items.$index");
 
-                $calculatedLineItemUnitPrice = $this->quoteService->calculateLineItemTotalUnitPrice($item['unit_price'], $item['quantity']);
+                $calculatedLineItemUnitPrice = $this->invoiceService->calculateLineItemTotalUnitPrice($item['unit_price'], $item['quantity']);
                 if ($calculatedLineItemUnitPrice != round($value, 4)) {
                     $fail('Total unit price does not match the provided');
                 }
             }],
-            'line_items.*.discount' => 'required|numeric|min:0',
-            'line_items.*.vat' => 'required|numeric|min:0',
+            'line_items.*.discount' => 'nullable|numeric|min:0',
+            'line_items.*.vat' => 'nullable|numeric|min:0',
             'line_items.*.line_total' => ['required', 'numeric', 'min:0', function ($attribute, $value, $fail) {
                 $index = explode('.', $attribute)[1];
                 $item = $this->input("line_items.$index");
 
-                $calculatedLineItemUnitPrice = $this->quoteService->calculateLineItemTotal($item['total_unit_price'], $item['discount'], $item['vat']);
+                $calculatedLineItemUnitPrice = $this->invoiceService->calculateLineItemTotal($item['total_unit_price'], $item['discount'], $item['vat']);
                 if ($calculatedLineItemUnitPrice != round($value, 4)) {
                     $fail('Line total does not match the provided');
                 }
