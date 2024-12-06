@@ -36,8 +36,15 @@ Route::group(['prefix' => 'user-management', "namespace" => "UserManagement"], f
         Route::apiResource('roles', 'RoleManagementController')->missing(function () {
             return JsonResponser::send(true, 'Resource not found', null, 404);
         });
-        Route::get('roles/{role}/permissions', 'RoleManagementController@permissions');
+        Route::post('roles/permissions', 'RoleManagementController@permissions');
         Route::put('roles/toggle-status/{role}', 'RoleManagementController@toggleStatus');
+    });
+
+    Route::group(["namespace" => "Users"], function () {
+        Route::apiResource('users', 'UserManagementController')->missing(function () {
+            return JsonResponser::send(true, 'Resource not found', null, 404);
+        });
+        Route::put('users/toggle-status/{user}', 'UserManagementController@toggleStatus');
     });
 });
 //     });
