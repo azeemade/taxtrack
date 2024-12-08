@@ -156,12 +156,12 @@ class CustomerService
 
     public function export($records)
     {
-        $recordHeadings = ['Customer name', 'Company name', 'Reference', 'Balance', 'Status', 'Date created'];
+        $recordHeadings = ['Customer ID', 'Company name', 'Balance', 'Status', 'Date created'];
         $records = $records->map(function ($record) {
             return [
-                $record->companyUUID,
+                $record->customerID,
                 $record->name,
-                $record->staff_count,
+                $record->current_balance,
                 $record->status,
                 Carbon::parse($record->created_at)->toFormattedDayDateString()
             ];

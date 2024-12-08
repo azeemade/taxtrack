@@ -2,8 +2,7 @@
 
 return [
     'invoices' => \App\Models\Invoice::class,
-    // 'sales/invoices' => \App\Models\Invoice::class,
-    'sales/quotes' => \App\Models\Quote::class,
+    'quotes' => \App\Models\Quote::class,
     'customers' => \App\Models\Customer::class,
     'purchase/vendor-bills' => \App\Models\VendorBill::class,
     'sales/credit-notes' => \App\Models\CreditNote::class,

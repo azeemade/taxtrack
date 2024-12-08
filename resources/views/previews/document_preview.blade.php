@@ -23,7 +23,7 @@
                     </p>
                     <p class="mb-8">Additional Reference: <span>{{ $previewables['additional_reference'] }}</span></p>
                     <p class="mb-8">Issued Date: <span>{{ $previewables['issued_date'] }}</span></p>
-                    <p class="due-date">Due Date: <b>{{ $previewables['due_date'] }}</b></p>
+                    <p class="due-date">Due Date: <b>{{ $previewables['due_date'] ?? '--' }}</b></p>
                 </td>
             </tr>
         </table>

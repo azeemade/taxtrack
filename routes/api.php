@@ -47,10 +47,13 @@ Route::group([
                 'prefix' => 'dashboard',
             ], function () {});
 
+            //sales
             Route::group([
                 'prefix' => 'sales',
                 "namespace" => "Sales"
             ], function () {
+
+                //invoices
                 Route::group([
                     "namespace" => "SalesInvoice"
                 ], function () {
@@ -59,6 +62,8 @@ Route::group([
                             return JsonResponser::send(true, 'Resource not found', null, 404);
                         });
                 });
+
+                //quotes
                 Route::group([
                     "namespace" => "SalesQuote"
                 ], function () {
@@ -68,6 +73,8 @@ Route::group([
                         });
                     Route::get('/quotes/create/generateId', 'QuoteController@generateQuoteId');
                 });
+
+                //customers
                 Route::group([
                     "prefix" => "customers",
                     "namespace" => "Customer"
@@ -81,6 +88,8 @@ Route::group([
                     Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
                     Route::delete('/delete{id}', 'CustomerController@delete');
                 });
+
+                //credit notes
                 Route::group([
                     "namespace" => "CreditNote"
                 ], function () {
@@ -146,10 +155,11 @@ Route::group([
                 });
             });
             Route::group([
-                'prefix' => 'shared',
+                // 'prefix' => 'shared',
                 "namespace" => "SharedActions"
             ], function () {
-                Route::post('{prefix}/{model}/{id}/{action}', 'SharedActionController');
+                // Route::any('{prefix}/{model}/{id}/{action}', 'SharedActionController');
+                Route::match(['get', 'post', 'put', 'delete'], '/shared/{prefix}/{model}/{id}/{action}', 'SharedActionController');
             });
         });
     });
