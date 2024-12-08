@@ -4,8 +4,9 @@ namespace App\Services\SharedServices;
 
 use App\Exceptions\BadRequestException;
 use App\Helpers\FileUploadHelper;
+use App\Helpers\GeneralHelper;
 use App\Mail\Shared\EntityDocumentEmail;
-use App\Mail\Shared\VendorRemainderEmail;
+use App\Mail\Shared\EntityRemainderEmail;
 use App\Models\Vendor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
@@ -21,21 +22,23 @@ class SharedActionService
         $newModel->parent_id = $model->id;
         $newModel->created_at = now();
         $newModel->save();
+        $this->modelSpecificAction($model, $newModel);
+
         return $newModel;
     }
 
-    public function sendReminder(Request $request)
+    public function sendReminder($request)
     {
-        $vendor = Vendor::find($request->vendor_id);
-
-        $mailData = new VendorRemainderEmail(
-            $request->cc,
-            $request->email_me_a_copy,
-            $request->email_subject,
-            $request->email_body
+        $mailData = new EntityRemainderEmail(
+            $request['optional_cc'] ?? [],
+            $request['email_copy'] ?? [],
+            $request['subject'],
+            $request['body'],
+            $request['primary_email'],
+            $request['main_file'] ?? null,
+            $request['additional_attachments'] ?? null,
         );
-
-        Mail::to($vendor->primary_email)->send($mailData);
+        Mail::send($mailData);
         return true;
     }
 
@@ -89,6 +92,49 @@ class SharedActionService
         $model->save();
 
         return ['url' => $fileUrl, 'filename' => $fileName, 'file_contents' => $fileContents];
+    }
+
+    protected function modelSpecificAction(Model $model, Model $newModel)
+    {
+        if ($newModel instanceof \App\Models\Invoice) {
+            $newModel->invoice_number = $this->generateModelId(
+                'App\Models\Invoice',
+                'invoiceID',
+                'Inv',
+                4
+            );
+            $newModel->save();
+        } elseif ($newModel instanceof \App\Models\Quote) {
+            $newModel->quoteID = $this->generateModelId(
+                'App\Models\Quote',
+                'quoteID',
+                'qte',
+                4
+            );
+            foreach ($model->lineItems as $lineItem) {
+                $newLineItem = $lineItem->replicate();
+                $newLineItem->documentable_id = $newModel->id;
+                $newLineItem->save();
+            }
+            $newLineItem->save();
+        }
+        // elseif ($newModel instanceof \App\Models\Payment) {
+        //     $newModel->payment_number = $modelClass->payment_number;
+        //     $newModel->save();
+        // } elseif ($newModel instanceof \App\Models\Receipt) {
+        //     $newModel->receipt_number = $modelClass->receipt_number;
+        //     $newModel->save();
+        // }
+    }
+
+    protected function generateModelId($modelClass, $field, $prefix, $len)
+    {
+        return GeneralHelper::getModelUniqueOrderlyId([
+            "modelNamespace" => $modelClass,
+            "modelField" => $field,
+            "prefix" => $prefix . '-',
+            "idLength" => $len,
+        ]);
     }
 
     // public function download(Model $model)

@@ -47,10 +47,13 @@ Route::group([
                 'prefix' => 'dashboard',
             ], function () {});
 
+            //sales
             Route::group([
                 'prefix' => 'sales',
                 "namespace" => "Sales"
             ], function () {
+
+                //invoices
                 Route::group([
                     "namespace" => "SalesInvoice"
                 ], function () {
@@ -61,6 +64,8 @@ Route::group([
                     Route::get('/invoices/create/generateId', 'InvoiceController@generateInvoiceId');
                     Route::post('/invoices/record-payment/{id}', 'InvoiceController@recordPayment');
                 });
+
+                //quotes
                 Route::group([
                     "namespace" => "SalesQuote"
                 ], function () {
@@ -70,6 +75,8 @@ Route::group([
                         });
                     Route::get('/quotes/create/generateId', 'QuoteController@generateQuoteId');
                 });
+
+                //customers
                 Route::group([
                     "prefix" => "customers",
                     "namespace" => "Customer"
@@ -84,6 +91,8 @@ Route::group([
                     Route::delete('/delete{id}', 'CustomerController@delete');
                     Route::get('{id}/generate-statement', 'CustomerController@generateCustomerStatement');
                 });
+
+                //credit notes
                 Route::group([
                     "namespace" => "CreditNote"
                 ], function () {
@@ -149,10 +158,11 @@ Route::group([
                 });
             });
             Route::group([
-                'prefix' => 'shared',
+                // 'prefix' => 'shared',
                 "namespace" => "SharedActions"
             ], function () {
-                Route::post('{prefix}/{model}/{id}/{action}', 'SharedActionController');
+                // Route::any('{prefix}/{model}/{id}/{action}', 'SharedActionController');
+                Route::match(['get', 'post', 'put', 'delete'], '/shared/{prefix}/{model}/{id}/{action}', 'SharedActionController');
             });
         });
     });
