@@ -29,7 +29,7 @@ class RoleManagementController extends Controller
         try {
             $overview = $this->roleService->overview($request);
 
-            $stats = $this->roleService->stats();
+            $stats = $this->roleService->stats($request);
             $records = [
                 ...$stats,
                 'data' => $overview

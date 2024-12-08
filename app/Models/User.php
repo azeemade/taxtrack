@@ -82,7 +82,7 @@ class User extends Authenticatable implements JWTSubject
         return $this->belongsTo(Company::class, 'current_company_id');
     }
 
-    public function aurthor()
+    public function author()
     {
         return $this->belongsTo(User::class, 'created_by');
     }

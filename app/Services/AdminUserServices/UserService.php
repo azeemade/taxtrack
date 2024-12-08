@@ -5,13 +5,11 @@ namespace App\Services\AdminUserServices;
 use App\Enums\GeneralEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
+use App\Helpers\GeneralHelper;
 use App\Mail\Company\ClientOnboardingEmail;
-use App\Models\Company;
 use App\Models\Role;
 use App\Models\User;
-use App\Responser\JsonResponser;
 use App\Services\RoleServices\RoleService;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Hash;
@@ -31,35 +29,19 @@ class UserService
     public function overview($request)
     {
         $currentUser = Auth::user();
-        $dateFilter = $request->date_filter;
-
-        if ($dateFilter === "1day") {
-            $carbonDateFilter = Carbon::now()->subdays(1);
-        } elseif ($dateFilter === "7days") {
-            $carbonDateFilter = Carbon::now()->subdays(7);
-        } elseif ($dateFilter === "30days") {
-            $carbonDateFilter = Carbon::now()->subdays(30);
-        } elseif ($dateFilter === "3months") {
-            $carbonDateFilter = Carbon::now()->subMonths(3);
-        } elseif ($dateFilter === "12months") {
-            $carbonDateFilter = Carbon::now()->subMonths(12);
-        } elseif ($dateFilter === "this_year") {
-            $carbonDateFilter = Carbon::now()->startOfYear();
-        } else {
-            $carbonDateFilter = false;
-        }
+        $dateFilter = GeneralHelper::dateFilter($request->date_filter);
 
         $records = User::query()
             ->where('created_by', $currentUser->id)
-            ->with('roles:id,roleID,name', 'aurthor:id,name')
+            ->with('roles:id,roleID,name', 'author:id,name')
             ->when($request->q, function ($query) use ($request) {
                 $query->where('name', 'LIKE', '%' . $request->q . '%');
             })
             ->when($request->status, function ($query) use ($request) {
                 $query->where('status', $request->status);
             })
-            ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
-                return $query->where('created_at', '>=', $carbonDateFilter);
+            ->when($dateFilter, function ($query) use ($dateFilter) {
+                return $query->where('created_at', '>=', $dateFilter);
             })
             ->when($request->startDate && $request->endDate, function ($query) use ($request) {
                 $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
@@ -74,12 +56,16 @@ class UserService
         return $records->get();
     }
 
-    public function stats()
+    public function stats($request)
     {
         $currentUser = Auth::user();
+        $dateFilter = GeneralHelper::dateFilter($request->date_filter);
 
         $records = User::query()
-            ->where('created_by', $currentUser->id);
+            ->where('created_by', $currentUser->id)
+            ->when($dateFilter, function ($query) use ($dateFilter) {
+                return $query->where('created_at', '>=', $dateFilter);
+            });
 
         return [
             'total' => (clone $records)->count(), // Count total records
@@ -98,7 +84,7 @@ class UserService
                 $record->email,
                 $record->status,
                 optional($record->roles->first())->name ?? 'No Role Assigned',
-                $record->aurthor->name
+                $record->author->name
             ];
         });
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'admin_users_report.xlsx');

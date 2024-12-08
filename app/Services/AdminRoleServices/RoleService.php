@@ -16,23 +16,7 @@ class RoleService
     public function overview($request)
     {
 
-        $dateFilter = $request->date_filter;
-
-        if ($dateFilter === "1day") {
-            $carbonDateFilter = Carbon::now()->subdays(1);
-        } elseif ($dateFilter === "7days") {
-            $carbonDateFilter = Carbon::now()->subdays(7);
-        } elseif ($dateFilter === "30days") {
-            $carbonDateFilter = Carbon::now()->subdays(30);
-        } elseif ($dateFilter === "3months") {
-            $carbonDateFilter = Carbon::now()->subMonths(3);
-        } elseif ($dateFilter === "12months") {
-            $carbonDateFilter = Carbon::now()->subMonths(12);
-        } elseif ($dateFilter === "this_year") {
-            $carbonDateFilter = Carbon::now()->startOfYear();
-        } else {
-            $carbonDateFilter = false;
-        }
+        $dateFilter = GeneralHelper::dateFilter($request->date_filter);
 
         $records = Role::query()
             ->where('is_admin', true)
@@ -47,8 +31,8 @@ class RoleService
             ->when($request->startDate && $request->endDate, function ($query) use ($request) {
                 $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
             })
-            ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
-                return $query->where('created_at', '>=', $carbonDateFilter);
+            ->when($dateFilter, function ($query) use ($dateFilter) {
+                return $query->where('created_at', '>=', $dateFilter);
             })
             ->when($request->sortBy == 'alphabetically', function ($query) {
                 $query->orderBy('name', 'ASC');
@@ -60,9 +44,14 @@ class RoleService
         return $records->get();
     }
 
-    public function stats()
+    public function stats($request)
     {
-        $records = Role::query()->where('is_admin', true);
+        $dateFilter = GeneralHelper::dateFilter($request->date_filter);
+
+        $records = Role::query()->where('is_admin', true)
+            ->when($dateFilter, function ($query) use ($dateFilter) {
+                return $query->where('created_at', '>=', $dateFilter);
+            });
 
         return [
             'total' => (clone $records)->count(), // Count total records

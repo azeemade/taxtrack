@@ -31,7 +31,7 @@ class UserManagementController extends Controller
         try {
             $overview = $this->userService->overview($request);
 
-            $stats = $this->userService->stats();
+            $stats = $this->userService->stats($request);
             $records = [
                 ...$stats,
                 'data' => $overview
