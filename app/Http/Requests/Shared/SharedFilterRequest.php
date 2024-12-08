@@ -11,6 +11,7 @@ class SharedFilterRequest extends FormRequest
         $q = $this->input('q');
         $status = $this->input('status');
         $sort_by = $this->input('sort_by');
+        $date_filter = $this->input('date_filter');
         $start_date = $this->input('start_date');
         $end_date = $this->input('end_date');
         $paginate = (bool) $this->input('paginate');

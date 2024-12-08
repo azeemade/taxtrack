@@ -82,6 +82,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->belongsTo(Company::class, 'current_company_id');
     }
 
+    public function author()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function companies()
     {
         return $this->belongsToMany(Company::class, 'clients', 'user_id', 'company_id')->withPivot(['uei_id', 'company_type']);
