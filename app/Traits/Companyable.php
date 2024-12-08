@@ -10,11 +10,14 @@ trait Companyable
     protected static function bootCompanyable()
     {
         static::creating(function (Model $model) {
-            if (!$model->isDirty('created_by') && Auth::check()) {
-                $model->created_by = Auth::id();
-            }
-            if (!$model->isDirty('company_id') && Auth::check() && method_exists(Auth::user(), 'company')) {
-                $model->company_id = Auth::user()->company->id ?? null;
+            $currentUser = Auth::user();
+            if ($currentUser->hasRole(['client'])) {
+                if (!$model->isDirty('created_by') && Auth::check()) {
+                    $model->created_by = Auth::id();
+                }
+                if (!$model->isDirty('company_id') && Auth::check() && method_exists(Auth::user(), 'company')) {
+                    $model->company_id = Auth::user()->company->id ?? null;
+                }
             }
         });
     }

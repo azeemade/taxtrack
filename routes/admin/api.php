@@ -45,6 +45,7 @@ Route::group(['prefix' => 'user-management', "namespace" => "UserManagement"], f
             return JsonResponser::send(true, 'Resource not found', null, 404);
         });
         Route::put('users/toggle-status/{user}', 'UserManagementController@toggleStatus');
+        Route::post('users/roles', 'UserManagementController@roles');
     });
 });
 //     });

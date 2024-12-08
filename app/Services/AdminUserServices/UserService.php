@@ -31,16 +31,35 @@ class UserService
     public function overview($request)
     {
         $currentUser = Auth::user();
-        $currentUserCompany = $currentUser?->company;
+        $dateFilter = $request->date_filter;
+
+        if ($dateFilter === "1day") {
+            $carbonDateFilter = Carbon::now()->subdays(1);
+        } elseif ($dateFilter === "7days") {
+            $carbonDateFilter = Carbon::now()->subdays(7);
+        } elseif ($dateFilter === "30days") {
+            $carbonDateFilter = Carbon::now()->subdays(30);
+        } elseif ($dateFilter === "3months") {
+            $carbonDateFilter = Carbon::now()->subMonths(3);
+        } elseif ($dateFilter === "12months") {
+            $carbonDateFilter = Carbon::now()->subMonths(12);
+        } elseif ($dateFilter === "this_year") {
+            $carbonDateFilter = Carbon::now()->startOfYear();
+        } else {
+            $carbonDateFilter = false;
+        }
 
         $records = User::query()
-            ->whereRelation('companies', 'company_id', $currentUserCompany?->id)
-            ->with('roles:id,roleID,name')
+            ->where('created_by', $currentUser->id)
+            ->with('roles:id,roleID,name', 'aurthor:id,name')
             ->when($request->q, function ($query) use ($request) {
                 $query->where('name', 'LIKE', '%' . $request->q . '%');
             })
             ->when($request->status, function ($query) use ($request) {
                 $query->where('status', $request->status);
+            })
+            ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
+                return $query->where('created_at', '>=', $carbonDateFilter);
             })
             ->when($request->startDate && $request->endDate, function ($query) use ($request) {
                 $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
@@ -58,10 +77,9 @@ class UserService
     public function stats()
     {
         $currentUser = Auth::user();
-        $currentUserCompany = $currentUser?->company;
 
         $records = User::query()
-            ->whereRelation('companies', 'company_id', $currentUserCompany?->id);
+            ->where('created_by', $currentUser->id);
 
         return [
             'total' => (clone $records)->count(), // Count total records
@@ -72,22 +90,21 @@ class UserService
 
     public function export($records)
     {
-        $recordHeadings = ['ID', 'Name', 'Status', 'Role ID', 'Role', 'No of permissions', 'Date created'];
+        $recordHeadings = ['ID', 'Name', 'Email Address', 'Status', 'Role Name', 'Created By'];
         $records = $records->map(function ($record) {
             return [
                 $record->id,
                 $record->name,
+                $record->email,
                 $record->status,
-                $record->role->roleID,
-                $record->role->name,
-                $record->permissions_count,
-                Carbon::parse($record->created_at)->toFormattedDayDateString()
+                optional($record->roles->first())->name ?? 'No Role Assigned',
+                $record->aurthor->name
             ];
         });
-        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'users_report.xlsx');
+        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'admin_users_report.xlsx');
     }
 
-    public function create(array $data)
+    public function create($data)
     {
         $currentUser = auth()->user();
 
@@ -104,8 +121,7 @@ class UserService
                 'created_by' => $currentUser->id,
             ]);
         }
-        
-        dd('hello');
+
         if (isset($data['roles'])) {
             $role = Role::where('id', $data['roles'])->first();
 
@@ -128,7 +144,7 @@ class UserService
         return $user;
     }
 
-    public function update(array $data, User $user)
+    public function update($data, $user)
     {
         $user->update([
             'name' => $data['name'],
@@ -136,7 +152,7 @@ class UserService
             'phone_number' => $data['phone_number'],
         ]);
 
-        $user->assignRole($data['role']);
+        $user->syncRoles([$data['roles']]);
         return $user;
     }
 
@@ -151,5 +167,12 @@ class UserService
     public function delete(User $user)
     {
         $user->delete();
+    }
+
+    public function roles()
+    {
+        $records = Role::query()->where('is_admin', true);
+
+        return $records->get();
     }
 }
