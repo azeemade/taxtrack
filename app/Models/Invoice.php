@@ -2,14 +2,23 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\ModelUserScope;
+use App\Traits\Companyable;
+use App\Traits\PaymentRecordTrait;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Nnjeim\World\Models\Currency;
 
+#[ScopedBy([ModelUserScope::class])]
 class Invoice extends Model
 {
-    use HasFactory;
+    use HasFactory, Companyable, SoftDeletes, PaymentRecordTrait;
+
     protected $guarded = ['id'];
-    protected $append = ['allowed_actions', 'previewables'];
+    protected $appends = ['amount_due', 'total_amount_paid'];
+    protected $total_amount = 'invoice_value';
 
     public function getPreviewablesAttribute()
     {
@@ -61,9 +70,19 @@ class Invoice extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
+    }
+
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function paymentRecords()
+    {
+        return $this->morphMany(PaymentRecord::class, 'recordable', 'recordable_type', 'recordable_id');
     }
 
     public function lineItems()
