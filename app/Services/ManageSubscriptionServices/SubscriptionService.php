@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\ManageSubscriptionServices;
+namespace App\Services\AdminUserServices;
 
 use App\Enums\GeneralEnums;
 use App\Exceptions\BadRequestException;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
-class SubscriptionService
+class UserService
 {
 
     protected RoleService $roleService;
