@@ -23,8 +23,12 @@ Route::group(['prefix' => 'subscriptions', "namespace" => "Subscription"], funct
     Route::group(['prefix' => 'overview'], function () {});
 
     Route::group(['prefix' => 'manage-subscription'], function () {
+        Route::apiResource('plan', 'ManageSubscriptionController')->missing(function () {
+            return JsonResponser::send(true, 'Resource not found', null, 404);
+        });
         Route::post('/create-plan', 'ManageSubscriptionController@store');
         Route::get('/{id}', 'ManageSubscriptionController@show');
+        Route::get('module/functionalities', 'ManageSubscriptionController@moduleFunctionalities');
     });
 
     Route::group(['prefix' => 'manage-subscriber'], function () {});

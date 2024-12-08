@@ -1,30 +1,26 @@
 <?php
 
-namespace App\Services\AdminUserServices;
+namespace App\Services\ManageSubscriptionServices;
 
 use App\Enums\GeneralEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
 use App\Mail\Company\ClientOnboardingEmail;
+use App\Models\Module;
 use App\Models\Role;
+use App\Models\SubscriptionFunctionality;
+use App\Models\SubscriptionPlan;
+use App\Models\SubscriptionPlanFeature;
 use App\Models\User;
-use App\Services\RoleServices\RoleService;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
-class UserService
+class SubscriptionService
 {
-
-    protected RoleService $roleService;
-
-    public function __construct(RoleService $roleService)
-    {
-        $this->roleService = $roleService;
-    }
 
     public function overview($request)
     {
@@ -94,40 +90,39 @@ class UserService
     {
         $currentUser = auth()->user();
 
-        $password = isset($data['password']) ? $data['password'] : Str::slug($data['name']) . rand(100, 999);
+        $plan = SubscriptionPlan::create([
+            'title' => $data['title'],
+            'monthly_fee' => $data['monthly_fee'],
+            'yearly_fee' => $data['yearly_fee'],
+            'short_description' => $data['short_description'],
+            'primary_cta_text' => $data['primary_cta_text'],
+            'primary_link' => $data['primary_link'],
+            'secondary_cta' => $data['secondary_cta'],
+            'secondary_link' => $data['secondary_link'],
+            'created_by' => $currentUser->id
+        ]);
+        // dd($data['title']);
 
-        $user = User::where('email', $data['email'])->first();
-        if (!$user) {
-            $user = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
-                'password' => Hash::make($password),
-                'uei_id' => Str::uuid(),
-                'created_by' => $currentUser->id,
-            ]);
-        }
-
-        if (isset($data['roles'])) {
-            $role = Role::where('id', $data['roles'])->first();
-
-            if (!$role) {
-                throw new BadRequestException('Role not found', 404);
+        if (isset($data['features'])) {
+            foreach ($data['features'] as $title) {
+                $subscriptionPlanFeature = SubscriptionPlanFeature::create([
+                    'title' => $title,
+                    'subscription_plan_id' => $plan->id
+                ]);
             }
-
-            $user->assignRole($data['roles']);
         }
 
-        $data = [
-            'entity_name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $password,
-        ];
+        if (isset($data['modules'])) {
+            foreach ($data['modules'] as $module) {
+                $subscriptionFunctionality = SubscriptionFunctionality::create([
+                    'subscription_plan_id' => $plan->id,
+                    'module_id' => $module['module_id'],
+                    'module_functionality_id' => $module['module_functionality_id']
+                ]);
+            }
+        }
 
-        Mail::to($data['email'])
-            ->send(new ClientOnboardingEmail($data));
-
-        return $user;
+        return $plan;
     }
 
     public function update($data, $user)
@@ -155,9 +150,13 @@ class UserService
         $user->delete();
     }
 
-    public function roles()
+    public function module()
     {
-        $records = Role::query()->where('is_admin', true);
+        $records = Module::with('moduleFunctionality')->orderBy('id', 'DESC');
+
+        if (!$records) {
+            throw new BadRequestException('Role not found', 404);
+        }
 
         return $records->get();
     }

@@ -8,4 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class Module extends Model
 {
     use HasFactory;
+
+    public function moduleFunctionality()
+    {
+        return $this->hasMany(ModuleFunctionality::class, 'module_id');
+    }
 }
