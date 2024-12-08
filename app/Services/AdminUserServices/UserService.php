@@ -9,7 +9,6 @@ use App\Helpers\GeneralHelper;
 use App\Mail\Company\ClientOnboardingEmail;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\RoleServices\RoleService;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Hash;
@@ -18,13 +17,6 @@ use Illuminate\Support\Str;
 
 class SubscriptionService
 {
-
-    protected RoleService $roleService;
-
-    public function __construct(RoleService $roleService)
-    {
-        $this->roleService = $roleService;
-    }
 
     public function overview($request)
     {
