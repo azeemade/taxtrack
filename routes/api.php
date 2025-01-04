@@ -113,7 +113,25 @@ Route::group([
             Route::group([
                 'prefix' => 'banking',
                 "namespace" => "Banking"
-            ], function () {});
+            ], function () {
+
+                //credit notes
+                Route::group([
+                    "namespace" => "PaymentMethods"
+                ], function () {
+                    Route::apiResource('cards', 'CardController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                    Route::group([
+                        "prefix" => "cards",
+                    ], function () {
+                        Route::get('/transactions/all', 'CardController@cardTransactions');
+                        Route::put('/{id}/toggle-status', 'CardController@toggleStatus');
+                        Route::get('/card-by-bin/{bin}', 'CardController@cardByBin');
+                    });
+                });
+            });
 
             Route::group([
                 'prefix' => 'accounting',
@@ -179,5 +197,6 @@ Route::group([
         Route::get('/user/{id}/companies', 'GuestController@getUserCompanies');
         Route::get('/company/{id}/roles', 'GuestController@getCompanyRoles');
         Route::get('/error-logs', 'GuestController@errorLogs');
+        Route::get('/card-brands', 'GuestController@cardBrands');
     });
 });
