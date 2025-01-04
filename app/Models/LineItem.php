@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class LineItem extends Model
 {
     use HasFactory, Companyable;
-    
+
     protected $guarded = ['id'];
 
     public function category()
@@ -23,5 +23,10 @@ class LineItem extends Model
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function documentable()
+    {
+        return $this->morphTo();
     }
 }

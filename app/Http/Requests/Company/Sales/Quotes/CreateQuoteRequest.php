@@ -58,10 +58,11 @@ class CreateQuoteRequest extends FormRequest
             ],
             'save_status' => 'required|string|in:draft,save,send',
             'line_items' => 'required|array',
-            'line_items.*.name' => 'required|string|max:50',
+            'line_items.*.id' => 'sometimes|integer|exists:line_items,id',
+            'line_items.*.item_details' => 'required|string|max:50',
             'line_items.*.category_id' => 'required|integer|exists:categories,id',
-            'line_items.*.quantity' => 'required|integer|min:0',
-            'line_items.*.unit_price' => 'required|numeric|min:0.00',
+            'line_items.*.quantity' => 'required|numeric|min:0',
+            'line_items.*.price' => 'required|numeric|min:0.00',
             'line_items.*.total_unit_price' => [
                 'required',
                 'numeric',
@@ -70,12 +71,20 @@ class CreateQuoteRequest extends FormRequest
             ],
             'line_items.*.discount' => 'required|numeric|min:0',
             'line_items.*.vat' => 'required|numeric|min:0',
-            'line_items.*.line_total' => [
+            'line_items.*.amount' => [
                 'required',
                 'numeric',
                 'min:0',
                 $this->validateLineItemsLineTotal()
             ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            "line_items.*.quantity.required" => 'Quantity is required',
+            "line_items.*.quantity.numeric" => 'integer is required'
         ];
     }
 
@@ -111,7 +120,7 @@ class CreateQuoteRequest extends FormRequest
     /**
      * Validate the customer's total.
      */
-    private function validateTotal(): \Closure
+    private function validateQuoteTotal(): \Closure
     {
         return function ($attribute, $value, $fail) {
             $calculatedTotal = $this->quoteService->calculateQuoteTotal($this->input('sub_total'), $this->input('shipping_charge'), $this->input('additional_charge'));
@@ -130,7 +139,7 @@ class CreateQuoteRequest extends FormRequest
             $index = explode('.', $attribute)[1];
             $item = $this->input("line_items.$index");
 
-            $calculatedLineItemUnitPrice = $this->quoteService->calculateLineItemTotalUnitPrice($item['unit_price'], $item['quantity']);
+            $calculatedLineItemUnitPrice = $this->quoteService->calculateLineItemTotalUnitPrice($item['price'], $item['quantity']);
             if ($calculatedLineItemUnitPrice != round($value, 4)) {
                 $fail('Total unit price does not match the provided');
             }

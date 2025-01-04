@@ -124,26 +124,25 @@ class QuoteService
         ];
     }
 
-    public function create($request)
+    public function updateOrCreate($request)
     {
-        $record = Quote::create([
-            ...$request,
-            'quote_date' => $request['quote_date'] ?? now(),
-            'quoteID' => $this->generateQuoteId(),
-            'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-            'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
-        ]);
+        $record = Quote::updateOrCreate(
+            [
+                "id" => $request["id"] ?? null
+            ],
+            [
+                ...$request,
+                'quote_date' => $request['quote_date'] ?? now(),
+                'quoteID' => $this->generateQuoteId(),
+                'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
+                'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
+            ]
+        );
 
-        foreach ($request['line_items'] as $value) {
-            $record->lineItems()->create([
-                'documentable_type' => DocumentableModelEnums::QUOTE->value,
-                'category_id' => $value['category_id'],
-                'quantity' => $value['quantity'],
-                'price' => $value['unit_price'],
-                'discount' => $value['discount'],
-                'vat' => $value['vat'],
-                'amount' => $value['line_total']
-            ]);
+        if (isset($request["id"]) && $request["id"]) {
+            $record->editLineItems($request['line_items']);
+        } else {
+            $record->addLineItems($request['line_items']);
         }
 
         if ($request['save_status'] == 'send') {

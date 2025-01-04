@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('line_items', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->unsignedBigInteger('documentable_id');
-            $table->string('documentable_type'); //invoice, quote, purchase_order, purchase_invoice
+            $table->morphs('documentable');
             $table->string('item_details')->nullable();
             $table->unsignedBigInteger('quantity')->default(0);
             $table->decimal('price', 15, 2)->default(0.00);

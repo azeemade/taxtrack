@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
 use App\Traits\Companyable;
+use App\Traits\ManageLineItemTrait;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Nnjeim\World\Models\Currency;
 #[ScopedBy([ModelUserScope::class])]
 class Quote extends Model
 {
-    use HasFactory, Companyable, SoftDeletes;
+    use HasFactory, Companyable, SoftDeletes, ManageLineItemTrait;
     protected $guarded = ['id'];
 
     public function getAllowedActionsAttribute()
@@ -53,7 +54,7 @@ class Quote extends Model
 
     public function lineItems()
     {
-        return $this->hasMany(LineItem::class, 'documentable_id');
+        return $this->morphMany(LineItem::class, 'documentable');
     }
 
 

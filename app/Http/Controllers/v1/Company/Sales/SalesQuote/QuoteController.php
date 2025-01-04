@@ -75,14 +75,13 @@ class QuoteController extends Controller
         }
     }
 
-
-    public function store(CreateQuoteRequest $request)
+    public function update(CreateQuoteRequest $request, $id)
     {
         try {
             DB::beginTransaction();
-            $record = $this->quoteService->create($request->validated());
+            $record = $this->quoteService->updateOrCreate([...$request->validated(), "id" => $id]);
             DB::commit();
-            return JsonResponser::send(false, 'Quote issued successfully', $record, Response::HTTP_OK);
+            return JsonResponser::send(false, 'Quote updated successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
