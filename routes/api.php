@@ -62,7 +62,9 @@ Route::group([
                             return JsonResponser::send(true, 'Resource not found', null, 404);
                         });
                     Route::get('/invoices/create/generateId', 'InvoiceController@generateInvoiceId');
-                    Route::post('/invoices/record-payment/{id}', 'InvoiceController@recordPayment');
+                    Route::post('/invoices/{id}/record-payment', 'InvoiceController@recordPayment');
+                    Route::post('/invoices/{invoice}/write-off', 'InvoiceController@writeOffInvoice');
+                    Route::put('/invoices/{invoice}/void', 'InvoiceController@voidInvoice');
                 });
 
                 //quotes
