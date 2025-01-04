@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Guest;
 
 use App\Http\Controllers\Controller;
+use App\Models\CardBrand;
 use App\Models\Category;
 use App\Models\Company;
 use App\Models\ErrorLog;
@@ -22,9 +23,9 @@ class GuestController extends Controller
         try {
             $records = ErrorLog::take(5)->latest()->get();
 
-            return JsonResponser::send(false, 'Record(s) found successfully!', $records, 200);
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', null, 500);
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -52,9 +53,9 @@ class GuestController extends Controller
                 'Human Resources and Recruitment'
             ];
 
-            return JsonResponser::send(false, 'Record(s) found successfully!', $records, 200);
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', null, 500);
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -66,9 +67,9 @@ class GuestController extends Controller
         try {
             $records = User::find($id)?->companies;
 
-            return JsonResponser::send(false, 'Record(s) found successfully!', $records, 200);
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', null, 500);
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -92,9 +93,9 @@ class GuestController extends Controller
         try {
             $records = Company::find($id)?->roles;
 
-            return JsonResponser::send(false, 'Record(s) found successfully!', $records, 200);
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', null, 500);
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -107,9 +108,9 @@ class GuestController extends Controller
             $records = User::find($id)
                 ->getAllPermissions();
 
-            return JsonResponser::send(false, 'Record(s) found successfully!', $records, 200);
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', null, 500, $th);
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
     /**
@@ -126,9 +127,23 @@ class GuestController extends Controller
                 })
                 ->get();
 
-            return JsonResponser::send(false, 'Record(s) found successfully!', $records, 200);
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal server error', null, 500, $th);
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function cardBrands()
+    {
+        try {
+            $records = CardBrand::get();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 }
