@@ -68,7 +68,6 @@ class InvoiceController extends Controller
         }
     }
 
-
     public function store(CreateInvoiceRequest $request)
     {
         try {

@@ -41,6 +41,8 @@ return new class extends Migration
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('company_id');
             $table->unsignedBigInteger('category_id')->nullable();
+            $table->unsignedBigInteger('quote_id')->nullable();
+            $table->foreign('quote_id')->references('id')->on('quotes')->onDelete('set null');
             $table->foreign('parent_id')->references('id')->on('invoices')->onDelete('set null');
             $table->foreign('category_id')->references('id')->on('categories')->onDelete('set null');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');

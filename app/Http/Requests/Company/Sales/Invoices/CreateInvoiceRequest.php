@@ -46,6 +46,7 @@ class CreateInvoiceRequest extends FormRequest
             'additional_referenceID' => 'nullable|string|max:20',
             'terms_and_conditions' => 'nullable|string|max:250',
             'customer_note' => 'nullable|string|max:250',
+            'quote_id' => 'nullable|integer|exists:quotes,id',
             'shipping_charge' => 'nullable|numeric|min:0.00',
             'additional_charge' => 'nullable|numeric|min:0.00',
             'sub_total' => ['required', 'numeric', 'min:0.00', function ($attribute, $value, $fail) {
