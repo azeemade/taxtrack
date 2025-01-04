@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('credit_note_invoices', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->decimal('credit_amount_total', 15, 2)->default(0.00);
+            $table->string('status')->default('added')->comment('added, removed');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('credit_note_id');
             $table->unsignedBigInteger('invoice_id');

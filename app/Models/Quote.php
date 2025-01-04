@@ -75,7 +75,14 @@ class Quote extends Model
             'issued_date' => $this->quote_date,
             'due_date' => null,
             'company' => $this->company,
-            'line_items' => $this->lineItems,
+            'line_items' => $this->lineItems->map(function ($item) {
+                return [
+                    'description' => $item->item_details,
+                    'quantity' => $item->quantity,
+                    'price' => $this->customer->currency->symbol . $item->price,
+                    'amount' => $this->customer->currency->symbol . $item->amount,
+                ];
+            }),
             'sub_total' => $this->sub_total,
             'additional_charges' => [
                 'shipping_charge' => $this->shipping_charge,
