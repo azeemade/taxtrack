@@ -43,7 +43,14 @@ class Invoice extends Model
             'issued_date' => $this->created_at,
             'due_date' => $this->due_date,
             'company' => $this->company,
-            'line_items' => $this->lineItems,
+            'line_items' => $this->lineItems->map(function ($item) {
+                return [
+                    'description' => $item->item_details,
+                    'quantity' => $item->quantity,
+                    'price' => $this->customer->currency->symbol . $item->price,
+                    'amount' => $this->customer->currency->symbol . $item->amount,
+                ];
+            }),
             'sub_total' => $this->sub_total,
             'additional_charges' => [
                 'shipping_charge' => $this->shipping_charge,
@@ -52,17 +59,6 @@ class Invoice extends Model
             'total' => $this->invoice_value,
             'terms_and_conditions' => $this->terms_and_conditions,
             'note' => $this->customer_note
-        ];
-    }
-
-    public function exportables()
-    {
-        return [
-            'invoice_number' => $this->number,
-            'customer_name' => $this->customer->name,
-            'total' => $this->total,
-            'items' => $this->items,
-            // Add any other data needed for the preview
         ];
     }
 

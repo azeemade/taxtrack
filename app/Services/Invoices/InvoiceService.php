@@ -9,6 +9,7 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\PaymentRecord;
 use App\Models\Quote;
@@ -35,15 +36,17 @@ class InvoiceService
         $record = Invoice::updateOrCreate(
             [
                 "id" => $request["id"] ?? null
-            ],[
-            ...$request,
-            'quote_date' => $request['quote_date'] ?? now(),
-            'referenceID' => $this->generateRefId(),
-            'invoiceID' => $this->generateInvoiceId(),
-            'is_recurring' => $request['save_status'] == 'recur' ? true : false,
-            'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-            'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
-        ]);
+            ],
+            [
+                ...$request,
+                'quote_date' => $request['quote_date'] ?? now(),
+                'referenceID' => $this->generateRefId(),
+                'invoiceID' => $this->generateInvoiceId(),
+                'is_recurring' => $request['save_status'] == 'recur' ? true : false,
+                'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
+                'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
+            ]
+        );
 
         if (isset($request['quote_id']) && $request['quote_id']) {
             $quote = Quote::find($request['quote_id']);
@@ -109,7 +112,12 @@ class InvoiceService
             ])
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
-                    return $query->orderBy('company_name', 'asc');
+                    return $query->orderBy(
+                        Customer::select('company_name')
+                            ->whereColumn('customer_id', 'customers.id')
+                            ->orderBy('company_name')
+                            ->limit(1)
+                    );
                 } else if ($request->sort_by == "date_ascending") {
                     return $query->orderBy('created_at', 'asc');
                 } else if ($request->sort_by == "date_descending") {

@@ -55,6 +55,10 @@ class CreateCreditNoteRequest extends FormRequest
                 $this->validateCreditInFull(),
             ],
         ];
+
+        if ($this->isMethod('put') || $this->isMethod('patch')) {
+            $rules['invoices.*.status'] = 'required|string|in:added,removed';
+        }
     }
 
     /**
