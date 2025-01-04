@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Company\Banking\Cards;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class CreateCardRequest extends FormRequest
 {
@@ -22,7 +23,7 @@ class CreateCardRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "issuer_number" => 'required|string|max:16|min:16|unique:card_accounts,issuer_number,NULL,id,company_id,' . auth()->user()->company->id,
+            "issuer_number" => 'required|string|max:16|min:16|unique:card_accounts,issuer_number,NULL,id,company_id,' . Auth::user()->company->id,
             "holder_name" => 'required|string|max:225',
             "cvv" => 'required|string|max:3',
             "expiration_date" => 'required|date:Y-m-d',
