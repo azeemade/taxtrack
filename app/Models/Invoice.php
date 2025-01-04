@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
 use App\Traits\Companyable;
+use App\Traits\ManageLineItemTrait;
 use App\Traits\PaymentRecordTrait;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,11 +15,16 @@ use Nnjeim\World\Models\Currency;
 #[ScopedBy([ModelUserScope::class])]
 class Invoice extends Model
 {
-    use HasFactory, Companyable, SoftDeletes, PaymentRecordTrait;
+    use HasFactory, Companyable, SoftDeletes, PaymentRecordTrait, ManageLineItemTrait;
 
     protected $guarded = ['id'];
     protected $appends = ['amount_due', 'total_amount_paid'];
     protected $total_amount = 'invoice_value';
+
+    public function getAllowedActionsAttribute()
+    {
+        return ['preview', 'download', 'delete', 'duplicate', 'remind'];
+    }
 
     public function getPreviewablesAttribute()
     {
@@ -60,11 +66,6 @@ class Invoice extends Model
         ];
     }
 
-    public function getAllowedActionsAttribute()
-    {
-        return ['duplicate', 'delete', 'preview', 'export', 'emailEntity', 'download', 'sendRemainder'];
-    }
-
     public function customer()
     {
         return $this->belongsTo(Customer::class);
@@ -85,13 +86,13 @@ class Invoice extends Model
         return $this->morphMany(PaymentRecord::class, 'recordable', 'recordable_type', 'recordable_id');
     }
 
-    // public function lineItems()
-    // {
-    //     return $this->morphMany(LineItem::class, 'documentable', 'documentable_type', 'documentable_id');
-    // }
-
     public function lineItems()
     {
         return $this->morphMany(LineItem::class, 'documentable');
+    }
+
+    public function badDebt()
+    {
+        return $this->morphOne(BadDebt::class, 'documentable');
     }
 }

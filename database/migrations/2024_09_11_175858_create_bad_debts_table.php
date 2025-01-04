@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('bad_debts', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->morphs('documentable');
             $table->decimal('amount', 15, 2)->default(0.00);
             $table->date('date_issued');
             $table->unsignedBigInteger('created_by');

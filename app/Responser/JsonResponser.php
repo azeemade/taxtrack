@@ -46,10 +46,11 @@ class JsonResponser
         $statusCode = 200,
         $th = null
     ): JsonResponse {
-        if($th && $statusCode == 500){
+        if ($th && $statusCode == 500) {
             ErrorLog::create([
                 'causer' => optional(auth()->user())->id ?? 'Guest',
                 'model' => get_class($th),
+                'request_body' => json_encode(request()->all()) ?? null,
                 'error_message' => $th->getMessage(),
                 'error_line' => $th->getLine(),
                 'error_trace' => $th->getTraceAsString(),

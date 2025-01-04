@@ -149,10 +149,6 @@ class QuoteService
             $this->sharedActionServices->emailEntity($record);
         }
 
-        if ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value) {
-            $this->invoiceService->create($request);
-        }
-
         return $record;
     }
 
