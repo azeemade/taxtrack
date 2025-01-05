@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
+use App\Traits\SendOtpTrait;
 use App\Traits\UniqueEntityIdentifierTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -16,7 +17,7 @@ class User extends Authenticatable implements JWTSubject
     use HasFactory, Notifiable, HasRoles;
     use Auditable;
     use Companyable;
-    use UniqueEntityIdentifierTrait;
+    use UniqueEntityIdentifierTrait, SendOtpTrait;
 
     protected $guarded = ['id'];
     protected $guard_name = ['api'];

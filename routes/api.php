@@ -115,10 +115,11 @@ Route::group([
                 "namespace" => "Banking"
             ], function () {
 
-                //credit notes
+                //Payment methods
                 Route::group([
                     "namespace" => "PaymentMethods"
                 ], function () {
+                    //cards
                     Route::apiResource('cards', 'CardController')
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, 404);
@@ -129,6 +130,20 @@ Route::group([
                         Route::get('/transactions/all', 'CardController@cardTransactions');
                         Route::put('/{id}/toggle-status', 'CardController@toggleStatus');
                         Route::get('/card-by-bin/{bin}', 'CardController@cardByBin');
+                    });
+                    //banks
+                    Route::apiResource('bank-accounts', 'BankAccountController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                    Route::group([
+                        "prefix" => "bank-accounts",
+                    ], function () {
+                        Route::get('/transactions/all', 'BankAccountController@bankTransactions');
+                        Route::put('/{id}/toggle-status', 'BankAccountController@toggleStatus');
+                        Route::get('/types/all', 'BankAccountController@accountTypes');
+                        Route::get('/connection/initiate', 'BankAccountController@initiateConnection');
+                        Route::post('/connection/complete', 'BankAccountController@completeConnection');
                     });
                 });
             });
@@ -198,5 +213,6 @@ Route::group([
         Route::get('/company/{id}/roles', 'GuestController@getCompanyRoles');
         Route::get('/error-logs', 'GuestController@errorLogs');
         Route::get('/card-brands', 'GuestController@cardBrands');
+        Route::get('/all-banks', 'GuestController@allBanks');
     });
 });

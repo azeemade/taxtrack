@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 
 class GuestController extends Controller
@@ -140,6 +141,32 @@ class GuestController extends Controller
     {
         try {
             $records = CardBrand::get();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function allBanks(Request $request)
+    {
+        try {
+            $records = DB::table('banks')
+                ->select('banks.id', 'banks.name', 'countries.id as country_id', 'countries.iso2 as country_iso2', 'countries.name as country_name')
+                ->join('countries', 'banks.country_id', '=', 'countries.id')
+                ->when(isset($request->q) && $request->q, function ($query) use ($request) {
+                    $query->where('banks.name', 'LIKE', '%' . $request->q . '%');
+                })
+                ->when(isset($request->country_id) && $request->country_id, function ($query) use ($request) {
+                    $query->where('country_id', $request->country_id);
+                })
+                ->when(isset($request->alphabetically) && $request->alphabetically, function ($query) use ($request) {
+                    $query->orderBy('banks.name', 'asc');
+                })
+                ->get();
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {

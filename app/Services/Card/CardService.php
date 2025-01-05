@@ -39,7 +39,7 @@ class CardService
         $records = CardAccount::query()
             ->select('id', 'expiration_date', 'holder_name', 'issuer_number', 'card_brand_id')
             ->with([
-                'cardBrand:id,name'
+                'cardBrand:id,name',
             ])
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
@@ -78,14 +78,15 @@ class CardService
                 'currency_id',
                 'billing_address',
                 'billing_postal_code',
-                'issuing_bank',
+                'issuing_bank_id',
                 'billing_country_id',
                 'cvv'
             )
             ->with([
                 'cardBrand:id,name',
                 'billingCountry:id,name',
-                'currency:id,name'
+                'currency:id,name',
+                'bank:id,name'
             ])
             ->find($id);
 
@@ -142,8 +143,8 @@ class CardService
         });
 
         if ($exportType == 'pdf') {
-            return Excel::download(new GeneralReportExport($records, $recordHeadings), 'invoice_report.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+            return Excel::download(new GeneralReportExport($records, $recordHeadings), 'card_transactions_report.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
         }
-        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'invoice_report.csv', \Maatwebsite\Excel\Excel::CSV);
+        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'card_transactions_report.csv', \Maatwebsite\Excel\Excel::CSV);
     }
 }
