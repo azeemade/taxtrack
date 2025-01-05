@@ -7,12 +7,10 @@ use App\Helpers\FileUploadHelper;
 use App\Helpers\GeneralHelper;
 use App\Mail\Shared\EntityDocumentEmail;
 use App\Mail\Shared\EntityRemainderEmail;
-use App\Models\Vendor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class SharedActionService
 {
@@ -58,15 +56,15 @@ class SharedActionService
             ->send(new EntityDocumentEmail($data));
     }
 
-    public function deactivate(Model $model)
+    public function toggle(Model $model)
     {
-        if (method_exists($model, 'deactivate')) {
-            $model->deactivate();
-            return true;
+        if (method_exists($model, 'toggle')) {
+            $model->toggle();
+            return $model->is_active;
         } else {
             $model->is_active = !$model->is_active;
             $model->save();
-            return true;
+            return $model->is_active;
         }
         throw new BadRequestException("Model does not support deactivation");
     }

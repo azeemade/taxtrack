@@ -38,7 +38,7 @@ class CustomerService
             ->when($request->q, function ($query) use ($request) {
                 return $query->where('company_name', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('customerID', 'LIKE', '%' . $request->q . '%')
-                    ->orWhereRelation('contactPerson', 'LIKE', '%' . $request->q . '%');
+                    ->orWhereRelation('contactPerson', 'full_name', 'LIKE', '%' . $request->q . '%');
             })
             ->when(isset($request->start_date) && $request->start_date && $request->end_date, function ($query) use ($request) {
                 return $query->where('created_at', [$request?->start_date, $request->end_date]);

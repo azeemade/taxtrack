@@ -108,7 +108,29 @@ Route::group([
             Route::group([
                 'prefix' => 'purchases',
                 "namespace" => "Purchase"
-            ], function () {});
+            ], function () {
+
+                //suppliers
+                Route::group([
+                    "namespace" => "Vendor"
+                ], function () {
+                    Route::apiResource('suppliers', 'VendorController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                    Route::group([
+                        "prefix" => "suppliers",
+                    ], function () {
+                        Route::post('/create-individual', 'VendorController@createIndividualSupplier');
+                        Route::post('/create-organization', 'VendorController@createOrganizationSupplier');
+                        Route::put('/{id}/update-individual', 'VendorController@updateIndividualSupplier');
+                        Route::put('/{id}/update-organization', 'VendorController@updateOrganizationSupplier');
+                        Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
+                        Route::delete('/delete{id}', 'CustomerController@delete');
+                        Route::get('/generate/reference', 'VendorController@generateReference');
+                    });
+                });
+            });
 
             Route::group([
                 'prefix' => 'banking',
@@ -193,10 +215,8 @@ Route::group([
                 });
             });
             Route::group([
-                // 'prefix' => 'shared',
                 "namespace" => "SharedActions"
             ], function () {
-                // Route::any('{prefix}/{model}/{id}/{action}', 'SharedActionController');
                 Route::match(['get', 'post', 'put', 'delete'], '/shared/{prefix}/{model}/{id}/{action}', 'SharedActionController');
             });
         });

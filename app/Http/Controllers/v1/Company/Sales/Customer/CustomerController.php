@@ -137,7 +137,7 @@ class CustomerController extends Controller
             $record = $this->customerService->createCustomer($data);
 
             DB::commit();
-            return JsonResponser::send(false, 'Company created successfully', $record);
+            return JsonResponser::send(false, 'Customer created successfully', $record);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
@@ -187,7 +187,7 @@ class CustomerController extends Controller
             $record = $this->customerService->createCustomer($data);
 
             DB::commit();
-            return JsonResponser::send(false, 'Individual customer created successfully', $record);
+            return JsonResponser::send(false, 'Customer updated successfully', $record);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
@@ -226,7 +226,7 @@ class CustomerController extends Controller
             $record = $this->customerService->createCustomer($data);
 
             DB::commit();
-            return JsonResponser::send(false, 'Company created successfully', $record);
+            return JsonResponser::send(false, 'Customer updated successfully', $record);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
@@ -256,7 +256,7 @@ class CustomerController extends Controller
         try {
             $record = $this->customerService->view($id);
             $record->delete();
-            return JsonResponser::send(false, 'Customer status updated successfully');
+            return JsonResponser::send(false, 'Customer deleted successfully');
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
@@ -268,8 +268,6 @@ class CustomerController extends Controller
     {
         try {
             return  $this->customerService->generateCustomerStatement($id);
-
-            // return JsonResponser::send(false, 'Customer statement generated successfully', );
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {

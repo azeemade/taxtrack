@@ -12,11 +12,6 @@ trait PaymentRecordTrait
         return $this->morphMany(PaymentRecord::class, 'recordable');
     }
 
-    public function latestPaymentRecord()
-    {
-        return $this->hasOne(PaymentRecord::class, 'recordable_id')->latestOfMany();
-    }
-
     public function getAmountDueAttribute()
     {
         return $this->latestPaymentRecord->amount_due ?? $this->{$this->total_amount};
