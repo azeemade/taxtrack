@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Company\Sales\Customer;
+namespace App\Http\Requests\Company\Purchase\Supplier;
 
 use App\Models\CompanyContactPerson;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,16 +22,15 @@ class CreateIndividualRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            "full_name" => 'required|string|max:225',
-            "display_name" => 'required|string|max:225',
-            "salutation" => 'nullable|string|max:225',
+        $rules = [
+            "vendor_name" => 'required|string|max:225',
+            "supplier_reference" => 'required|string|max:10',
             "category_id" => 'nullable|integer',
-            "customer_type" => 'required|in:business,individual',
+            "days_until_payment_due" => 'nullable|integer|min:1',
             "currency_id" => 'required|integer|exists:currencies,id',
-            "image" => 'nullable|string',
-            "phone_ext" => 'required|string|exists:countries,phone_code',
+            "primary_phone_ext" => 'required|string|exists:countries,phone_code',
             "primary_phone_number" => 'required|string',
+            "secondary_phone_ext" => 'nullable|string|exists:countries,phone_code',
             "secondary_phone_number" => 'nullable|string',
             "primary_email" => 'required|string|email',
             "secondary_email" => 'nullable|string|email',
@@ -39,7 +38,7 @@ class CreateIndividualRequest extends FormRequest
             "city_id" => 'nullable|integer|exists:cities,id',
             "primary_address" => 'nullable|string',
             "secondary_address" => 'nullable|string',
-            "zip_code" => 'nullable|string',
+            "post_code" => 'nullable|string',
             "contact_person_id" => ['sometimes', 'required', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
                 $person = CompanyContactPerson::where('company_id', auth()->user()?->company?->id)
                     ->where('id', $value)
@@ -49,5 +48,11 @@ class CreateIndividualRequest extends FormRequest
                 }
             }],
         ];
+
+        if ($this->method() == 'PUT') {
+            $rules["supplier_reference"] = 'nullable|string|max:10';
+        }
+
+        return $rules;
     }
 }

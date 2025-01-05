@@ -89,11 +89,12 @@ class SharedActionController extends Controller
         return ["message" => 'Email sent to customer', "record" => null];
     }
 
-    public function deactivate(Model $model)
+    public function toggle(Model $model)
     {
-        $this->sharedActionService->deactivate($model);
+        $record = $this->sharedActionService->toggle($model);
 
-        return ["message" => 'Deactivation successful', "record" => null];
+
+        return ["message" => ($record ? 'Activation' : 'Deactivation') . ' successful', "record" => null];
     }
 
     public function delete(Model $model)
