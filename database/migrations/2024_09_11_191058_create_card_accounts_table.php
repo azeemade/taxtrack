@@ -20,12 +20,13 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->string('billing_address')->nullable();
             $table->string('billing_postal_code')->nullable();
-            $table->string('issuing_bank')->nullable();
             $table->unsignedBigInteger('billing_country_id');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('company_id');
             $table->unsignedBigInteger('card_brand_id');
             $table->unsignedBigInteger('currency_id')->nullable();
+            $table->unsignedBigInteger('issuing_bank_id')->nullable();
+            $table->foreign('issuing_bank_id')->references('id')->on('banks')->onDelete('set null');
             $table->foreign('currency_id')->references('id')->on('currencies')->onDelete('cascade');
             $table->foreign('billing_country_id')->references('id')->on('countries')->onDelete('cascade');
             $table->foreign('card_brand_id')->references('id')->on('card_brands')->onDelete('cascade');

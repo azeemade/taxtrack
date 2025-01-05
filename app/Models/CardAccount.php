@@ -53,4 +53,9 @@ class CardAccount extends Model
     {
         return $this->belongsTo(Company::class);
     }
+
+    public function bank()
+    {
+        return $this->belongsTo(Bank::class, 'issuing_bank_id');
+    }
 }
