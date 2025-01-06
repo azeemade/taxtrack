@@ -36,7 +36,7 @@ class RoleService
             })
             ->when($request->sortBy == 'alphabetically', function ($query) {
                 $query->orderBy('name', 'ASC');
-            });
+            })->latest();
 
         if ($request->paginate && !$request->export) {
             return $records->paginate($request->limit);

@@ -17,12 +17,12 @@ return new class extends Migration
             $table->decimal('monthly_fee', 15, 2)->default(0.00);
             $table->decimal('yearly_fee', 15, 2)->default(0.00);
             $table->text('short_description')->nullable();
-            $table->string('primary_cta_text');
+            $table->string('primary_cta_text')->nullable();
             $table->string('primary_link')->nullable();
             $table->string('secondary_cta')->nullable();
             $table->string('secondary_link')->nullable();
             $table->boolean('is_active')->default(false);
-            $table->string('createdBy');
+            $table->string('status')->default('active')->comment('active, inactive');
             $table->unsignedBigInteger('created_by');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade')->onUpdate('cascade');
             $table->softDeletes();

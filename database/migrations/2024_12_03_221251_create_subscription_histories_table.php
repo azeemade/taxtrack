@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::create('subscription_histories', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->string('receipt_no')->nullable();
+            $table->string('customer_refer_no')->nullable();
             $table->string('billed_per')->comment('month, year');
             $table->decimal('amount', 15, 2)->default(0.00);
             $table->dateTime('subscribed_at');
