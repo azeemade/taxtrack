@@ -9,8 +9,10 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\PaymentRecord;
+use App\Models\Quote;
 use App\Services\PaymentRecords\PaymentRecordService;
 use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
@@ -29,29 +31,34 @@ class InvoiceService
         $this->paymentRecordService = $paymentRecordService;
     }
 
-    public function create($request)
+    public function updateOrCreate($request)
     {
-        $record = Invoice::create([
-            ...$request,
-            'quote_date' => $request['quote_date'] ?? now(),
-            'referenceID' => $this->generateRefId(),
-            'invoiceID' => $this->generateInvoiceId(),
-            'is_recurring' => $request['save_status'] == 'recur' ? true : false,
-            'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-            'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
-        ]);
+        $record = Invoice::updateOrCreate(
+            [
+                "id" => $request["id"] ?? null
+            ],
+            [
+                ...$request,
+                'quote_date' => $request['quote_date'] ?? now(),
+                'referenceID' => $this->generateRefId(),
+                'invoiceID' => $this->generateInvoiceId(),
+                'is_recurring' => $request['save_status'] == 'recur' ? true : false,
+                'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
+                'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
+            ]
+        );
 
-        foreach ($request['line_items'] as $value) {
-            $record->lineItems()->create([
-                'documentable_type' => DocumentableTypeEnums::INVOICE->value,
-                'item_details' => $value['name'],
-                'category_id' => $value['category_id'],
-                'quantity' => $value['quantity'],
-                'price' => $value['unit_price'],
-                'discount' => $value['discount'],
-                'vat' => $value['vat'],
-                'amount' => $value['line_total']
+        if (isset($request['quote_id']) && $request['quote_id']) {
+            $quote = Quote::find($request['quote_id']);
+            $quote->update([
+                'status' => FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
             ]);
+        }
+
+        if (isset($request["id"]) && $request["id"]) {
+            $record->editLineItems($request['line_items']);
+        } else {
+            $record->addLineItems($request['line_items']);
         }
 
         if ($request['save_status'] == 'send') {
@@ -105,7 +112,12 @@ class InvoiceService
             ])
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
-                    return $query->orderBy('company_name', 'asc');
+                    return $query->orderBy(
+                        Customer::select('company_name')
+                            ->whereColumn('customer_id', 'customers.id')
+                            ->orderBy('company_name')
+                            ->limit(1)
+                    );
                 } else if ($request->sort_by == "date_ascending") {
                     return $query->orderBy('created_at', 'asc');
                 } else if ($request->sort_by == "date_descending") {

@@ -56,22 +56,21 @@
         <table>
             <thead>
                 <tr>
-                    <th>Description</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                    <th>Amount</th>
+                    @forelse ($previewables['line_items'][0] as $key => $item)
+                        <th>{{ ucwords(str_replace('_', ' ', $key)) }}</th>
+                    @empty
+                    @endforelse
                 </tr>
             </thead>
             <tbody>
-                @forelse ($previewables['line_items'] as $item)
+                @foreach ($previewables['line_items'] as $lineItem)
                     <tr>
-                        <td>{{ $item['item_details'] }}</td>
-                        <td>{{ $item['quantity'] }}</td>
-                        <td>{{ $previewables['entity_data']['currency'] }}{{ $item['price'] }}</td>
-                        <td>{{ $previewables['entity_data']['currency'] }}{{ $item['amount'] }}</td>
+                        @forelse ($lineItem as $item)
+                            <td>{{ $item }}</td>
+                        @empty
+                        @endforelse
                     </tr>
-                @empty
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>

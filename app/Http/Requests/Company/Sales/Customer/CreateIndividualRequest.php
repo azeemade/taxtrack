@@ -30,7 +30,7 @@ class CreateIndividualRequest extends FormRequest
             "customer_type" => 'required|in:business,individual',
             "currency_id" => 'required|integer|exists:currencies,id',
             "image" => 'nullable|string',
-            "phone_ext" => 'required|string||exists:countries,phone_code',
+            "phone_ext" => 'required|string|exists:countries,phone_code',
             "primary_phone_number" => 'required|string',
             "secondary_phone_number" => 'nullable|string',
             "primary_email" => 'required|string|email',

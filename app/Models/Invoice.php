@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
 use App\Traits\Companyable;
+use App\Traits\ManageLineItemTrait;
 use App\Traits\PaymentRecordTrait;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,11 +15,16 @@ use Nnjeim\World\Models\Currency;
 #[ScopedBy([ModelUserScope::class])]
 class Invoice extends Model
 {
-    use HasFactory, Companyable, SoftDeletes, PaymentRecordTrait;
+    use HasFactory, Companyable, SoftDeletes, PaymentRecordTrait, ManageLineItemTrait;
 
     protected $guarded = ['id'];
     protected $appends = ['amount_due', 'total_amount_paid'];
     protected $total_amount = 'invoice_value';
+
+    public function getAllowedActionsAttribute()
+    {
+        return ['preview', 'download', 'delete', 'duplicate', 'remind'];
+    }
 
     public function getPreviewablesAttribute()
     {
@@ -37,7 +43,14 @@ class Invoice extends Model
             'issued_date' => $this->created_at,
             'due_date' => $this->due_date,
             'company' => $this->company,
-            'line_items' => $this->lineItems,
+            'line_items' => $this->lineItems->map(function ($item) {
+                return [
+                    'description' => $item->item_details,
+                    'quantity' => $item->quantity,
+                    'price' => $this->customer->currency->symbol . $item->price,
+                    'amount' => $this->customer->currency->symbol . $item->amount,
+                ];
+            }),
             'sub_total' => $this->sub_total,
             'additional_charges' => [
                 'shipping_charge' => $this->shipping_charge,
@@ -47,22 +60,6 @@ class Invoice extends Model
             'terms_and_conditions' => $this->terms_and_conditions,
             'note' => $this->customer_note
         ];
-    }
-
-    public function exportables()
-    {
-        return [
-            'invoice_number' => $this->number,
-            'customer_name' => $this->customer->name,
-            'total' => $this->total,
-            'items' => $this->items,
-            // Add any other data needed for the preview
-        ];
-    }
-
-    public function getAllowedActionsAttribute()
-    {
-        return ['duplicate', 'delete', 'preview', 'export', 'emailEntity', 'download', 'sendRemainder'];
     }
 
     public function customer()
@@ -87,6 +84,11 @@ class Invoice extends Model
 
     public function lineItems()
     {
-        return $this->morphMany(LineItem::class, 'documentable', 'documentable_type', 'documentable_id');
+        return $this->morphMany(LineItem::class, 'documentable');
+    }
+
+    public function badDebt()
+    {
+        return $this->morphOne(BadDebt::class, 'documentable');
     }
 }

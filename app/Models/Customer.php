@@ -23,7 +23,7 @@ class Customer extends Model
 
     public function getAllowedActionsAttribute()
     {
-        return ['deactivate', 'delete'];
+        return ['toggle', 'delete'];
     }
 
     public function currency()
@@ -33,7 +33,7 @@ class Customer extends Model
 
     public function category()
     {
-        return $this->belongsTo(Currency::class);
+        return $this->belongsTo(Category::class);
     }
 
     public function company()

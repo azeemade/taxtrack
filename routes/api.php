@@ -62,7 +62,9 @@ Route::group([
                             return JsonResponser::send(true, 'Resource not found', null, 404);
                         });
                     Route::get('/invoices/create/generateId', 'InvoiceController@generateInvoiceId');
-                    Route::post('/invoices/record-payment/{id}', 'InvoiceController@recordPayment');
+                    Route::post('/invoices/{id}/record-payment', 'InvoiceController@recordPayment');
+                    Route::post('/invoices/{invoice}/write-off', 'InvoiceController@writeOffInvoice');
+                    Route::put('/invoices/{invoice}/void', 'InvoiceController@voidInvoice');
                 });
 
                 //quotes
@@ -106,12 +108,67 @@ Route::group([
             Route::group([
                 'prefix' => 'purchases',
                 "namespace" => "Purchase"
-            ], function () {});
+            ], function () {
+
+                //suppliers
+                Route::group([
+                    "namespace" => "Vendor"
+                ], function () {
+                    Route::apiResource('suppliers', 'VendorController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                    Route::group([
+                        "prefix" => "suppliers",
+                    ], function () {
+                        Route::post('/create-individual', 'VendorController@createIndividualSupplier');
+                        Route::post('/create-organization', 'VendorController@createOrganizationSupplier');
+                        Route::put('/{id}/update-individual', 'VendorController@updateIndividualSupplier');
+                        Route::put('/{id}/update-organization', 'VendorController@updateOrganizationSupplier');
+                        Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
+                        Route::delete('/delete{id}', 'CustomerController@delete');
+                        Route::get('/generate/reference', 'VendorController@generateReference');
+                    });
+                });
+            });
 
             Route::group([
                 'prefix' => 'banking',
                 "namespace" => "Banking"
-            ], function () {});
+            ], function () {
+
+                //Payment methods
+                Route::group([
+                    "namespace" => "PaymentMethods"
+                ], function () {
+                    //cards
+                    Route::apiResource('cards', 'CardController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                    Route::group([
+                        "prefix" => "cards",
+                    ], function () {
+                        Route::get('/transactions/all', 'CardController@cardTransactions');
+                        Route::put('/{id}/toggle-status', 'CardController@toggleStatus');
+                        Route::get('/card-by-bin/{bin}', 'CardController@cardByBin');
+                    });
+                    //banks
+                    Route::apiResource('bank-accounts', 'BankAccountController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                    Route::group([
+                        "prefix" => "bank-accounts",
+                    ], function () {
+                        Route::get('/transactions/all', 'BankAccountController@bankTransactions');
+                        Route::put('/{id}/toggle-status', 'BankAccountController@toggleStatus');
+                        Route::get('/types/all', 'BankAccountController@accountTypes');
+                        Route::get('/connection/initiate', 'BankAccountController@initiateConnection');
+                        Route::post('/connection/complete', 'BankAccountController@completeConnection');
+                    });
+                });
+            });
 
             Route::group([
                 'prefix' => 'accounting',
@@ -158,10 +215,8 @@ Route::group([
                 });
             });
             Route::group([
-                // 'prefix' => 'shared',
                 "namespace" => "SharedActions"
             ], function () {
-                // Route::any('{prefix}/{model}/{id}/{action}', 'SharedActionController');
                 Route::match(['get', 'post', 'put', 'delete'], '/shared/{prefix}/{model}/{id}/{action}', 'SharedActionController');
             });
         });
@@ -177,5 +232,7 @@ Route::group([
         Route::get('/user/{id}/companies', 'GuestController@getUserCompanies');
         Route::get('/company/{id}/roles', 'GuestController@getCompanyRoles');
         Route::get('/error-logs', 'GuestController@errorLogs');
+        Route::get('/card-brands', 'GuestController@cardBrands');
+        Route::get('/all-banks', 'GuestController@allBanks');
     });
 });

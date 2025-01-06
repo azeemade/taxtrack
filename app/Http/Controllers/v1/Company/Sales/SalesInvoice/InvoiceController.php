@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\v1\Company\Sales\SalesInvoice;
 
 use App\Enums\DocumentableModelEnums;
+use App\Enums\FinancialDocumentStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Company\CreateBadDebtRequest;
 use App\Http\Requests\Company\Sales\Invoices\CreateInvoiceRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
+use App\Models\BadDebt;
+use App\Models\Invoice;
 use App\Responser\JsonResponser;
 use App\Services\Invoices\InvoiceService;
 use App\Services\PaymentRecords\PaymentRecordService;
@@ -68,12 +72,11 @@ class InvoiceController extends Controller
         }
     }
 
-
     public function store(CreateInvoiceRequest $request)
     {
         try {
             DB::beginTransaction();
-            $record = $this->invoiceService->create($request->validated());
+            $record = $this->invoiceService->updateOrCreate($request->validated());
             DB::commit();
             return JsonResponser::send(false, 'Invoice issued successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -124,7 +127,7 @@ class InvoiceController extends Controller
     {
         try {
             $record = $this->invoiceService->view($id);
-            
+
             return JsonResponser::send(false, 'Record retrieved successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
@@ -134,26 +137,61 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(CreateInvoiceRequest $request, $id)
     {
-        //
+        try {
+            DB::beginTransaction();
+            $record = $this->invoiceService->updateOrCreate([...$request->validated(), "id" => $id]);
+            DB::commit();
+            return JsonResponser::send(false, 'Invoice updated successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Write off as bad debt
      */
-    public function destroy(string $id)
+    public function writeOffInvoice(CreateBadDebtRequest $request, Invoice $invoice)
     {
-        //
+        try {
+            DB::beginTransaction();
+            $invoice->badDebt()->create($request->validated());
+            DB::commit();
+            return JsonResponser::send(false, 'Customer invoice has been successfully written off', null, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Void invoice
+     */
+    public function voidInvoice(Invoice $invoice)
+    {
+        try {
+            DB::beginTransaction();
+            $invoice->update([
+                'status' => FinancialDocumentStatusEnums::VOID
+            ]);
+            DB::commit();
+            return JsonResponser::send(false, 'Customer invoice has been voided successfully', null, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
     }
 }
