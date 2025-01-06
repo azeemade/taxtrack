@@ -182,7 +182,7 @@ class SubscriptionService
 
         if (isset($data['features'])) {
             foreach ($data['features'] as $title) {
-                $subscriptionPlanFeature = SubscriptionPlanFeature::create([
+                SubscriptionPlanFeature::create([
                     'title' => $title,
                     'subscription_plan_id' => $plan->id
                 ]);
@@ -191,7 +191,7 @@ class SubscriptionService
 
         if (isset($data['modules'])) {
             foreach ($data['modules'] as $module) {
-                $subscriptionFunctionality = SubscriptionFunctionality::create([
+                SubscriptionFunctionality::create([
                     'subscription_plan_id' => $plan->id,
                     'module_id' => $module['module_id'],
                     'module_functionality_id' => $module['module_functionality_id']
@@ -218,8 +218,8 @@ class SubscriptionService
         if (isset($data['features'])) {
             foreach ($data['features'] as $title) {
                 // Remove features that are no longer in the update
-                $deleteRecord = SubscriptionPlanFeature::where('subscription_plan_id', $plan->id)->where('title', $title)->delete();
-                $subscriptionPlanFeature = SubscriptionPlanFeature::updateOrCreate(
+                SubscriptionPlanFeature::where('subscription_plan_id', $plan->id)->where('title', $title)->delete();
+                SubscriptionPlanFeature::updateOrCreate(
                     [
                         'title' => $title,
                         'subscription_plan_id' => $plan->id,
@@ -234,11 +234,11 @@ class SubscriptionService
         if (isset($data['modules'])) {
             foreach ($data['modules'] as $module) {
                 // Remove module functionalities that are no longer in the update
-                $deleteRecord = SubscriptionFunctionality::where('subscription_plan_id', $plan->id)
+                SubscriptionFunctionality::where('subscription_plan_id', $plan->id)
                     ->where('module_id', $module['module_id'])
                     ->where('module_functionality_id', $module['module_functionality_id'])->delete();
 
-                $subscriptionFunctionality = SubscriptionFunctionality::updateOrCreate(
+                SubscriptionFunctionality::updateOrCreate(
                     [
                         'subscription_plan_id' => $plan->id,
                         'module_id' => $module['module_id'],
