@@ -26,12 +26,21 @@ Route::group(['prefix' => 'subscriptions', "namespace" => "Subscription"], funct
         Route::apiResource('plan', 'ManageSubscriptionController')->missing(function () {
             return JsonResponser::send(true, 'Resource not found', null, 404);
         });
-        Route::post('/create-plan', 'ManageSubscriptionController@store');
-        Route::get('/{id}', 'ManageSubscriptionController@show');
+        Route::post('create/history', 'ManageSubscriptionController@createHistory');
+        Route::get('show/subscribers/{id}', 'ManageSubscriptionController@showSubscriberSubscription');
+        Route::get('view/receipts/{id}', 'ManageSubscriptionController@viewReceipts');
+        Route::put('approve/refund/{id}', 'ManageSubscriptionController@approveRefund');
+        Route::put('module/toggle-status/{id}', 'ManageSubscriptionController@toggleStatus');
         Route::get('module/functionalities', 'ManageSubscriptionController@moduleFunctionalities');
     });
 
-    Route::group(['prefix' => 'manage-subscriber'], function () {});
+    Route::group(['prefix' => 'manage-subscriber'], function () {
+        Route::apiResource('subscriber', 'ManageSubscribersController')->missing(function () {
+            return JsonResponser::send(true, 'Resource not found', null, 404);
+        });
+        Route::put('approve/refund/{id}', 'ManageSubscriptionController@approveRefund');
+        Route::get('view/receipts/{id}', 'ManageSubscriptionController@viewReceipts');
+    });
 });
 
 Route::group(['prefix' => 'user-management', "namespace" => "UserManagement"], function () {

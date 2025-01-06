@@ -21,6 +21,8 @@ return new class extends Migration
             $table->unsignedBigInteger('subscriber_id');
             $table->unsignedBigInteger('company_id');
             $table->unsignedBigInteger('subscription_plan_id');
+            $table->unsignedBigInteger('subscription_history_id');
+            $table->foreign('subscription_history_id')->references('id')->on('subscription_histories')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('subscriber_id')->references('id')->on('subscribers')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('subscription_plan_id')->references('id')->on('subscription_plans')->onDelete('cascade')->onUpdate('cascade');

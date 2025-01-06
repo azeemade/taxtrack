@@ -19,8 +19,8 @@ return new class extends Migration
             $table->string('status')->comment('pending, approved, declined');
             $table->string('reason');
             $table->string('additionalInformation')->nullable();
-            $table->date('approved_on');
-            $table->unsignedBigInteger('approved_by');
+            $table->date('approved_on')->nullable();
+            $table->unsignedBigInteger('approved_by')->nullable();
             $table->unsignedBigInteger('subscriber_id');
             $table->unsignedBigInteger('company_id');
             $table->unsignedBigInteger('subscription_plan_id');

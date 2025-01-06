@@ -9,4 +9,19 @@ class SubscriptionPlan extends Model
 {
     use HasFactory;
     protected $guarded = ['id'];
+
+    public function subscriptionPlanFeature()
+    {
+        return $this->hasMany(SubscriptionPlanFeature::class, 'subscription_plan_id');
+    }
+
+    public function subscriptionFunctionality()
+    {
+        return $this->hasMany(SubscriptionFunctionality::class, 'subscription_plan_id');
+    }
+
+    public function subscriber()
+    {
+        return $this->hasMany(Subscriber::class, 'current_subscription_plan_id');
+    }
 }

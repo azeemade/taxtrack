@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('secondary_cta')->nullable();
             $table->string('secondary_link')->nullable();
             $table->boolean('is_active')->default(false);
+            $table->string('status')->default('active')->comment('active, inactive');
             $table->unsignedBigInteger('created_by');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade')->onUpdate('cascade');
             $table->softDeletes();
