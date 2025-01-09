@@ -7,6 +7,7 @@ use App\Helpers\FileUploadHelper;
 use App\Helpers\GeneralHelper;
 use App\Mail\Shared\EntityDocumentEmail;
 use App\Mail\Shared\EntityRemainderEmail;
+use App\Services\EmailSettings\EmailSettingsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -14,6 +15,14 @@ use Illuminate\Http\Request;
 
 class SharedActionService
 {
+    protected EmailSettingsService $emailSettingsService;
+
+    public function __construct(
+        EmailSettingsService $emailSettingsService
+    ) {
+        $this->emailSettingsService = $emailSettingsService;
+    }
+
     public function duplicate(Model $model)
     {
         $newModel = $model->replicate();
@@ -50,6 +59,7 @@ class SharedActionService
             'model' => $model->previewables['model'],
             'company' => $model->previewables['company'],
             'entity' => $model->previewables['entity_data'],
+            'email_template' => $this->emailSettingsService->mapModelsToEmailTemplates($model->previewables['model']),
         ];
 
         Mail::to($model->previewables['entity_data']['email'])

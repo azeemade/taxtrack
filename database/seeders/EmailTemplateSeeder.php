@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\EmailTemplateModelEnums;
 use App\Models\EmailTemplate;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -16,28 +17,28 @@ class EmailTemplateSeeder extends Seeder
     {
         $emailTemplates = [
             [
-                'name' => 'Credit Note',
+                'name' => EmailTemplateModelEnums::CREDIT_NOTE->value,
             ],
             [
-                'name' => 'Purchase Order',
+                'name' => EmailTemplateModelEnums::PURCHASE_ORDER->value,
             ],
             [
-                'name' => 'Quote',
+                'name' => EmailTemplateModelEnums::QUOTE->value,
             ],
             [
-                'name' => 'Sales Invoice',
+                'name' => EmailTemplateModelEnums::SALES_INVOICE->value,
             ],
             [
-                'name' => 'Purchase Invoice',
+                'name' => EmailTemplateModelEnums::PURCHASE_INVOICE->value,
             ],
             [
-                'name' => 'Recurring Invoice',
+                'name' => EmailTemplateModelEnums::RECURRING_INVOICE->value,
             ],
             [
-                'name' => 'Debit Note',
+                'name' => EmailTemplateModelEnums::DEBIT_NOTE->value,
             ],
             [
-                'name' => 'Receipt',
+                'name' => EmailTemplateModelEnums::RECEIPT->value,
             ]
         ];
         foreach ($emailTemplates as $template) {

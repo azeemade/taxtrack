@@ -2,6 +2,7 @@
 
 namespace App\Services\EmailSettings;
 
+use App\Enums\EmailTemplateModelEnums;
 use App\Exceptions\BadRequestException;
 use App\Models\CompanyEmailTemplate;
 use App\Models\EmailTemplate;
@@ -78,5 +79,27 @@ class EmailSettingsService
         );
 
         return $record;
+    }
+
+    public function mapModelsToEmailTemplates($model)
+    {
+        match ($model) {
+            'invoice' => $this->findEmailTemplate(EmailTemplateModelEnums::SALES_INVOICE->value),
+            'quote' => $this->findEmailTemplate(EmailTemplateModelEnums::QUOTE->value),
+            'purchase invoice' => $this->findEmailTemplate(EmailTemplateModelEnums::PURCHASE_INVOICE->value),
+            'credit note' => $this->findEmailTemplate(EmailTemplateModelEnums::CREDIT_NOTE->value),
+            'purchase order' => $this->findEmailTemplate(EmailTemplateModelEnums::PURCHASE_ORDER->value),
+            'recurring invoice' => $this->findEmailTemplate(EmailTemplateModelEnums::RECURRING_INVOICE->value),
+            'debit note' => $this->findEmailTemplate(EmailTemplateModelEnums::DEBIT_NOTE->value),
+            'receipt' => $this->findEmailTemplate(EmailTemplateModelEnums::RECEIPT->value),
+            default => null
+        };
+    }
+
+    protected function findEmailTemplate($model)
+    {
+        return CompanyEmailTemplate::where('is_default', true)
+            ->whereRelation('emailTemplate', 'name', $model)
+            ->first();
     }
 }
