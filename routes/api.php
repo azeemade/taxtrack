@@ -214,6 +214,44 @@ Route::group([
                     Route::put('roles/toggle-status/{role}', 'RolesController@toggleStatus');
                 });
             });
+
+            Route::group([
+                'prefix' => 'settings',
+                "namespace" => "Settings"
+            ], function () {
+                Route::group([
+                    'prefix' => 'organization',
+                    "namespace" => "Organization"
+                ], function () {});
+                Route::group([
+                    "namespace" => "EmailSettings"
+                ], function () {
+                    Route::apiResource('email-settings', 'EmailSettingsController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                });
+                Route::group([
+                    'prefix' => 'reset-password',
+                    "namespace" => "ResetPassword"
+                ], function () {
+                    Route::post('/send-reset-email', 'ResetPasswordController@sendResetLink');
+                    Route::put('/reset-password', 'ResetPasswordController@resetPassword');
+                });
+                Route::group([
+                    'prefix' => 'subscriptions',
+                    "namespace" => "Subscriptions"
+                ], function () {});
+                Route::group([
+                    'prefix' => 'invoicing-settings',
+                    "namespace" => "InvoicingSettings"
+                ], function () {});
+                Route::group([
+                    'prefix' => 'tax',
+                    "namespace" => "Tax"
+                ], function () {});
+            });
+
             Route::group([
                 "namespace" => "SharedActions"
             ], function () {
@@ -234,5 +272,6 @@ Route::group([
         Route::get('/error-logs', 'GuestController@errorLogs');
         Route::get('/card-brands', 'GuestController@cardBrands');
         Route::get('/all-banks', 'GuestController@allBanks');
+        Route::get('/all-email-templates', 'GuestController@allEmailTemplate');
     });
 });

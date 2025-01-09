@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\Company\CompanyActionTraits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Nnjeim\World\Models\Currency;
 
 class Company extends Model
 {
-    use HasFactory;
+    use HasFactory, CompanyActionTraits;
     protected $guarded = ['id'];
 
     public function staff()
@@ -29,5 +30,10 @@ class Company extends Model
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'company_roles', 'company_id', 'role_id')->withPivot(['created_by']);
+    }
+
+    public function emailTemplates()
+    {
+        return $this->belongsToMany(EmailTemplate::class, 'company_email_templates', 'company_id', 'email_templates_id');
     }
 }

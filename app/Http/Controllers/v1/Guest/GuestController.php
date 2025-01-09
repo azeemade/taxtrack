@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CardBrand;
 use App\Models\Category;
 use App\Models\Company;
+use App\Models\EmailTemplate;
 use App\Models\ErrorLog;
 use App\Models\User;
 use App\Responser\JsonResponser;
@@ -126,6 +127,23 @@ class GuestController extends Controller
                 ->when(isset($request->submodule), function ($query) use ($request) {
                     $query->where('submodule', $request->submodule);
                 })
+                ->get();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function allEmailTemplate(Request $request)
+    {
+        try {
+            $records = EmailTemplate::when(isset($request->q), function ($query) use ($request) {
+                $query->where('name', $request->q);
+            })
                 ->get();
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);

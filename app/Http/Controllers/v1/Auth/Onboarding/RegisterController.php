@@ -335,6 +335,7 @@ class RegisterController extends Controller
 
                 $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
                 $company->currencies()->attach($user->currency_id);
+                $company->attachEmailTemplates();
             }
 
             foreach ($request->users as $user) {
