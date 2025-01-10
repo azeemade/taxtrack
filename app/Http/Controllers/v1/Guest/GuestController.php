@@ -127,7 +127,11 @@ class GuestController extends Controller
                 ->when(isset($request->submodule), function ($query) use ($request) {
                     $query->where('submodule', $request->submodule);
                 })
-                ->get();
+                ->get()
+                ->map((function ($record) {
+                    $record->display_name = ucwords(str_replace('_', ' ', $record->name));
+                    return $record;
+                }));
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {

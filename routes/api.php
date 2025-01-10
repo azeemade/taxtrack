@@ -125,8 +125,8 @@ Route::group([
                         Route::post('/create-organization', 'VendorController@createOrganizationSupplier');
                         Route::put('/{id}/update-individual', 'VendorController@updateIndividualSupplier');
                         Route::put('/{id}/update-organization', 'VendorController@updateOrganizationSupplier');
-                        Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
-                        Route::delete('/delete{id}', 'CustomerController@delete');
+                        Route::patch('/change-status/{id}', 'VendorController@changeStatus');
+                        Route::delete('/delete{id}', 'VendorController@delete');
                         Route::get('/generate/reference', 'VendorController@generateReference');
                     });
                 });
@@ -235,8 +235,8 @@ Route::group([
                     'prefix' => 'reset-password',
                     "namespace" => "ResetPassword"
                 ], function () {
-                    Route::post('/send-reset-email', 'ResetPasswordController@sendResetLink');
-                    Route::put('/reset-password', 'ResetPasswordController@resetPassword');
+                    // Route::post('/send-reset-email', 'ResetPasswordController@sendResetLink');
+                    // Route::put('/reset-password', 'ResetPasswordController@resetPassword');
                 });
                 Route::group([
                     'prefix' => 'subscriptions',

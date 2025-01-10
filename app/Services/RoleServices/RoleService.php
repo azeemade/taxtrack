@@ -65,7 +65,7 @@ class RoleService
 
     public function create(array $data, int $created_by = null, int $company_id = null)
     {
-        $roleID = GeneralHelper::getModelUniqueOrderlyId([
+        return $roleID = GeneralHelper::getModelUniqueOrderlyId([
             'modelNamespace' => 'Spatie\Permission\Models\Role',
             'modelField' => 'roleID',
             'prefix' => 'R-',

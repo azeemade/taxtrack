@@ -22,7 +22,7 @@ class StoreRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "name" => 'required|unique:roles,name,NULL,id,created_by,' . auth()->id(),
+            "name" => 'required',
             "description" => 'nullable|string',
             "permissions" => 'nullable|array',
             "permissions*" => 'integer|exists:permissions,id|distinct'

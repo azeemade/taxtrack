@@ -157,7 +157,7 @@ class UserService
             'phone_number' => $data['phone_number'],
         ]);
 
-        $user->assignRole($data['role']);
+        $user->assignRole($data['roles']);
         return $user;
     }
 

@@ -42,7 +42,7 @@ class UsersController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
@@ -60,7 +60,7 @@ class UsersController extends Controller
             return JsonResponser::send(false, 'User created successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
@@ -70,14 +70,14 @@ class UsersController extends Controller
     public function show(User $user)
     {
         try {
-            $record = User::whereRelation('companies', 'company_id', $user->company->id)->first();
+            $record = User::whereRelation('companies', 'company_id', $user->company->id)->find($user->id);
             if ($record) {
                 $record->load(['roles:id,name' => ['permissions:id,name']]);
             }
 
             return JsonResponser::send(false, 'Record(s) found successfully', $record);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
@@ -95,7 +95,7 @@ class UsersController extends Controller
             return JsonResponser::send(false, 'User updated successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
@@ -113,7 +113,7 @@ class UsersController extends Controller
             return JsonResponser::send(false, 'User updated successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
@@ -131,7 +131,7 @@ class UsersController extends Controller
             return JsonResponser::send(false, 'User deleted successfully', null);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 }
