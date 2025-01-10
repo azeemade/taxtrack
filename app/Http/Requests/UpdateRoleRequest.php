@@ -23,7 +23,7 @@ class UpdateRoleRequest extends FormRequest
     {
         return [
             // "name" => 'required|unique:roles,name,NULL,id,created_by,' . auth()->id(),
-            'name' => 'required|unique:roles,name,' . $this->id . ',id,created_by,' . auth()->id(),
+            'name' => 'required', //|unique:roles,name,' . $this->id . ',id,created_by,' . auth()->id(),
             "description" => 'nullable|string',
             "permissions" => 'nullable|array',
             "permissions*" => 'integer|exists:permissions,id|distinct'

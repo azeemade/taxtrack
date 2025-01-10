@@ -30,7 +30,7 @@ class EntityDocumentEmail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: ucwords($this->data['model']) . 'for' .  $this->data['entity']['name'],
+            subject: $this->data['email_template']['title'] ?? ucwords($this->data['model']) . 'for' .  $this->data['entity']['name'],
         );
     }
 
@@ -40,7 +40,6 @@ class EntityDocumentEmail extends Mailable
     public function content(): Content
     {
         return new Content(
-            // view: 'mail.entity_document',
             markdown: 'mail.entity_document',
             with: [
                 'data' => $this->data,

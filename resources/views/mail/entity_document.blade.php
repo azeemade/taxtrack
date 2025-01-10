@@ -3,6 +3,12 @@
 
     Dear {{ $data['entity']['name'] }},
 
+    @if (isset($data['email_template']['mail_copy']) && $data['email_template']['mail_copy'])
+        {{ $data['email_template']['mail_copy'] }}
+    @else
+        Please find the attached" . {{ strtolower($data['model']) }} . "for your reference
+    @endif
+
     Please find the attached {{ strtolower($data['model']) }} for your reference.
 
     @component('mail::button', ['url' => $data['document_url']])

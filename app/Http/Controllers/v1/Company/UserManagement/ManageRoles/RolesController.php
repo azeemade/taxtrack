@@ -42,7 +42,7 @@ class RolesController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', null, 500);
+            return JsonResponser::send(true, 'Internal Server Error', null, 500, $th);
         }
     }
 
@@ -60,7 +60,7 @@ class RolesController extends Controller
             return JsonResponser::send(false, 'Role created successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500, $th);
         }
     }
 
@@ -75,74 +75,74 @@ class RolesController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $record);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', null, 500);
+            return JsonResponser::send(true, 'Internal Server Error', null, 500, $th);
         }
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateRoleRequest $request, Role $role)
+    public function update(UpdateRoleRequest $request, $id)
     {
         try {
             DB::beginTransaction();
 
-            $record = $this->roleService->update($request->validated(), $role);
+            $record = $this->roleService->update($request->validated(), $id);
 
             DB::commit();
             return JsonResponser::send(false, 'Role updated successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
     /**
      * Update the status specified resource in storage.
      */
-    public function toggleStatus(Role $role)
+    public function toggleStatus($id)
     {
         try {
             DB::beginTransaction();
 
-            $record = $this->roleService->toggle($role);
+            $record = $this->roleService->toggle($id);
 
             DB::commit();
             return JsonResponser::send(false, 'Role updated successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Role $role)
+    public function destroy($id)
     {
         try {
             DB::beginTransaction();
 
-            $this->roleService->delete($role);
+            $this->roleService->delete($id);
 
             DB::commit();
             return JsonResponser::send(false, 'Role deleted successfully', null);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
     /**
      * Get all permissions related to specified resource.
      */
-    public function permissions(Role $role)
+    public function permissions($id)
     {
         try {
-            $records = $this->roleService->delete($role);
+            $records = $this->roleService->delete($id);
             return JsonResponser::send(false, 'Permission(s) retrieved successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 }

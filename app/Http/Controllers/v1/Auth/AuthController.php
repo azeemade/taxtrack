@@ -37,11 +37,11 @@ class AuthController extends Controller
                 return JsonResponser::send(true, 'Account is inactive. Contact admin', [], 400);
             }
 
-            if ($user->hasRole('client') && $user?->company?->status != GeneralEnums::APPROVED->value) {
+            if ($user?->hasRole('client') && $user?->company?->status != GeneralEnums::APPROVED->value) {
                 return JsonResponser::send(true, 'Company is inactive. Contact admin', [], 400);
             }
 
-            if ($user->hasRole('client') && !$user->company) {
+            if ($user?->hasRole('client') && !$user->company) {
                 $user->update([
                     'current_company_id' => $user->companies[0]
                 ]);
@@ -62,6 +62,7 @@ class AuthController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
+    
     /**
      * Switch companies.
      *

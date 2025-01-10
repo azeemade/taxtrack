@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Company\Settings\EmailSettings;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreRoleRequest extends FormRequest
+class CreateEmailSettingsRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,10 +22,10 @@ class StoreRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "name" => 'required',
-            "description" => 'nullable|string',
-            "permissions" => 'nullable|array',
-            "permissions*" => 'integer|exists:permissions,id|distinct'
+            'title' => 'required|string|max:25',
+            'mail_copy' => 'required|string|max:255',
+            'email_templates_id' => 'nullable|integer|exists:email_templates,id',
+            'is_default' => 'nullable',
         ];
     }
 }
