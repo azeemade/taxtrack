@@ -67,7 +67,7 @@ class UserService
         ];
     }
 
-    public function export($records)
+    public function export($records, $exportType)
     {
         $recordHeadings = ['ID', 'Name', 'Status', 'Role ID', 'Role', 'No of permissions', 'Date created'];
         $records = $records->map(function ($record) {
@@ -81,7 +81,10 @@ class UserService
                 Carbon::parse($record->created_at)->toFormattedDayDateString()
             ];
         });
-        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'users_report.xlsx');
+        if ($exportType == 'pdf') {
+            return Excel::download(new GeneralReportExport($records, $recordHeadings), 'role_report.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        }
+        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'role_report.csv', \Maatwebsite\Excel\Excel::CSV);
     }
 
     public function create(array $data, int $company_id = null, int $created_by = null)

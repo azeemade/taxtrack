@@ -235,8 +235,10 @@ Route::group([
                     'prefix' => 'reset-password',
                     "namespace" => "ResetPassword"
                 ], function () {
-                    // Route::post('/send-reset-email', 'ResetPasswordController@sendResetLink');
-                    // Route::put('/reset-password', 'ResetPasswordController@resetPassword');
+                    Route::post('validate-password', 'ResetPasswordController@validateCurrentPassword');
+                    Route::post('confirm-otp', 'ResetPasswordController@confirmOtp');
+                    Route::get('resend-otp', 'ResetPasswordController@resendOtp');
+                    Route::put('update-password', 'ResetPasswordController@createNewPassword');
                 });
                 Route::group([
                     'prefix' => 'subscriptions',

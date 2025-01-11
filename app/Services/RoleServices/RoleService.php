@@ -3,6 +3,7 @@
 namespace App\Services\RoleServices;
 
 use App\Enums\GeneralEnums;
+use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
 use Carbon\Carbon;
@@ -47,7 +48,7 @@ class RoleService
         ];
     }
 
-    public function export($records)
+    public function export($records, $exportType)
     {
         $recordHeadings = ['RoleID', 'Name', 'Status', 'No of users', 'No of permissions', 'Date created'];
         $records = $records->map(function ($record) {
@@ -60,12 +61,15 @@ class RoleService
                 Carbon::parse($record->created_at)->toFormattedDayDateString()
             ];
         });
-        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'role_report.xlsx');
+        if ($exportType == 'pdf') {
+            return Excel::download(new GeneralReportExport($records, $recordHeadings), 'role_report.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        }
+        return Excel::download(new GeneralReportExport($records, $recordHeadings), 'role_report.csv', \Maatwebsite\Excel\Excel::CSV);
     }
 
     public function create(array $data, int $created_by = null, int $company_id = null)
     {
-        return $roleID = GeneralHelper::getModelUniqueOrderlyId([
+        $roleID = GeneralHelper::getModelUniqueOrderlyId([
             'modelNamespace' => 'Spatie\Permission\Models\Role',
             'modelField' => 'roleID',
             'prefix' => 'R-',
@@ -86,13 +90,20 @@ class RoleService
             $role->companies()->attach($company_id, ["created_by" => $created_by]);
         }
 
-        $permissions = isset($data['permissions']) ? $data['description'] : [];
+        $permissions = isset($data['permissions']) ? $data['permissions'] : [];
         $role->givePermissionTo($permissions);
         return $role;
     }
 
-    public function update(array $data, Role $role)
+    public function update(array $data, $id)
     {
+        $immutableRoles = Role::whereIn('slug', ['superadmin', 'admin', 'developer', 'client', 'companyadmin', 'companyuser'])
+            ->pluck('id')->toArray();
+        if (in_array($id, $immutableRoles)) {
+            throw new BadRequestException('Cannot modify this role', 400);
+        }
+
+        $role = Role::find($id);
         $role->update([
             'name' => $data['name'],
             'description' => $data['description'],
@@ -101,21 +112,35 @@ class RoleService
         return $role;
     }
 
-    public function toggle(Role $role)
+    public function toggle($id)
     {
+        $immutableRoles = Role::whereIn('slug', ['superadmin', 'admin', 'developer', 'client', 'companyadmin', 'companyuser'])
+            ->pluck('id')->toArray();
+        if (in_array($id, $immutableRoles)) {
+            throw new BadRequestException('Cannot modify this role', 400);
+        }
+
+        $role = Role::find($id);
         $role->update([
             'status' => $role->status == GeneralEnums::ACTIVE->value ? GeneralEnums::INACTIVE->value : GeneralEnums::ACTIVE->value
         ]);
         return $role;
     }
 
-    public function delete(Role $role)
+    public function delete($id)
     {
+        $immutableRoles = Role::whereIn('slug', ['superadmin', 'admin', 'developer', 'client', 'companyadmin', 'companyuser'])
+            ->pluck('id')->toArray();
+        if (in_array($id, $immutableRoles)) {
+            throw new BadRequestException('Cannot delete this role', 400);
+        }
+        $role = Role::find($id);
         $role->delete();
     }
 
-    public function permissions(Role $role)
+    public function permissions($id)
     {
+        $role = Role::find($id);
         return $role->permissions;
     }
 }

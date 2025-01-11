@@ -34,7 +34,7 @@ class UsersController extends Controller
                 'data' => $overview
             ];
             if ($request->export) {
-                return $this->userService->export($overview);
+                return $this->userService->export($overview, $request->export);
             }
             if (!$request->paginate) {
                 $records = $overview;
