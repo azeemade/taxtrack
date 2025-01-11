@@ -14,7 +14,7 @@ class SharedFilterRequest extends FormRequest
         $date_filter = $this->input('date_filter');
         $start_date = $this->input('start_date');
         $end_date = $this->input('end_date');
-        $paginate = (bool) $this->input('paginate');
+        // $paginate = (bool) $this->input('paginate');
         $limit = $this->input('limit', 10);
         $export = $this->input('export');
 

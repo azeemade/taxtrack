@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v1\Company\UserManagement\ManageRoles;
 
+use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Http\Requests\StoreRoleRequest;
@@ -34,13 +35,15 @@ class RolesController extends Controller
                 'data' => $overview
             ];
             if ($request->export) {
-                return $this->roleService->export($overview);
+                return $this->roleService->export($overview, $request->export);
             }
             if (!$request->paginate) {
                 $records = $overview;
             }
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', null, 500, $th);
         }
@@ -58,6 +61,8 @@ class RolesController extends Controller
 
             DB::commit();
             return JsonResponser::send(false, 'Role created successfully', $record);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500, $th);
@@ -74,6 +79,8 @@ class RolesController extends Controller
             $record->load('permissions');
 
             return JsonResponser::send(false, 'Record(s) found successfully', $record);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', null, 500, $th);
         }
@@ -91,6 +98,8 @@ class RolesController extends Controller
 
             DB::commit();
             return JsonResponser::send(false, 'Role updated successfully', $record);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
@@ -109,6 +118,8 @@ class RolesController extends Controller
 
             DB::commit();
             return JsonResponser::send(false, 'Role updated successfully', $record);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
@@ -127,6 +138,8 @@ class RolesController extends Controller
 
             DB::commit();
             return JsonResponser::send(false, 'Role deleted successfully', null);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
@@ -141,6 +154,8 @@ class RolesController extends Controller
         try {
             $records = $this->roleService->delete($id);
             return JsonResponser::send(false, 'Permission(s) retrieved successfully', $records);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
