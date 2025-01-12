@@ -6,6 +6,7 @@ use App\Enums\EmailTemplateModelEnums;
 use App\Exceptions\BadRequestException;
 use App\Models\CompanyEmailTemplate;
 use App\Models\EmailTemplate;
+use Illuminate\Http\Response;
 
 class EmailSettingsService
 {
@@ -55,7 +56,7 @@ class EmailSettingsService
             'emailTemplate:id,name',
         ])->find($id);
         if (!$record) {
-            throw new BadRequestException("Record not found", 404);
+            throw new BadRequestException("Record not found", Response::HTTP_NOT_FOUND);
         }
         return $record;
     }

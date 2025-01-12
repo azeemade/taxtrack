@@ -1,24 +1,24 @@
 <?php
 
-namespace App\Http\Controllers\v1\Company\Settings\EmailSettings;
+namespace App\Http\Controllers\v1\Company\Settings\TaxRate;
 
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Company\Settings\EmailSettings\CreateEmailSettingsRequest;
+use App\Http\Requests\Company\Settings\TaxRate\CreateTaxRateRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
-use App\Services\EmailSettings\EmailSettingsService;
+use App\Services\TaxRate\TaxRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
-class EmailSettingsController extends Controller
+class TaxRateController extends Controller
 {
-    protected EmailSettingsService $emailSettingsService;
+    protected TaxRateService $taxRateService;
 
-    public function __construct(EmailSettingsService $emailSettingsService)
+    public function __construct(TaxRateService $taxRateService)
     {
-        $this->emailSettingsService = $emailSettingsService;
+        $this->taxRateService = $taxRateService;
     }
     /**
      * Display a listing of the resource.
@@ -26,7 +26,7 @@ class EmailSettingsController extends Controller
     public function index(SharedFilterRequest $request)
     {
         try {
-            $records = $this->emailSettingsService->list($request);
+            $records = $this->taxRateService->list($request);
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -39,15 +39,15 @@ class EmailSettingsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(CreateEmailSettingsRequest $request)
+    public function store(CreateTaxRateRequest $request)
     {
         try {
             DB::beginTransaction();
 
-            $record = $this->emailSettingsService->updateOrCreate($request->validated());
+            $record = $this->taxRateService->create($request->validated());
 
             DB::commit();
-            return JsonResponser::send(false, 'Email template created successfully', $record, Response::HTTP_OK);
+            return JsonResponser::send(false, 'Tax rate created successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
@@ -63,7 +63,7 @@ class EmailSettingsController extends Controller
     public function show(int $id)
     {
         try {
-            $record = $this->emailSettingsService->view($id);
+            $record = $this->taxRateService->view($id);
 
             return JsonResponser::send(false, 'Record retrieved successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -76,13 +76,13 @@ class EmailSettingsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(CreateEmailSettingsRequest $request, int $id)
+    public function update(CreateTaxRateRequest $request, int $id)
     {
         try {
             DB::beginTransaction();
-            $record = $this->emailSettingsService->updateOrCreate([...$request->validated(), "id" => $id]);
+            $record = $this->taxRateService->update($request->validated(), $id);
             DB::commit();
-            return JsonResponser::send(false, 'Email template updated successfully', $record, Response::HTTP_OK);
+            return JsonResponser::send(false, 'Tax rate updated successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());

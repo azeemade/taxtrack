@@ -249,9 +249,13 @@ Route::group([
                     "namespace" => "InvoicingSettings"
                 ], function () {});
                 Route::group([
-                    'prefix' => 'tax',
-                    "namespace" => "Tax"
-                ], function () {});
+                    "namespace" => "TaxRate"
+                ], function () {
+                    Route::apiResource('taxes', 'TaxRateController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                        });
+                });
             });
 
             Route::group([
