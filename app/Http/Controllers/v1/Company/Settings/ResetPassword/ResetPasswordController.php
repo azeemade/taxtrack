@@ -8,6 +8,7 @@ use App\Http\Requests\Company\Settings\ResetPassword\CurrentPasswordRequest;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -46,10 +47,10 @@ class ResetPasswordController extends Controller
     public function confirmOtp(Request $request)
     {
         try {
-            $validator = Validator::make($request, [
-                'otp' => 'required|numeric|digits:5',
+            $validator = Validator::make($request->all(), [
+                'otp' => 'required|numeric|digits:6',
             ]);
-            if ($validator->fail()) {
+            if ($validator->fails()) {
                 throw new BadRequestException($validator->errors()->first(), 422);
             }
 
@@ -102,6 +103,8 @@ class ResetPasswordController extends Controller
             $currentUser->update([
                 'password' => $request->password,
             ]);
+
+            Auth::logout();
 
             return JsonResponser::send(false, 'Password updated successfully', [], Response::HTTP_OK);
         } catch (BadRequestException $e) {
