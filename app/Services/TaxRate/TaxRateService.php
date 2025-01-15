@@ -8,7 +8,6 @@ use Illuminate\Http\Response;
 
 class TaxRateService
 {
-
     public function list($request)
     {
         $records = TaxRate::query()

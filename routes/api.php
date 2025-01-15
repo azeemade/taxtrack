@@ -219,10 +219,14 @@ Route::group([
                 'prefix' => 'settings',
                 "namespace" => "Settings"
             ], function () {
+
                 Route::group([
                     'prefix' => 'organization',
                     "namespace" => "Organization"
-                ], function () {});
+                ], function () {
+                    Route::put('update', 'OrganizationDetailsController@update');
+                    Route::get('view', 'OrganizationDetailsController@view');
+                });
                 Route::group([
                     "namespace" => "EmailSettings"
                 ], function () {
