@@ -41,6 +41,42 @@ class CompanyService
         return $records->get();
     }
 
+    public function companyDetails()
+    {
+        $currentUser = Auth::user();
+        $record = Company::select(
+            'name',
+            'phone_country_code',
+            'phone_number',
+            'secondary_phone_country_code',
+            'secondary_phone_number',
+            'fax',
+            'industry',
+            'email',
+            'secondary_email',
+            'organization_type',
+            'description',
+            'logo',
+            'postal_address_information',
+            'physical_address_information',
+            'social_media',
+            'registration_id',
+        )
+            ->find($currentUser->current_company_id);
+
+        $record['postal_address_information'] = [
+            "country" => isset($record['postal_address_information']['country_id']) ? $this->getCompanyAddressInfo('\Nnjeim\World\Models\Country', $record['postal_address_information']['country_id']) : null,
+            "city" => isset($record['postal_address_information']['city_id']) ? $this->getCompanyAddressInfo('\Nnjeim\World\Models\City', $record['postal_address_information']['city_id']) : null,
+            "state" => isset($record['postal_address_information']['state_id']) ? $this->getCompanyAddressInfo('\Nnjeim\World\Models\State', $record['postal_address_information']['state_id']) : null,
+        ];
+        $record['physical_address_information'] = [
+            "country" => isset($record['physical_address_information']['country_id']) ? $this->getCompanyAddressInfo('\Nnjeim\World\Models\Country', $record['physical_address_information']['country_id']) : null,
+            "city" => isset($record['physical_address_information']['city_id']) ? $this->getCompanyAddressInfo('\Nnjeim\World\Models\City', $record['physical_address_information']['city_id']) : null,
+            "state" => isset($record['physical_address_information']['state_id']) ? $this->getCompanyAddressInfo('\Nnjeim\World\Models\State', $record['physical_address_information']['state_id']) : null,
+        ];
+        return $record;
+    }
+
     public function stats()
     {
         $records = Company::query();
@@ -109,5 +145,23 @@ class CompanyService
         Mail::to($request['email'])
             ->send(new ClientOnboardingEmail($data));
         return $user;
+    }
+
+    public function updateCompanyDetails(array $data)
+    {
+        $currentUser = Auth::user();
+        $record = Company::find($currentUser->current_company_id);
+
+        $data['address'] = $data['physical_address_information']['address'];
+        $data['country_id'] = $data['physical_address_information']['country_id'];
+
+        $record->update($data);
+        return $record;
+    }
+
+    protected function getCompanyAddressInfo($model, $id)
+    {
+        $model = $model::select('id', 'name')->find($id);
+        return $model;
     }
 }

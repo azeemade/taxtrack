@@ -15,10 +15,22 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->string('name')->unique();
             $table->text('address')->nullable();
+            $table->string('phone_country_code')->nullable();
             $table->string('phone_number')->nullable();
+            $table->string('secondary_phone_country_code')->nullable();
+            $table->string('secondary_phone_number')->nullable();
+            $table->string('fax')->nullable();
             $table->string('companyUUID')->unique();
             $table->string('domain')->unique()->nullable();
             $table->string('industry')->nullable();
+            $table->string('email')->nullable();
+            $table->string('secondary_email')->nullable();
+            $table->string('organization_type')->nullable();
+            $table->text('description')->nullable();
+            $table->text('logo')->nullable();
+            $table->json('postal_address_information')->nullable();
+            $table->json('physical_address_information')->nullable();
+            $table->json('social_media')->nullable();
             $table->string('tax_id')->nullable();
             $table->string('registration_id')->nullable();
             $table->string('fiscal_year_start')->nullable(); //month-day format

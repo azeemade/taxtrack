@@ -11,6 +11,11 @@ class Company extends Model
 {
     use HasFactory, CompanyActionTraits;
     protected $guarded = ['id'];
+    protected $casts = [
+        'postal_address_information' => 'array',
+        'physical_address_information' => 'array',
+        'social_media' => 'array',
+    ];
 
     public function staff()
     {
