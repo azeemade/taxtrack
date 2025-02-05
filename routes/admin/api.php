@@ -20,7 +20,13 @@ Route::group(['prefix' => 'company', "namespace" => "Company"], function () {
 
 Route::group(['prefix' => 'subscriptions', "namespace" => "Subscription"], function () {
 
-    Route::group(['prefix' => 'overview'], function () {});
+    Route::group(['prefix' => 'overview'], function () {
+        Route::apiResource('dashboard', 'SubscriptionOverviewController')->missing(function () {
+            return JsonResponser::send(true, 'Resource not found', null, 404);
+        });
+        Route::put('approve/refund/{id}', 'SubscriptionOverviewController@approveRefund');
+        Route::get('view/receipts/{id}', 'SubscriptionOverviewController@viewReceipts');
+    });
 
     Route::group(['prefix' => 'manage-subscription'], function () {
         Route::apiResource('plan', 'ManageSubscriptionController')->missing(function () {
@@ -38,8 +44,8 @@ Route::group(['prefix' => 'subscriptions', "namespace" => "Subscription"], funct
         Route::apiResource('subscriber', 'ManageSubscribersController')->missing(function () {
             return JsonResponser::send(true, 'Resource not found', null, 404);
         });
-        Route::put('approve/refund/{id}', 'ManageSubscriptionController@approveRefund');
-        Route::get('view/receipts/{id}', 'ManageSubscriptionController@viewReceipts');
+        Route::put('approve/refund/{id}', 'ManageSubscribersController@approveRefund');
+        Route::get('view/receipts/{id}', 'ManageSubscribersController@viewReceipts');
     });
 });
 
