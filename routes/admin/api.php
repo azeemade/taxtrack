@@ -10,7 +10,11 @@ use Illuminate\Support\Facades\Route;
 //         "namespace" => "Admin"
 //     ], function () {
 
-Route::group(['prefix' => 'dashboard', "namespace" => "Dashboard"], function () {});
+Route::group(['prefix' => 'dashboard', "namespace" => "Dashboard"], function () {
+    Route::apiResource('dashboard', 'DashboardOverviewController')->missing(function () {
+        return JsonResponser::send(true, 'Resource not found', null, 404);
+    });
+});
 
 Route::group(['prefix' => 'company', "namespace" => "Company"], function () {
     Route::get('/', 'CompanyManagementController@overview');

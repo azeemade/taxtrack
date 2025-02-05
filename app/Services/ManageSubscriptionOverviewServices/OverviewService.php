@@ -80,7 +80,7 @@ class OverviewService
             'revenueGenerated' => (clone $records)->sum('amount'), // Count total revenue generated
             'revenueGeneratedPercentage' => $revenueGeneratedPercentage,
             'activeSubscriber' => (clone $records)->where('status', GeneralEnums::ACTIVE->value)->count('subscriber_id'),
-            'activesSubscriber' => (clone $records)->where('status', GeneralEnums::EXPIRED->value)->count('subscriber_id'),
+            'inactivesSubscriber' => (clone $records)->where('status', GeneralEnums::EXPIRED->value)->count('subscriber_id'),
             'subscriberCount' => (clone $records)->distinct('subscriber_id')->count('subscriber_id'), // Count total subscribers
             'recentSubscriberCount' => (clone $records)->distinct('subscriber_id')->where('created_at', '>=', $twoMonthsAgo)->count('subscriber_id'), // Count total records
             'plans' => (clone $plans)->get(), // Count active records
