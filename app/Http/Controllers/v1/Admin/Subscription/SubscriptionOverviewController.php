@@ -41,7 +41,7 @@ class SubscriptionOverviewController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', null, 500);
         }
     }
 
@@ -59,9 +59,8 @@ class SubscriptionOverviewController extends Controller
     public function show($id)
     {
         try {
-            $record = SubscriptionHistory::where('id', $id)
-                ->with('plan', 'subscriptionRefund', 'subscriptionCancellation')
-                ->first();
+            $record = SubscriptionHistory::with('plan', 'subscriptionRefund', 'subscriptionCancellation')
+            ->find($id);
 
             if (!$record) {
                 return JsonResponser::send(false, 'Subscription not found.');
