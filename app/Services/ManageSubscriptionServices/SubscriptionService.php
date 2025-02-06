@@ -155,10 +155,11 @@ class SubscriptionService
                 $record->id,
                 $record->subscriber->name,
                 $record->plan->title,
+                $record->status,
                 $record->billed_per,
                 $record->amount,
-                $record->created_at,
-                $record->endDate
+                Carbon::parse($record->created_at),
+                Carbon::parse($record->endDate)
             ];
         });
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'subscription_report.xlsx');

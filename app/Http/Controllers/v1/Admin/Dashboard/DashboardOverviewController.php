@@ -3,16 +3,35 @@
 namespace App\Http\Controllers\v1\Admin\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Shared\SharedFilterRequest;
+use App\Responser\JsonResponser;
+use App\Services\SuperAdminDashboardServices\DashboardService;
 use Illuminate\Http\Request;
 
 class DashboardOverviewController extends Controller
 {
+    protected DashboardService $dashboardService;
+
+    public function __construct(DashboardService $dashboardService)
+    {
+        $this->dashboardService = $dashboardService;
+    }
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(SharedFilterRequest $request)
     {
-        //
+        try {
+
+            $stats = $this->dashboardService->stats($request);
+            $records = [
+                ...$stats,
+            ];
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+        }
     }
 
     /**
