@@ -19,7 +19,7 @@ class OverviewService
         $dateFilter = GeneralHelper::dateFilter($request->date_filter);
 
         $records = SubscriptionHistory::query()
-            ->with('subscriber:id,name', 'plan:id,title')
+            ->with(['subscriber:id,name', 'plan:id,title'])
             ->when($request->q, function ($query) use ($request) {
                 $query->whereRelation('subscriber', 'name', 'LIKE', '%' . $request->q . '%')
                     ->orWhereRelation('plan', 'title', 'LIKE', '%' . $request->q . '%');
@@ -27,8 +27,8 @@ class OverviewService
             ->when($request->status, function ($query) use ($request) {
                 $query->where('status', $request->status);
             })
-            ->when($dateFilter, function ($query) use ($dateFilter) {
-                return $query->where('created_at', '>=', $dateFilter);
+            ->when(is_array($dateFilter) && count($dateFilter) === 2, function ($query) use ($dateFilter) {
+                $query->whereBetween('created_at', [$dateFilter[0], $dateFilter[1]]);
             })
             ->when($request->startDate && $request->endDate, function ($query) use ($request) {
                 $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
