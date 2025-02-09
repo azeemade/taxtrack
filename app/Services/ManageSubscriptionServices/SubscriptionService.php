@@ -155,6 +155,7 @@ class SubscriptionService
                 $record->id,
                 $record->subscriber->name,
                 $record->plan->title,
+                $record->status,
                 $record->billed_per,
                 $record->amount,
                 $record->created_at,

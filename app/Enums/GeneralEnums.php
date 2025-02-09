@@ -10,4 +10,5 @@ enum GeneralEnums: string
     case APPROVED = 'approved';
     case SUSPENDED = 'suspended';
     case DECLINED = 'declined';
+    case EXPIRED = 'expired';
 }
