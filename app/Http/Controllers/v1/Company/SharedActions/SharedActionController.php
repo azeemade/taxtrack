@@ -77,7 +77,7 @@ class SharedActionController extends Controller
     {
         $request = app()->make(SharedReminderRequest::class);
 
-        $this->sharedActionService->sendReminder([...$request->validated(), 'primary_email' => $model->customer->email]);
+        $this->sharedActionService->sendReminder([...$request->validated(), 'primary_email' => $model->previewables['entity_data']['email']]);
 
         return ["message" => 'Reminder sent successfully', "record" => null];
     }
@@ -120,7 +120,6 @@ class SharedActionController extends Controller
 
     protected function cleanRequest($request): Request | SharedReminderRequest
     {
-        // dd($request);
         return $request;
     }
 }

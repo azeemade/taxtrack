@@ -11,7 +11,6 @@ use App\Services\EmailSettings\EmailSettingsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Request;
 
 class SharedActionService
 {

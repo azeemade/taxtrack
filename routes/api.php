@@ -2,6 +2,7 @@
 
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Route;
 
 Route::group([
@@ -59,7 +60,7 @@ Route::group([
                 ], function () {
                     Route::apiResource('invoices', 'InvoiceController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                     Route::get('/invoices/create/generateId', 'InvoiceController@generateInvoiceId');
                     Route::post('/invoices/{id}/record-payment', 'InvoiceController@recordPayment');
@@ -73,7 +74,7 @@ Route::group([
                 ], function () {
                     Route::apiResource('quotes', 'QuoteController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                     Route::get('/quotes/create/generateId', 'QuoteController@generateQuoteId');
                 });
@@ -100,7 +101,7 @@ Route::group([
                 ], function () {
                     Route::apiResource('credit-notes', 'CreditNoteController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                 });
             });
@@ -116,7 +117,7 @@ Route::group([
                 ], function () {
                     Route::apiResource('suppliers', 'VendorController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                     Route::group([
                         "prefix" => "suppliers",
@@ -129,6 +130,16 @@ Route::group([
                         Route::delete('/delete{id}', 'VendorController@delete');
                         Route::get('/generate/reference', 'VendorController@generateReference');
                     });
+                });
+                //purchase orders
+                Route::group([
+                    "namespace" => "PurchaseOrder"
+                ], function () {
+                    Route::apiResource('orders', 'OrderController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                    Route::get('/orders/generate/purchase_no', 'OrderController@generateOrderNumber');
                 });
             });
 
@@ -144,7 +155,7 @@ Route::group([
                     //cards
                     Route::apiResource('cards', 'CardController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                     Route::group([
                         "prefix" => "cards",
@@ -156,7 +167,7 @@ Route::group([
                     //banks
                     Route::apiResource('bank-accounts', 'BankAccountController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                     Route::group([
                         "prefix" => "bank-accounts",
@@ -199,7 +210,7 @@ Route::group([
                 ], function () {
                     Route::apiResource('users', 'UsersController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                     Route::put('users/toggle-status/{user}', 'UsersController@toggleStatus');
                 });
@@ -208,7 +219,7 @@ Route::group([
                 ], function () {
                     Route::apiResource('roles', 'RolesController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                     Route::get('roles/{role}/permissions', 'RolesController@permissions');
                     Route::put('roles/toggle-status/{role}', 'RolesController@toggleStatus');
@@ -232,7 +243,7 @@ Route::group([
                 ], function () {
                     Route::apiResource('email', 'EmailSettingsController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                 });
                 Route::group([
@@ -283,7 +294,7 @@ Route::group([
                 ], function () {
                     Route::apiResource('taxes', 'TaxRateController')
                         ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, 404);
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                 });
             });
