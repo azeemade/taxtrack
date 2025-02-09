@@ -75,9 +75,12 @@ class UserService
                 $record->id,
                 $record->name,
                 $record->status,
-                $record->role->roleID ?? null,
-                $record->role->name ?? null,
-                $record->permissions_count ?? 0,
+                implode(',', $record->roles->pluck('roleID')->toArray()) ?? null,
+                implode(
+                    ',',
+                    $record->roles->pluck('name')->toArray(),
+                ),
+                $record->user_permissions_count ?? 0,
                 Carbon::parse($record->created_at)->toFormattedDayDateString()
             ];
         });
