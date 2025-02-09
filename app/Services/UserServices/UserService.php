@@ -39,7 +39,7 @@ class UserService
             ->when($request->status, function ($query) use ($request) {
                 $query->where('status', $request->status);
             })
-            ->when($request->startDate && $request->endDate, function ($query) use ($request) {
+            ->when($request->start_date && $request->end_date, function ($query) use ($request) {
                 $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
             })
             ->when($request->sortBy == 'alphabetically', function ($query) {
@@ -75,9 +75,12 @@ class UserService
                 $record->id,
                 $record->name,
                 $record->status,
-                $record->role->roleID,
-                $record->role->name,
-                $record->permissions_count,
+                implode(',', $record->roles->pluck('roleID')->toArray()) ?? null,
+                implode(
+                    ',',
+                    $record->roles->pluck('name')->toArray(),
+                ),
+                $record->user_permissions_count ?? 0,
                 Carbon::parse($record->created_at)->toFormattedDayDateString()
             ];
         });

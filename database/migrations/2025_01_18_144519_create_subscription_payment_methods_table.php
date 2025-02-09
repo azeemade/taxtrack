@@ -11,17 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('subscribers', function (Blueprint $table) {
+        Schema::create('subscription_payment_methods', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->string('card_number');
             $table->string('name');
-            $table->decimal('credit_balance', 15, 2)->default(0.00);
-            $table->unsignedBigInteger('current_subscription_plan_id');
+            $table->string('issuer');
+            $table->string('expiry_date');
+            $table->string('cvv');
             $table->unsignedBigInteger('company_id');
-            $table->unsignedBigInteger('user_id')->nullable();
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null')->onUpdate('set null');
+            $table->unsignedBigInteger('created_by');
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null')->onUpdate('set null');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreign('current_subscription_plan_id')->references('id')->on('subscription_plans')->onDelete('cascade')->onUpdate('cascade');
-            $table->softDeletes();
             $table->timestamps();
         });
     }
@@ -31,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('subscribers');
+        Schema::dropIfExists('subscription_payment_methods');
     }
 };

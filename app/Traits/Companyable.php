@@ -15,12 +15,11 @@ trait Companyable
                 if (!$model->isDirty('created_by') && Auth::check()) {
                     $model->created_by = Auth::id();
                 }
+
+                $hasCompanyId = $model->attributesToArray()['company_id'] ?? false;
                 if (
                     !$model->isDirty('company_id') &&
-                    Auth::check() &&
-                    method_exists(Auth::user(), 'company')
-                    // &&
-                    // $model->hasAttribute('company_id')
+                    Auth::check() && $hasCompanyId
                 ) {
                     $model->company_id = Auth::user()->company->id ?? null;
                 }

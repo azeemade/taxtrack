@@ -17,7 +17,7 @@ return new class extends Migration
             $table->date('effective_from');
             $table->string('status')->comment('pending, active');
             $table->string('reason');
-            $table->string('additionalInformation')->nullable();
+            $table->string('additional_information')->nullable();
             $table->unsignedBigInteger('subscriber_id');
             $table->unsignedBigInteger('company_id');
             $table->unsignedBigInteger('subscription_plan_id');

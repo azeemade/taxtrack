@@ -36,7 +36,7 @@ class SubscriptionService
             ->when($dateFilter, function ($query) use ($dateFilter) {
                 return $query->where('created_at', '>=', $dateFilter);
             })
-            ->when($request->startDate && $request->endDate, function ($query) use ($request) {
+            ->when($request->start_date && $request->end_date, function ($query) use ($request) {
                 $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
             })
             ->when($request->sortBy == 'alphabetically', function ($query) {
@@ -158,8 +158,8 @@ class SubscriptionService
                 $record->status,
                 $record->billed_per,
                 $record->amount,
-                Carbon::parse($record->created_at),
-                Carbon::parse($record->endDate)
+                $record->created_at,
+                $record->end_date
             ];
         });
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'subscription_report.xlsx');
@@ -275,7 +275,7 @@ class SubscriptionService
             'billed_per' => $data['billed_per'],
             'amount' => $data['amount'],
             'subscribed_at' => now(),
-            'endDate' => $data['end_date'],
+            'end_date' => $data['end_date'],
             'status' => 'active',
             'payment_type' => $data['payment_type'],
             'paid_via' => $data['paid_via'],

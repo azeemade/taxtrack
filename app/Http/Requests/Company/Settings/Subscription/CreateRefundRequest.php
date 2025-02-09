@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Company\Settings\Subscription;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreUserRequest extends FormRequest
+class CreateRefundRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,10 +22,8 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "name" => 'required|string',
-            "email" => 'required|unique:users,email',
-            "phone_number" => 'required|unique:users,phone_number',
-            "roles" => 'required'
+            'reason' => 'required|array',
+            'additional_information' => 'nullable|string|max:250'
         ];
     }
 }

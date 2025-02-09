@@ -30,7 +30,7 @@ class SubscriberService
             ->when($dateFilter, function ($query) use ($dateFilter) {
                 return $query->where('created_at', '>=', $dateFilter);
             })
-            ->when($request->startDate && $request->endDate, function ($query) use ($request) {
+            ->when($request->start_date && $request->end_date, function ($query) use ($request) {
                 $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
             })
             ->when($request->sortBy == 'alphabetically', function ($query) {
@@ -82,7 +82,7 @@ class SubscriberService
                 $record->billed_per,
                 $record->amount,
                 Carbon::parse($record->created_at),
-                Carbon::parse($record->endDate)
+                Carbon::parse($record->end_date)
             ];
         });
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'subscribers_report.xlsx');

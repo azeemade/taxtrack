@@ -16,9 +16,9 @@ return new class extends Migration
             $table->date('request_date');
             $table->string('refund_type')->comment('full-refund, partial-refund');
             $table->decimal('amount_refunded')->default(0.00);
-            $table->string('status')->comment('pending, approved, declined');
+            $table->string('status')->comment('pending, approved, declined, processing');
             $table->string('reason');
-            $table->string('additionalInformation')->nullable();
+            $table->string('additional_information')->nullable();
             $table->date('approved_on')->nullable();
             $table->unsignedBigInteger('approved_by')->nullable();
             $table->unsignedBigInteger('subscriber_id');
