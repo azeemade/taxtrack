@@ -35,7 +35,7 @@ class UserService
             ->when($dateFilter, function ($query) use ($dateFilter) {
                 return $query->where('created_at', '>=', $dateFilter);
             })
-            ->when($request->startDate && $request->endDate, function ($query) use ($request) {
+            ->when($request->start_date && $request->end_date, function ($query) use ($request) {
                 $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
             })
             ->when($request->sortBy == 'alphabetically', function ($query) {

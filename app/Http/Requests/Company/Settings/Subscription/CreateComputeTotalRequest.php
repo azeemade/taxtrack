@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Company\Settings\Subscription;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreUserRequest extends FormRequest
+class CreateComputeTotalRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,10 +22,9 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "name" => 'required|string',
-            "email" => 'required|unique:users,email',
-            "phone_number" => 'required|unique:users,phone_number',
-            "roles" => 'required'
+            'duration' => 'required|string|in:monthly,yearly',
+            'subscription_plan_id' => 'required|integer|exists:subscription_plans,id',
+            'additional_users_count' => 'nullable|integer|min:0'
         ];
     }
 }
