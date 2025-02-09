@@ -230,7 +230,7 @@ Route::group([
                 Route::group([
                     "namespace" => "EmailSettings"
                 ], function () {
-                    Route::apiResource('email-settings', 'EmailSettingsController')
+                    Route::apiResource('email', 'EmailSettingsController')
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, 404);
                         });
@@ -249,9 +249,35 @@ Route::group([
                     "namespace" => "Subscriptions"
                 ], function () {});
                 Route::group([
-                    'prefix' => 'invoicing-settings',
-                    "namespace" => "InvoicingSettings"
-                ], function () {});
+                    'prefix' => 'document',
+                    "namespace" => "DocumentSettings"
+                ], function () {
+                    Route::group([
+                        'prefix' => 'basic',
+                    ], function () {
+                        Route::get('/', 'BasicSettingsController@view');
+                        Route::patch('/modify', 'BasicSettingsController@modify');
+                    });
+                    Route::group([
+                        'prefix' => 'default',
+                    ], function () {
+                        Route::get('/', 'DefaultSettingsController@view');
+                        Route::patch('/modify', 'DefaultSettingsController@modify');
+                    });
+                    Route::group([
+                        'prefix' => 'default',
+                    ], function () {
+                        Route::get('/', 'DefaultSettingsController@view');
+                        Route::patch('/modify', 'DefaultSettingsController@modify');
+                    });
+                    Route::group([
+                        'prefix' => 'invoice-remainder',
+                    ], function () {
+                        Route::get('/', 'InvoiceRemainderController@index');
+                        Route::get('/view/{id}', 'InvoiceRemainderController@view');
+                        Route::patch('/modify', 'InvoiceRemainderController@modify');
+                    });
+                });
                 Route::group([
                     "namespace" => "TaxRate"
                 ], function () {
@@ -283,5 +309,6 @@ Route::group([
         Route::get('/card-brands', 'GuestController@cardBrands');
         Route::get('/all-banks', 'GuestController@allBanks');
         Route::get('/all-email-templates', 'GuestController@allEmailTemplate');
+        Route::get('/fonts', 'GuestController@fonts');
     });
 });

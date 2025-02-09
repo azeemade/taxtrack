@@ -10,6 +10,7 @@ use App\Models\EmailTemplate;
 use App\Models\ErrorLog;
 use App\Models\User;
 use App\Responser\JsonResponser;
+use App\Services\ThirdPartyApi\FontServiceApi;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -191,6 +192,18 @@ class GuestController extends Controller
                 ->get();
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function fonts()
+    {
+        try {
+            $fontService = new FontServiceApi();
+            $records = $fontService->getFonts();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records->json(), Response::HTTP_OK);
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
