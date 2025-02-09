@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 trait Companyable
 {
@@ -16,7 +17,8 @@ trait Companyable
                     $model->created_by = Auth::id();
                 }
 
-                $hasCompanyId = $model->attributesToArray()['company_id'] ?? false;
+                $tableName = $model->getTable();
+                $hasCompanyId = Schema::hasColumn($tableName, 'company_id');
                 if (
                     !$model->isDirty('company_id') &&
                     Auth::check() && $hasCompanyId
