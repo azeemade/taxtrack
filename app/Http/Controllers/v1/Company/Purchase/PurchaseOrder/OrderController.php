@@ -95,6 +95,19 @@ class OrderController extends Controller
         }
     }
 
+    public function purchaseOrderLineItems(int $id)
+    {
+        try {
+            $records = $this->purchaseOrderService->lineItems($id);
+
+            return JsonResponser::send(false, 'Record(s) retrieved successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
     /**
      * Update the specified resource in storage.
      */

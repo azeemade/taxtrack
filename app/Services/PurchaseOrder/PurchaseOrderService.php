@@ -7,10 +7,7 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
-use App\Models\Customer;
-use App\Models\Invoice;
 use App\Models\PurchaseOrder;
-use App\Models\Quote;
 use App\Models\Vendor;
 use App\Services\PaymentRecords\PaymentRecordService;
 use App\Services\SharedServices\SharedActionService;
@@ -86,6 +83,19 @@ class PurchaseOrderService
         }
 
         return $record;
+    }
+
+    public function lineItems(int $id)
+    {
+        $record = PurchaseOrder::find($id);
+
+        if (!$record) {
+            throw new BadRequestException("Purchase order not found!", Response::HTTP_NOT_FOUND);
+        }
+
+        return $record->lineItems->load([
+            'category:id,name'
+        ]);
     }
 
     public function list($request)
