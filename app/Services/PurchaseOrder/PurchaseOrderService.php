@@ -9,7 +9,6 @@ use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
 use App\Models\PurchaseOrder;
 use App\Models\Vendor;
-use App\Services\PaymentRecords\PaymentRecordService;
 use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
@@ -18,13 +17,10 @@ use Maatwebsite\Excel\Facades\Excel;
 class PurchaseOrderService
 {
     protected SharedActionService $sharedActionServices;
-    protected PaymentRecordService $paymentRecordService;
     public function __construct(
         SharedActionService $sharedActionServices,
-        PaymentRecordService $paymentRecordService
     ) {
         $this->sharedActionServices = $sharedActionServices;
-        $this->paymentRecordService = $paymentRecordService;
     }
 
     public function updateOrCreate($request)
@@ -101,9 +97,9 @@ class PurchaseOrderService
     public function list($request)
     {
         $records = PurchaseOrder::query()
-            ->select('id', 'purchase_orderID', 'purchase_order_date', 'purchase_order_value', 'share_status', 'vendor_id', 'invoice_id')
+            ->select('id', 'recordable_id', 'recordable_type', 'purchase_order_value', 'share_status', 'vendor_id', 'invoice_id')
             ->with([
-                'vendor:id,vendor_name,referenceID',
+                'recordable:id,vendor_id' => ['vendor:id,vendor_name,referenceID'],
                 'purchaseInvoice:id,purchase_invoiceID',
                 'lineItems'
             ])

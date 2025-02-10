@@ -20,9 +20,6 @@ class InvoiceController extends Controller
     {
         $this->purchaseInvoiceService = $purchaseInvoiceService;
     }
-    /** 
-     * Duplicate invoice not done yet
-     */
 
     /**
      * Display a listing of the resource.
@@ -34,14 +31,6 @@ class InvoiceController extends Controller
 
             if ($request->export) {
                 return $this->purchaseInvoiceService->export($records, $request->export);
-            }
-
-            if ($request["paginate"]) {
-                $stats = $this->purchaseInvoiceService->stats($request);
-                $records = [
-                    ...$stats,
-                    'data' => $records
-                ];
             }
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
@@ -134,19 +123,6 @@ class InvoiceController extends Controller
             $records = $this->purchaseInvoiceService->lineItems($id);
 
             return JsonResponser::send(false, 'Record(s) retrieved successfully', $records, Response::HTTP_OK);
-        } catch (BadRequestException $e) {
-            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
-        }
-    }
-
-    public function recordPayment(RecordPaymentRequest $request, int $id)
-    {
-        try {
-            // $records = $this->purchaseInvoiceService->lineItems($id);
-
-            // return JsonResponser::send(false, 'Record(s) retrieved successfully', $records, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {

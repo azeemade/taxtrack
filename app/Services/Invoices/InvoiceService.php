@@ -2,18 +2,14 @@
 
 namespace App\Services\Invoices;
 
-use App\Enums\DocumentableTypeEnums;
 use App\Enums\FinancialDocumentStatusEnums;
-use App\Enums\GeneralEnums;
 use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\PaymentRecord;
 use App\Models\Quote;
-use App\Services\PaymentRecords\PaymentRecordService;
 use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
@@ -22,13 +18,10 @@ use Maatwebsite\Excel\Facades\Excel;
 class InvoiceService
 {
     protected SharedActionService $sharedActionServices;
-    protected PaymentRecordService $paymentRecordService;
     public function __construct(
-        SharedActionService $sharedActionServices,
-        PaymentRecordService $paymentRecordService
+        SharedActionService $sharedActionServices
     ) {
         $this->sharedActionServices = $sharedActionServices;
-        $this->paymentRecordService = $paymentRecordService;
     }
 
     public function updateOrCreate($request)

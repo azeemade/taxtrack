@@ -2,19 +2,17 @@
 
 namespace App\Http\Controllers\v1\Company\Sales\SalesInvoice;
 
-use App\Enums\DocumentableModelEnums;
 use App\Enums\FinancialDocumentStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\CreateBadDebtRequest;
+use App\Http\Requests\Company\Purchase\Payment\RecordPaymentRequest;
 use App\Http\Requests\Company\Sales\Invoices\CreateInvoiceRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
-use App\Models\BadDebt;
 use App\Models\Invoice;
 use App\Responser\JsonResponser;
 use App\Services\Invoices\InvoiceService;
 use App\Services\PaymentRecords\PaymentRecordService;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -96,18 +94,12 @@ class InvoiceController extends Controller
      * 
      * @return App\Responser\JsonResponser JsonResponser
      */
-    public function recordPayment(Request $request, $id)
+    public function recordPayment(RecordPaymentRequest $request, $id)
     {
         try {
             DB::beginTransaction();
 
-            $record = $this->paymentRecordService->create([
-                ...$request->validated(),
-                'recordable_id' => $id,
-                'recordable_type' => DocumentableModelEnums::INVOICE->value,
-                'paid_on' => $request->paid_on ?? now(),
-                'paymentID' => $this->paymentRecordService->generatePaymentId()
-            ]);
+            $record = $this->paymentRecordService->create($request->validated());
 
             DB::commit();
             return JsonResponser::send(false, 'Invoice issued successfully', $record, Response::HTTP_OK);

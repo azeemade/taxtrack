@@ -35,14 +35,6 @@ class OrderController extends Controller
                 return $this->purchaseOrderService->export($records, $request->export);
             }
 
-            if ($request["paginate"]) {
-                $stats = $this->purchaseOrderService->stats($request);
-                $records = [
-                    ...$stats,
-                    'data' => $records
-                ];
-            }
-
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());

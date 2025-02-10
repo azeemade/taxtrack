@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('payment_methods', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->unsignedBigInteger('method_id');
-            $table->string('method_type'); //bank, card
+            $table->morphs('methodable'); 
             $table->string('referenceID');
             $table->boolean('is_active')->default(true);
             $table->unsignedBigInteger('created_by');
