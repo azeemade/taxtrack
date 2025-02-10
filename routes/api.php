@@ -139,7 +139,29 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
-                    Route::get('/orders/generate/purchase_no', 'OrderController@generateOrderNumber');
+                    Route::get('/orders/generate/purchase-no', 'OrderController@generateOrderNumber');
+                    Route::get('/orders/{id}/line-items', 'OrderController@purchaseOrderLineItems');
+                });
+                //purchase invoice
+                Route::group([
+                    "namespace" => "PurchaseInvoice"
+                ], function () {
+                    Route::apiResource('invoices', 'InvoiceController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                    Route::get('/invoices/generate/invoiceID', 'InvoiceController@generateInvoiceNumber');
+                    Route::get('/invoices/{id}/purchase-order/{purchase_order}', 'InvoiceController@matchPurchaseOrder');
+                    Route::get('/invoices/{id}/line-items', 'InvoiceController@purchaseInvoiceLineItems');
+                });
+                //Record payment
+                Route::group([
+                    "namespace" => "RecordPayment"
+                ], function () {
+                    Route::apiResource('record-payments', 'RecordPaymentController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
                 });
             });
 

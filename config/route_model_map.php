@@ -1,16 +1,16 @@
 <?php
 
 return [
-    'invoices' => \App\Models\Invoice::class,
-    'quotes' => \App\Models\Quote::class,
-    'customers' => \App\Models\Customer::class,
-    'credit-notes' => \App\Models\CreditNote::class,
-    'suppliers' => \App\Models\Vendor::class,
-    'email' => \App\Models\CompanyEmailTemplate::class,
-    'taxes' => \App\Models\TaxRate::class,
-    'purchase/vendor-bills' => \App\Models\VendorBill::class,
-    'purchase/debit-notes' => \App\Models\DebitNote::class,
-    'purchase/invoices' => \App\Models\PurchaseInvoice::class,
-    'orders' => \App\Models\PurchaseOrder::class,
-    'purchase/transactions' => \App\Models\Transaction::class,
+    'sales/invoices' => \App\Models\Invoice::class,
+    'sales/quotes' => \App\Models\Quote::class,
+    'sales/customers' => \App\Models\Customer::class,
+    'sales/credit-notes' => \App\Models\CreditNote::class,
+    'purchases/suppliers' => \App\Models\Vendor::class,
+    'settings/email' => \App\Models\CompanyEmailTemplate::class,
+    'settings/taxes' => \App\Models\TaxRate::class,
+    'purchases/vendor-bills' => \App\Models\VendorBill::class,
+    'purchases/debit-notes' => \App\Models\DebitNote::class,
+    'purchases/invoices' => \App\Models\PurchaseInvoice::class,
+    'purchases/orders' => \App\Models\PurchaseOrder::class,
+    'purchases/transactions' => \App\Models\Transaction::class,
 ];
