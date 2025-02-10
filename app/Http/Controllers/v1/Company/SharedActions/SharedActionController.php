@@ -22,11 +22,10 @@ class SharedActionController extends Controller
         $this->sharedActionService = $sharedActionService;
     }
 
-    // public function __invoke(Request $request, $prefix,  $modelName, $id, $action)
     public function __invoke($prefix = null,  $modelName, $id, $action = null)
     {
         try {
-            $modelClass = config("route_model_map.$modelName");
+            $modelClass = config("route_model_map.$prefix/$modelName");
 
             $model = $this->getModel($modelClass, $id);
             $response = $this->getAction($action, $model, request()->all(), $id);
