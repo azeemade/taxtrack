@@ -13,4 +13,5 @@ enum DocumentableModelEnums: string
     case QUOTE = 'App\Models\Quote';
     case PURCHASE_ORDER = 'App\Models\PurchaseOrder';
     case PURCHASE_INVOICE = 'App\Models\PurchaseInvoice';
+    case VENDOR_BILLS = 'App\Models\VendorBill';
 }

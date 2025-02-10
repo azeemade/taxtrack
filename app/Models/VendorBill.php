@@ -17,4 +17,9 @@ class VendorBill extends Model
 
     protected $guarded = ['id'];
     protected $appends = ['amount_due', 'total_amount_paid'];
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
 }

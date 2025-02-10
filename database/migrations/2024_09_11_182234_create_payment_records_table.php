@@ -19,12 +19,15 @@ return new class extends Migration
             $table->decimal('amount_paid', 15, 2)->default(0.00);
             $table->decimal('amount_due', 15, 2)->default(0.00);
             $table->string('paymentID');
+            $table->string('payment_type')->comment('debit, credit');
             $table->unsignedBigInteger('payment_method_id');
             $table->mediumText('payment_proof')->nullable();
             $table->mediumText('attachments')->nullable();
             $table->text('additional_notes')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('company_id');
+            $table->unsignedBigInteger('parent_id')->nullable();
+            $table->foreign('parent_id')->references('id')->on('payment_records')->onDelete('set null');
             $table->foreign('payment_method_id')->references('id')->on('payment_methods')->onDelete('cascade');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
