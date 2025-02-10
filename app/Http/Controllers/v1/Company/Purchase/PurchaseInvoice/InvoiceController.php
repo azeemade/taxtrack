@@ -2,10 +2,155 @@
 
 namespace App\Http\Controllers\v1\Company\Purchase\PurchaseInvoice;
 
+use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\Company\Purchase\Payment\RecordPaymentRequest;
+use App\Http\Requests\Company\Purchase\PurchaseInvoice\CreatePurchaseInvoiceRequest;
+use App\Http\Requests\Shared\SharedFilterRequest;
+use App\Responser\JsonResponser;
+use App\Services\PurchaseInvoice\PurchaseInvoiceService;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
-    //
+    protected PurchaseInvoiceService $purchaseInvoiceService;
+
+    public function __construct(PurchaseInvoiceService $purchaseInvoiceService)
+    {
+        $this->purchaseInvoiceService = $purchaseInvoiceService;
+    }
+    /** 
+     * Duplicate invoice not done yet
+     */
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(SharedFilterRequest $request)
+    {
+        try {
+            $records = $this->purchaseInvoiceService->list($request);
+
+            if ($request->export) {
+                return $this->purchaseInvoiceService->export($records, $request->export);
+            }
+
+            if ($request["paginate"]) {
+                $stats = $this->purchaseInvoiceService->stats($request);
+                $records = [
+                    ...$stats,
+                    'data' => $records
+                ];
+            }
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function generateInvoiceNumber()
+    {
+        try {
+            $record = $this->purchaseInvoiceService->generatePurchaseInvoiceId();
+            return JsonResponser::send(false, 'Purchase invoice number generated successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function store(CreatePurchaseInvoiceRequest $request)
+    {
+        try {
+            DB::beginTransaction();
+            $record = $this->purchaseInvoiceService->updateOrCreate($request->validated());
+            DB::commit();
+            return JsonResponser::send(false, 'Purchase invoice issued successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(int $id)
+    {
+        try {
+            $record = $this->purchaseInvoiceService->view($id);
+
+            return JsonResponser::send(false, 'Record retrieved successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function matchPurchaseOrder(int $id, int $purchase_order_id)
+    {
+        try {
+            $record = $this->purchaseInvoiceService->matchPurchaseOrder($id, $purchase_order_id);
+
+            return JsonResponser::send(false, 'Purchase invoice matched successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(CreatePurchaseInvoiceRequest $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $record = $this->purchaseInvoiceService->updateOrCreate([...$request->validated(), "id" => $id]);
+            DB::commit();
+            return JsonResponser::send(false, 'Purchase invoice updated successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function purchaseInvoiceLineItems(int $id)
+    {
+        try {
+            $records = $this->purchaseInvoiceService->lineItems($id);
+
+            return JsonResponser::send(false, 'Record(s) retrieved successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function recordPayment(RecordPaymentRequest $request, int $id)
+    {
+        try {
+            // $records = $this->purchaseInvoiceService->lineItems($id);
+
+            // return JsonResponser::send(false, 'Record(s) retrieved successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 }

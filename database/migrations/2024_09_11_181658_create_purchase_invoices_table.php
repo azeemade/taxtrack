@@ -36,8 +36,8 @@ return new class extends Migration
             $table->date('recurring_next_due_date')->nullable();
             $table->date('recurring_start_date')->nullable();
             $table->date('recurring_end_date')->nullable();
-            $table->unsignedInteger('repeat')->default(1);
-            $table->string('repeat_period')->comment('month, day, week, year');
+            $table->unsignedInteger('repeat')->default(1)->nullable();
+            $table->string('repeat_period')->nullable()->comment('month, day, week, year');
             $table->mediumText('preview_link')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('parent_id')->nullable();
