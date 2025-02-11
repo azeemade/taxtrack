@@ -131,6 +131,7 @@ Route::group([
                         Route::get('/generate/reference', 'VendorController@generateReference');
                     });
                 });
+
                 //purchase orders
                 Route::group([
                     "namespace" => "PurchaseOrder"
@@ -142,6 +143,7 @@ Route::group([
                     Route::get('/orders/generate/purchase-no', 'OrderController@generateOrderNumber');
                     Route::get('/orders/{id}/line-items', 'OrderController@purchaseOrderLineItems');
                 });
+
                 //purchase invoice
                 Route::group([
                     "namespace" => "PurchaseInvoice"
@@ -154,6 +156,7 @@ Route::group([
                     Route::get('/invoices/{id}/purchase-order/{purchase_order}', 'InvoiceController@matchPurchaseOrder');
                     Route::get('/invoices/{id}/line-items', 'InvoiceController@purchaseInvoiceLineItems');
                 });
+
                 //Record payment
                 Route::group([
                     "namespace" => "RecordPayment"
@@ -162,6 +165,19 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
+                });
+
+                //Bills
+                Route::group([
+                    "namespace" => "Bills"
+                ], function () {
+                    Route::apiResource('bills', 'BillsController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                    Route::get('/bills/generate/billID', 'BillsController@generateReference');
+                    Route::get('/bills/{id}/void', 'BillsController@voidBill');
+                    Route::post('/bills/{id}/recurring', 'BillsController@recurringBill');
                 });
             });
 

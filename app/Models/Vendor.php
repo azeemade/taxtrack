@@ -53,7 +53,7 @@ class Vendor extends Model
     public function getOutstandingBillsAttribute()
     {
         return $this->vendorBills->reduce(function ($carry, $item) {
-            return $carry + $item->latestPaymentRecord->amount_due ?? $this->{$item->vendor_bill_total};
+            return $carry + $item->latestPaymentRecord?->amount_due ?? $this->{$item->vendor_bill_total};
         }, 0);
     }
 

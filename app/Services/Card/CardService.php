@@ -4,7 +4,9 @@ namespace App\Services\Card;
 
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
+use App\Helpers\GeneralHelper;
 use App\Models\CardAccount;
+use App\Services\PaymentRecords\PaymentRecordService;
 use App\Services\ThirdPartyApi\CardServiceApi;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
@@ -12,6 +14,12 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class CardService
 {
+    protected PaymentRecordService $paymentRecordService;
+    public function __construct(
+        PaymentRecordService $paymentRecordService
+    ) {
+        $this->paymentRecordService = $paymentRecordService;
+    }
     public function binDetails(string $bin)
     {
         $response = CardServiceApi::cardByBin($bin);
@@ -30,6 +38,10 @@ class CardService
     public function updateOrCreate($request)
     {
         $record = CardAccount::updateOrCreate(["id" => $request["id"] ?? null], [...$request]);
+
+        $record->paymentMethods()->create([
+            'referenceID' => $this->generateRefId()
+        ]);
 
         return $record;
     }
@@ -114,7 +126,8 @@ class CardService
 
     public function cardTransactions($request)
     {
-        return [];
+        $request->is_card = true;
+        return $this->paymentRecordService->list($request);
     }
 
 
@@ -146,5 +159,15 @@ class CardService
             return Excel::download(new GeneralReportExport($records, $recordHeadings), 'card_transactions_report.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
         }
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'card_transactions_report.csv', \Maatwebsite\Excel\Excel::CSV);
+    }
+
+    public function generateRefId()
+    {
+        return GeneralHelper::getModelUniqueOrderlyId([
+            "modelNamespace" => 'App\Models\PaymentMethod',
+            "modelField" => 'referenceID',
+            "prefix" => 'PM-',
+            "idLength" => 4,
+        ]);
     }
 }

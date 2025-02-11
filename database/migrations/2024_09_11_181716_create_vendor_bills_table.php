@@ -26,7 +26,7 @@ return new class extends Migration
             $table->decimal('vat', 15, 2)->default(0.00);
             $table->decimal('tax', 15, 2)->default(0.00);
             $table->decimal('vendor_bill_total', 15, 2)->default(0.00);
-            $table->string('status')->default('draft')->comment('draft, issued');
+            $table->string('status')->default('draft')->comment('draft, issued, void');
             $table->string('payment_status')->nullable()->comment('partial-payment, full-payment');
             $table->mediumText('attachments')->nullable();
             $table->text('terms_and_conditions')->nullable();
@@ -36,7 +36,7 @@ return new class extends Migration
             $table->date('recurring_start_date')->nullable();
             $table->date('recurring_end_date')->nullable();
             $table->unsignedInteger('repeat')->default(1);
-            $table->string('repeat_period')->comment('month, day, week, year');
+            $table->string('repeat_period')->comment('month, day, week, year')->nullable();
             $table->mediumText('preview_link')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('parent_id')->nullable();

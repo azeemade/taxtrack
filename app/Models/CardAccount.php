@@ -58,4 +58,10 @@ class CardAccount extends Model
     {
         return $this->belongsTo(Bank::class, 'issuing_bank_id');
     }
+
+    public function paymentMethods()
+    {
+        return $this->morphMany(PaymentMethod::class, 'methodable');
+    }
+
 }
