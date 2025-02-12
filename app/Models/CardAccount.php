@@ -20,6 +20,7 @@ class CardAccount extends Model
     protected $casts = [
         'is_active' => 'boolean'
     ];
+    protected $hidden = ['cvv', 'expiration_date'];
 
     protected function cvv(): Attribute
     {
@@ -58,4 +59,10 @@ class CardAccount extends Model
     {
         return $this->belongsTo(Bank::class, 'issuing_bank_id');
     }
+
+    public function paymentMethods()
+    {
+        return $this->morphMany(PaymentMethod::class, 'methodable');
+    }
+
 }

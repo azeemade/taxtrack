@@ -7,6 +7,7 @@ use App\Enums\PaymentStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Models\PaymentMethod;
 use App\Models\PaymentRecord;
 use App\Models\Vendor;
 use App\Services\SharedServices\SharedActionService;
@@ -16,12 +17,6 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class PaymentRecordService
 {
-    protected SharedActionService $sharedActionServices;
-    public function __construct(
-        SharedActionService $sharedActionServices
-    ) {
-        $this->sharedActionServices = $sharedActionServices;
-    }
 
     public function modify($request)
     {
@@ -31,6 +26,7 @@ class PaymentRecordService
             ],
             [
                 ...$request,
+                'payment_type' => 'debit',
                 'recordable_id' => $request['model_id'],
                 'recordable_type' => $this->matchRecordableType($request['model']),
                 'paid_on' => $request['paid_on'] ?? now(),
@@ -75,11 +71,9 @@ class PaymentRecordService
             ->when($request->id, function ($query) use ($request) {
                 return $query->where('recordable_id', $request->id);
             })
-            ->select('id', 'recordable_id', 'recordable_type', 'paymentID', 'paid_on', 'amount_paid', 'amount_due', 'payment_type')
+            ->select('id', 'recordable_id', 'recordable_type', 'paymentID', 'paid_on', 'amount_paid', 'amount_due', 'payment_type', 'status', 'payment_method_id')
             ->with([
-                'recordable:id,vendor_id,vendor_billID,share_status' => ['vendor:id,vendor_name,referenceID'],
-                'purchaseInvoice:id,purchase_invoiceID',
-                'lineItems'
+                'recordable:id,vendor_id,vendor_billID,share_status' => ['vendor:id,vendor_name,referenceID']
             ])
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
@@ -97,6 +91,31 @@ class PaymentRecordService
             })
             ->when($request->status, function ($query) use ($request) {
                 return $query->whereRelation('recordable', 'status', $request->status);
+            })
+            ->when($request->is_card, function ($query) {
+                return $query->whereRelation('paymentMethod', 'methodable_type', 'App\Models\CardAccount')
+                    ->with(
+                        [
+                            'paymentMethod:id,methodable_id,methodable_type' => [
+                                'methodable:id,holder_name,issuing_bank_id,card_brand_id' => [
+                                    'cardBrand:id,name',
+                                    'bank:id,name'
+                                ]
+                            ]
+                        ]
+                    );
+            })
+            ->when($request->is_bank, function ($query) {
+                return $query->whereRelation('paymentMethod', 'methodable_type', 'App\Models\BankAccount')
+                    ->with(
+                        [
+                            'paymentMethod:id,methodable_id,methodable_type' => [
+                                'methodable:id,holder_name,bank_id' => [
+                                    'bank:id,name'
+                                ]
+                            ]
+                        ]
+                    );
             })
             ->when($request->q, function ($query) use ($request) {
                 return $query->where('paymentID', 'LIKE', '%' . $request->q . '%')
@@ -146,12 +165,41 @@ class PaymentRecordService
         ]);
     }
 
+    public function paymentMethods($request, $method)
+    {
+        $limit = $request['limit'] ?? 10;
+        $paginate = $request['paginate'] ?? false;
+
+        $records = PaymentMethod::query()
+            ->select('id', 'methodable_id', 'methodable_type', 'referenceID')
+            ->with([
+                'methodable' => [
+                    'bank:id,name'
+                ]
+            ])
+            ->when($method, function ($query) use ($method) {
+                if ($method == 'card') {
+                    return $query->with([
+                        'methodable.cardBrand:id,name'
+                    ])
+                        ->where('methodable_type', 'App\Models\CardAccount');
+                }
+                return $query->where('methodable_type', 'App\Models\BankAccount');
+            })
+            ->latest();
+
+        if ($paginate) {
+            return $records->paginate($limit);
+        }
+        return $records->get();
+    }
+
     protected function matchRecordableType(string $model)
     {
         return match (true) {
-            $model === 'purchase_invoices' => DocumentableModelEnums::PURCHASE_INVOICE,
-            $model === 'invoices' => DocumentableModelEnums::INVOICE,
-            $model === 'vendor_bills' => DocumentableModelEnums::VENDOR_BILLS,
+            $model === 'purchase_invoices' => DocumentableModelEnums::PURCHASE_INVOICE->value,
+            $model === 'invoices' => DocumentableModelEnums::INVOICE->value,
+            $model === 'vendor_bills' => DocumentableModelEnums::VENDOR_BILLS->value,
             default => throw new BadRequestException("Invalid model provided!", Response::HTTP_BAD_REQUEST),
         };
     }

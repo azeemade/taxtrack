@@ -4,13 +4,22 @@ namespace App\Services\BankAccount;
 
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
+use App\Helpers\GeneralHelper;
 use App\Models\BankAccount;
+use App\Services\PaymentRecords\PaymentRecordService;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
 use Maatwebsite\Excel\Facades\Excel;
 
 class BankAccountService
 {
+    protected PaymentRecordService $paymentRecordService;
+    public function __construct(
+        PaymentRecordService $paymentRecordService
+    ) {
+        $this->paymentRecordService = $paymentRecordService;
+    }
+
     public function bankAccountTypes()
     {
         return [
@@ -31,6 +40,10 @@ class BankAccountService
     public function updateOrCreate($request)
     {
         $record = BankAccount::updateOrCreate(["id" => $request["id"] ?? null], [...$request]);
+
+        $record->paymentMethods()->create([
+            'referenceID' => $this->generateRefId()
+        ]);
 
         return $record;
     }
@@ -137,7 +150,8 @@ class BankAccountService
 
     public function bankTransactions($request)
     {
-        return [];
+        $request->is_bank = true;
+        return $this->paymentRecordService->list($request);
     }
 
     public function stats($request)
@@ -173,5 +187,15 @@ class BankAccountService
     protected function connectToBankService($request) //not completed
     {
         return [];
+    }
+
+    public function generateRefId()
+    {
+        return GeneralHelper::getModelUniqueOrderlyId([
+            "modelNamespace" => 'App\Models\PaymentMethod',
+            "modelField" => 'referenceID',
+            "prefix" => 'PM-',
+            "idLength" => 4,
+        ]);
     }
 }

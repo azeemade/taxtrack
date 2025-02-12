@@ -12,6 +12,7 @@ return [
     'purchases/debit-notes' => \App\Models\DebitNote::class,
     'purchases/invoices' => \App\Models\PurchaseInvoice::class,
     'purchases/orders' => \App\Models\PurchaseOrder::class,
+    'purchases/bills' => \App\Models\VendorBill::class,
     'banking/transactions' => \App\Models\Transaction::class,
     'purchases/record-payments' => \App\Models\PaymentRecord::class,
 ];

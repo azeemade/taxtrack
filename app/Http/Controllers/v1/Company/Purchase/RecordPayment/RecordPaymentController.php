@@ -91,4 +91,22 @@ class RecordPaymentController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function allPaymentMethods(SharedFilterRequest $request, $method = null)
+    {
+        try {
+            DB::beginTransaction();
+
+            $record = $this->paymentRecordService->paymentMethods($request, $method);
+
+            DB::commit();
+            return JsonResponser::send(false, 'Payment record updated successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 }

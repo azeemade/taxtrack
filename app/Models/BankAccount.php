@@ -19,6 +19,7 @@ class BankAccount extends Model
     protected $casts = [
         'is_active' => 'boolean'
     ];
+    protected $hidden = ['userID', 'user_password', 'connected'];
 
     public function bank()
     {

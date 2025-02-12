@@ -18,7 +18,6 @@ class Vendor extends Model
     protected $guarded = ['id'];
     protected $appends = ['outstanding_bills', 'payable_bills'];
     protected $casts = ["is_active" => "boolean"];
-    protected $append = ['allowed_actions'];
 
     public function getAllowedActionsAttribute()
     {
@@ -52,13 +51,19 @@ class Vendor extends Model
 
     public function getOutstandingBillsAttribute()
     {
+        if (!$this->relationLoaded('vendorBills')) {
+            return 0.00;
+        }
         return $this->vendorBills->reduce(function ($carry, $item) {
-            return $carry + $item->latestPaymentRecord->amount_due ?? $this->{$item->vendor_bill_total};
+            return $carry + $item->latestPaymentRecord?->amount_due ?? $this->{$item->vendor_bill_total};
         }, 0);
     }
 
     public function getPayableBillsAttribute()
     {
+        if (!$this->relationLoaded('vendorBills')) {
+            return 0.00;
+        }
         return $this->vendorBills->sum('vendor_bill_total') ?? 0.00;
     }
 }

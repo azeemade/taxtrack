@@ -55,7 +55,7 @@ class PurchaseInvoice extends Model
                 'shipping_charge' => $this->shipping_charge,
                 'additional_charge' => $this->additional_charge
             ],
-            'total' => $this->purchase_order_value,
+            'total' => $this->purchase_invoices_total,
             'terms_and_conditions' => $this->terms_and_conditions,
             'note' => $this->additional_comment
         ];
