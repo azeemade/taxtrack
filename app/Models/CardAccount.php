@@ -20,6 +20,7 @@ class CardAccount extends Model
     protected $casts = [
         'is_active' => 'boolean'
     ];
+    protected $hidden = ['cvv', 'expiration_date'];
 
     protected function cvv(): Attribute
     {

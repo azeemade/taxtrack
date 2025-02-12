@@ -7,6 +7,7 @@ use App\Enums\PaymentStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Models\PaymentMethod;
 use App\Models\PaymentRecord;
 use App\Models\Vendor;
 use App\Services\SharedServices\SharedActionService;
@@ -104,6 +105,18 @@ class PaymentRecordService
                         ]
                     );
             })
+            ->when($request->is_bank, function ($query) {
+                return $query->whereRelation('paymentMethod', 'methodable_type', 'App\Models\BankAccount')
+                    ->with(
+                        [
+                            'paymentMethod:id,methodable_id,methodable_type' => [
+                                'methodable:id,holder_name,bank_id' => [
+                                    'bank:id,name'
+                                ]
+                            ]
+                        ]
+                    );
+            })
             ->when($request->q, function ($query) use ($request) {
                 return $query->where('paymentID', 'LIKE', '%' . $request->q . '%')
                     ->orWhereRelation('recordable', 'vendor_billID', 'LIKE', '%' . $request->q . '%')
@@ -150,6 +163,35 @@ class PaymentRecordService
             "prefix" => 'PAY-',
             "idLength" => 4,
         ]);
+    }
+
+    public function paymentMethods($request, $method)
+    {
+        $limit = $request['limit'] ?? 10;
+        $paginate = $request['paginate'] ?? false;
+
+        $records = PaymentMethod::query()
+            ->select('id', 'methodable_id', 'methodable_type', 'referenceID')
+            ->with([
+                'methodable' => [
+                    'bank:id,name'
+                ]
+            ])
+            ->when($method, function ($query) use ($method) {
+                if ($method == 'card') {
+                    return $query->with([
+                        'methodable.cardBrand:id,name'
+                    ])
+                        ->where('methodable_type', 'App\Models\CardAccount');
+                }
+                return $query->where('methodable_type', 'App\Models\BankAccount');
+            })
+            ->latest();
+
+        if ($paginate) {
+            return $records->paginate($limit);
+        }
+        return $records->get();
     }
 
     protected function matchRecordableType(string $model)

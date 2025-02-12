@@ -165,6 +165,7 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
+                    Route::get('record-payments/all/payment-methods/{method?}', 'RecordPaymentController@allPaymentMethods');
                 });
 
                 //Bills
