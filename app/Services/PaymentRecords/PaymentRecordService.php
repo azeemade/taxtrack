@@ -68,36 +68,49 @@ class PaymentRecordService
     public function list($request)
     {
         $records = PaymentRecord::query()
-            ->when($request->id, function ($query) use ($request) {
-                return $query->where('recordable_id', $request->id);
-            })
-            ->select('id', 'recordable_id', 'recordable_type', 'paymentID', 'paid_on', 'amount_paid', 'amount_due', 'payment_type', 'status', 'payment_method_id')
+            ->when($request->id, fn($query) => $query->where('recordable_id', $request->id))
+            ->select([
+                'id',
+                'recordable_id',
+                'recordable_type',
+                'paymentID',
+                'paid_on',
+                'amount_paid',
+                'amount_due',
+                'payment_type',
+                'status',
+                'payment_method_id'
+            ])
             ->with([
-                'recordable:id,vendor_id,vendor_billID,share_status' => ['vendor:id,vendor_name,referenceID']
+                'recordable:id,vendor_id,vendor_billID,share_status' => [
+                    'vendor:id,vendor_name,referenceID'
+                ]
             ])
             ->when($request->sort_by, function ($query) use ($request) {
-                if ($request->sort_by == "alphabetically") {
-                    return $query->orderBy(
-                        Vendor::select('vendor_name')
-                            ->whereColumn('vendor_id', 'vendors.id')
-                            ->orderBy('vendor_name')
-                            ->limit(1)
-                    );
-                } else if ($request->sort_by == "date_ascending") {
-                    return $query->orderBy('paid_on', 'asc');
-                } else if ($request->sort_by == "date_descending") {
-                    return $query->orderBy('paid_on', 'desc');
+                switch ($request->sort_by) {
+                    case 'alphabetically':
+                        // return $query->orderBy(
+                        //     Vendor::select('vendor_name')
+                        //         ->whereColumn('vendors.id', 'recordable.vendor_id')
+                        //         ->orderBy('vendor_name')
+                        //         ->limit(1)
+                        // );
+                        return $this->orderByVendorName($query);
+                    case 'date_ascending':
+                        return $query->orderBy('paid_on', 'asc');
+                    case 'date_descending':
+                        return $query->orderBy('paid_on', 'desc');
                 }
             })
             ->when($request->status, function ($query) use ($request) {
-                return $query->whereRelation('recordable', 'status', $request->status);
+                return $query->where('status', $request->status);
             })
             ->when($request->is_card, function ($query) {
                 return $query->whereRelation('paymentMethod', 'methodable_type', 'App\Models\CardAccount')
                     ->with(
                         [
                             'paymentMethod:id,methodable_id,methodable_type' => [
-                                'methodable:id,holder_name,issuing_bank_id,card_brand_id' => [
+                                'methodable:id,holder_name,issuing_bank_id,card_brand_id,issuer_number,expiration_date' => [
                                     'cardBrand:id,name',
                                     'bank:id,name'
                                 ]
@@ -202,5 +215,28 @@ class PaymentRecordService
             $model === 'vendor_bills' => DocumentableModelEnums::VENDOR_BILLS->value,
             default => throw new BadRequestException("Invalid model provided!", Response::HTTP_BAD_REQUEST),
         };
+    }
+
+    protected function orderByVendorName($query)
+    {
+        $query->orderByRaw("
+                    (
+                        CASE recordable_type
+                            WHEN 'App\\Models\\VendorBill' THEN (
+                                SELECT vendors.vendor_name FROM vendors
+                                JOIN vendor_bills ON vendors.id = vendor_bills.vendor_id
+                                WHERE vendor_bills.id = payment_records.recordable_id
+                                LIMIT 1
+                            )
+                            WHEN 'App\\Models\\PurchaseInvoice' THEN (
+                                SELECT vendors.vendor_name FROM vendors
+                                JOIN purchase_invoices ON vendors.id = purchase_invoices.vendor_id
+                                WHERE purchase_invoices.id = payment_records.recordable_id
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    ) ASC
+                ");
     }
 }
