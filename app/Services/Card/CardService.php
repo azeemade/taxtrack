@@ -92,7 +92,8 @@ class CardService
                 'billing_postal_code',
                 'issuing_bank_id',
                 'billing_country_id',
-                'cvv'
+                'cvv',
+                'is_active'
             )
             ->with([
                 'cardBrand:id,name',

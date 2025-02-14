@@ -25,7 +25,7 @@ class CreateCardRequest extends FormRequest
         $rules = [
             "issuer_number" => 'required|string|max:16|min:16|unique:card_accounts,issuer_number,NULL,id,company_id,' . Auth::user()->company->id,
             "holder_name" => 'required|string|max:225',
-            "cvv" => 'required|string|max:3',
+            "cvv" => 'sometimes|string|max:3',
             "expiration_date" => 'required|date:Y-m-d',
             "billing_address" => 'nullable|string|max:500',
             "billing_postal_code" => 'nullable|string|max:20',
