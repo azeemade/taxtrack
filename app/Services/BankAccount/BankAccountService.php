@@ -51,7 +51,7 @@ class BankAccountService
     public function bankList($request)
     {
         $records = BankAccount::query()
-            ->select('id', 'bank_name', 'account_number')
+            ->select('id', 'holder_name', 'account_number')
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
                     return $query->orderBy('holder_name', 'asc');
@@ -62,7 +62,7 @@ class BankAccountService
                 }
             })
             ->when($request->q, function ($query) use ($request) {
-                return $query->where('bank_name', 'LIKE', '%' . $request->q . '%')
+                return $query->where('holder_name', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('account_number', 'LIKE', '%' . $request->q . '%');
             })
             ->when(isset($request->start_date) && $request->start_date && $request->end_date, function ($query) use ($request) {
