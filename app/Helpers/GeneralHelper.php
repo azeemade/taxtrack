@@ -122,6 +122,12 @@ class GeneralHelper
             $carbonDateFilter = [Carbon::now()->subMonths(3)->startOfDay(), Carbon::now()->endOfDay()];
         } elseif ($period == "this year") {
             $carbonDateFilter = [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
+        } elseif (preg_match('/^\d{4}$/', $period)) {
+            // If period is a specific year (e.g., 2024, 2025, etc.)
+            $carbonDateFilter = [
+                Carbon::createFromFormat('Y', $period)->startOfYear(),
+                Carbon::createFromFormat('Y', $period)->endOfYear()
+            ];
         } elseif ($period == "custom date") {
             $carbonDateFilter = [Carbon::parse($customDate[0]), Carbon::parse($customDate[1])];
         } else {
