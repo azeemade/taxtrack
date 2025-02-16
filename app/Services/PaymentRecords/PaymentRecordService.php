@@ -100,7 +100,7 @@ class PaymentRecordService
                 return $query->where('status', $request->status);
             })
             ->when($request->bank_account_id, function ($query) use ($request) {
-                return $query->where('methodable_id', $request->bank_account_id);
+                return $query->whereRelation('paymentMethod', 'methodable_id', $request->bank_account_id);
             })
             ->when($request->is_card, function ($query) {
                 return $query->whereRelation('paymentMethod', 'methodable_type', 'App\Models\CardAccount')
