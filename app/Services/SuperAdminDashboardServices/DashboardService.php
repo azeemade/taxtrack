@@ -5,7 +5,6 @@ namespace App\Services\SuperAdminDashboardServices;
 use App\Enums\GeneralEnums;
 use App\Helpers\GeneralHelper;
 use App\Models\SubscriptionHistory;
-use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -19,16 +18,19 @@ class DashboardService
 
         $oneMonthAgo = Carbon::now()->subMonths(1);
         $dateFilter = GeneralHelper::dateFilter($request->date_filter);
+        // Extract the year from the start date of $dateFilter
+        $year = Carbon::parse($dateFilter[0])->year;
+
         $records = SubscriptionHistory::query()
             ->when($dateFilter, function ($query) use ($dateFilter) {
-                return $query->where('created_at', '>=', $dateFilter);
+                return $query->whereBetween('created_at', [$dateFilter[0], $dateFilter[1]]);
             })
             ->with('subscriber:id,name')
             ->latest();
 
         $users = User::query()
             ->when($dateFilter, function ($query) use ($dateFilter) {
-                return $query->where('created_at', '>=', $dateFilter);
+                return $query->whereBetween('created_at', [$dateFilter[0], $dateFilter[1]]);
             });
 
         $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount');
@@ -59,63 +61,44 @@ class DashboardService
             $averageRevenuePerUserPercentageChange = 0; // Handle division by zero
         }
 
-        $revenueChartDataByMonth = []; // Initialize chart data array
-
-        // Loop through each month
+        // Revenue and Subscriber Charts
         foreach ($months as $key => $month) {
-            // Get the start and end dates for the month
-            $startOfMonth = Carbon::create(null, $month, 1)->startOfMonth();
-            $endOfMonth = Carbon::create(null, $month, 1)->endOfMonth();
+            $startOfMonth = Carbon::create($year, $month, 1)->startOfMonth();
+            $endOfMonth = Carbon::create($year, $month, 1)->endOfMonth();
 
-            // Calculate revenue for the month
-            $revenueGenerated = (clone $records)->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->sum('amount');
-
-            // Get month name
+            $revenueGenerated = (clone $records)->whereBetween('created_at', [$startOfMonth, $endOfMonth])->sum('amount');
             $monthName = date('F', mktime(0, 0, 0, $month, 10));
 
-            // Add data to chart array
             $revenueChartDataByMonth[] = [
                 "label" => $monthName,
-                "value" => $revenueGenerated, // Revenue for the month
+                "value" => $revenueGenerated,
             ];
-        }
 
-        $revenueChartDataByPlan = SubscriptionPlan::withSum(
-            ['subscriptions as total_revenue' => function ($query) use ($dateFilter) {
-                if ($dateFilter) {
-                    $query->where('created_at', '>=', $dateFilter);
-                }
-            }],
-            'amount'
-        )->get()->map(function ($plan) {
-            return [
-                'label' => $plan->title,
-                'value' => $plan->total_revenue ?? 0, // Default to 0 if null
-            ];
-        })->toArray();
-
-        $subscriberChartData = []; // Initialize chart data array
-
-        // Loop through each month
-        foreach ($months as $key => $month) {
-            // Get the start and end dates for the month
-            $startOfMonth = Carbon::create(null, $month, 1)->startOfMonth();
-            $endOfMonth = Carbon::create(null, $month, 1)->endOfMonth();
-
-            // Calculate revenue for the month
             $subscribers = (clone $records)->whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->distinct('subscriber_id')->count('subscriber_id');
 
-            // Get month name
-            $monthName = date('F', mktime(0, 0, 0, $month, 10));
-
-            // Add data to chart array
             $subscriberChartData[] = [
                 "label" => $monthName,
-                "value" => $subscribers, // Revenue for the month
+                "value" => $subscribers,
             ];
         }
+
+        $revenueChartDataByPlan = SubscriptionHistory::query()
+            ->when($dateFilter, function ($query) use ($dateFilter) {
+                return $query->whereBetween('created_at', [$dateFilter[0], $dateFilter[1]]);
+            })
+            ->with('plan:id,title')  // Eager load plan relationship
+            ->selectRaw('subscription_plan_id, SUM(amount) as total_revenue')
+            ->groupBy('subscription_plan_id')
+            ->orderBy('total_revenue', 'desc')  // Order by total revenue
+            ->get()
+            ->map(function ($record) {
+                return [
+                    'label' => $record->plan->title ?? 'Unknown Plan',
+                    'value' => $record->total_revenue ?? 0,
+                ];
+            })
+            ->toArray();
 
         return [
             'revenueGenerated' => (clone $records)->sum('amount'), // Count total revenue generated
