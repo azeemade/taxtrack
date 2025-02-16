@@ -89,12 +89,6 @@ class PaymentRecordService
             ->when($request->sort_by, function ($query) use ($request) {
                 switch ($request->sort_by) {
                     case 'alphabetically':
-                        // return $query->orderBy(
-                        //     Vendor::select('vendor_name')
-                        //         ->whereColumn('vendors.id', 'recordable.vendor_id')
-                        //         ->orderBy('vendor_name')
-                        //         ->limit(1)
-                        // );
                         return $this->orderByVendorName($query);
                     case 'date_ascending':
                         return $query->orderBy('paid_on', 'asc');
@@ -104,6 +98,9 @@ class PaymentRecordService
             })
             ->when($request->status, function ($query) use ($request) {
                 return $query->where('status', $request->status);
+            })
+            ->when($request->bank_account_id, function ($query) use ($request) {
+                return $query->where('methodable_id', $request->bank_account_id);
             })
             ->when($request->is_card, function ($query) {
                 return $query->whereRelation('paymentMethod', 'methodable_type', 'App\Models\CardAccount')
