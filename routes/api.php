@@ -218,6 +218,13 @@ Route::group([
                         Route::post('/connection/complete', 'BankAccountController@completeConnection');
                     });
                 });
+                //transactions
+                Route::group([
+                    "namespace" => "Transactions",
+                    "prefix" => "transactions",
+                ], function () {
+                    Route::put('/{id}/payment-methods', 'TransactionsController@updatePaymentMethodTransaction');
+                });
             });
 
             Route::group([

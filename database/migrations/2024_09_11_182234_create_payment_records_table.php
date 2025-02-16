@@ -19,6 +19,7 @@ return new class extends Migration
             $table->decimal('amount_paid', 15, 2)->default(0.00);
             $table->decimal('amount_due', 15, 2)->default(0.00);
             $table->string('paymentID');
+            $table->string('referenceID')->nullable();
             $table->string('status')->default('successful')->comment('successful, pending, failed');
             $table->string('payment_type')->comment('debit, credit');
             $table->unsignedBigInteger('payment_method_id');

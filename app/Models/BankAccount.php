@@ -29,4 +29,9 @@ class BankAccount extends Model
     {
         return $this->belongsTo(Currency::class);
     }
+
+    public function paymentMethods()
+    {
+        return $this->morphMany(PaymentMethod::class, 'methodable');
+    }
 }
