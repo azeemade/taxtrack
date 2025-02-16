@@ -162,8 +162,9 @@ class BankAccountService
             });
 
         return [
-            'statement_balance' => 0, //(clone $records)->sum('invoice_value'),
-            'tax_track_balance' => 0, //(clone $records)->where('status', FinancialDocumentStatusEnums::OVERDUE)->sum('invoice_value'),
+            'total_transactions' => 0, //(clone $records)->sum('invoice_value'),
+            'opening_balance' => 0, //(clone $records)->where('status', FinancialDocumentStatusEnums::OVERDUE)->sum('invoice_value'),
+            'closing_balance' => 0, //(clone $records)->where('status', FinancialDocumentStatusEnums::OVERDUE)->sum('invoice_value'),
             'total_inflow' => 0, //(clone $records)->get()->sum('total_amount_paid'),
             'total_outflow' => 0 //(clone $records)->get()->sum('total_amount_paid'),
         ];
