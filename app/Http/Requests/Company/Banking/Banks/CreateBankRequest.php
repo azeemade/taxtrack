@@ -26,7 +26,9 @@ class CreateBankRequest extends FormRequest
             "holder_name" => 'required|string|max:225',
             "account_type" => 'required|string|max:225',
             "account_number" => 'required|string|digits_between:4,34',
-            "currency_id" => 'required|integer|exists:currencies,id'
+            "currency_id" => 'required|integer|exists:currencies,id',
+            "opening_balance" => 'nullable|numeric|min:0',
+            "opening_balance_as_at" => 'nullable|date:Y-m-d',
         ];
     }
 }
