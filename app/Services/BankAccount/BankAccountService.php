@@ -86,6 +86,7 @@ class BankAccountService
                 'bank_id',
                 'holder_name',
                 'currency_id',
+                'is_active'
             )
             ->with([
                 'currency:id,name',
