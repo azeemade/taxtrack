@@ -79,7 +79,8 @@ class PaymentRecordService
                 'amount_due',
                 'payment_type',
                 'status',
-                'payment_method_id'
+                'payment_method_id',
+                'additional_notes'
             ])
             ->with([
                 'recordable:id,vendor_id,vendor_billID,share_status' => [
