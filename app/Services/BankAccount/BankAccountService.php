@@ -88,7 +88,8 @@ class BankAccountService
                 'currency_id',
                 'is_active',
                 'opening_balance',
-                'opening_balance_as_at'
+                'opening_balance_as_at',
+                'account_type'
             )
             ->with([
                 'currency:id,name',
