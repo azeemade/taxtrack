@@ -18,7 +18,6 @@ use Carbon\Carbon;
 
 class SubscriptionService
 {
-
     public function overview($request)
     {
         $dateFilter = GeneralHelper::dateFilter($request->date_filter);
@@ -178,7 +177,8 @@ class SubscriptionService
             'primary_link' => $data['primary_link'],
             'secondary_cta' => $data['secondary_cta'],
             'secondary_link' => $data['secondary_link'],
-            'created_by' => $currentUser->id
+            'created_by' => $currentUser->id,
+            'is_active' => true
         ]);
 
         if (isset($data['features'])) {

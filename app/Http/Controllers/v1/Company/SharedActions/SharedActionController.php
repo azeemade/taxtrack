@@ -8,6 +8,7 @@ use App\Http\Requests\Shared\SharedReminderRequest;
 use App\Models\Customer;
 use App\Models\Vendor;
 use App\Responser\JsonResponser;
+use App\Services\SharedServices\FileUploadService;
 use App\Services\SharedServices\SharedActionService;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Model;
@@ -16,10 +17,12 @@ use Illuminate\Http\Response;
 class SharedActionController extends Controller
 {
     protected $sharedActionService;
+    protected $fileUploadService;
 
-    public function __construct(SharedActionService $sharedActionService)
+    public function __construct(SharedActionService $sharedActionService, FileUploadService $fileUploadService)
     {
         $this->sharedActionService = $sharedActionService;
+        $this->fileUploadService = $fileUploadService;
     }
 
     public function __invoke($prefix = null,  $modelName, $id, $action = null)
@@ -29,9 +32,9 @@ class SharedActionController extends Controller
 
             $model = $this->getModel($modelClass, $id);
             $response = $this->getAction($action, $model, request()->all(), $id);
-
             if (in_array($action, ["preview", "download"])) {
                 return $response;
+                dd($action);
             }
 
             return JsonResponser::send(false, $response["message"], $response["record"], Response::HTTP_OK);
@@ -120,5 +123,15 @@ class SharedActionController extends Controller
     protected function cleanRequest($request): Request | SharedReminderRequest
     {
         return $request;
+    }
+
+    public function uploadFile(Request $request)
+    {
+        if (is_array($request["files"])) {
+            $files = $request["files"];
+        } else {
+            $files = $request->files;
+        }
+        return $this->fileUploadService->upload($files);
     }
 }
