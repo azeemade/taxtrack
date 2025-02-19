@@ -75,7 +75,8 @@ class CustomerService
             'customer_type',
             'business_type',
             'currency_id',
-            'customer_logo'
+            'customer_logo',
+            'is_active'
         )
             ->with(['currency:id,name,symbol', 'category:id,name', 'contactPersons'])
             ->find($id);
