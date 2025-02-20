@@ -24,7 +24,7 @@ class QuoteController extends Controller
     public function index(SharedFilterRequest $request)
     {
         try {
-            $records = $this->quoteService->list($request->validated());
+            $records = $this->quoteService->list($request);
             if ($request->export) {
                 return $this->quoteService->export($records, $request->export);
             }

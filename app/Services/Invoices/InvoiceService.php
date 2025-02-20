@@ -117,6 +117,9 @@ class InvoiceService
                     return $query->orderBy('created_at', 'desc');
                 }
             })
+            ->when($request->customer_id, function ($query) use ($request) {
+                return $query->where('customer_id', $request->customer_id);
+            })
             ->when($request->status, function ($query) use ($request) {
                 return $query->where('status', $request->status);
             })
