@@ -104,7 +104,7 @@ class SharedActionService
     protected function modelSpecificAction(Model $model, Model $newModel)
     {
         if ($newModel instanceof \App\Models\Invoice) {
-            $newModel->invoice_number = $this->generateModelId(
+            $newModel->invoiceID = $this->generateModelId(
                 'App\Models\Invoice',
                 'invoiceID',
                 'Inv',
