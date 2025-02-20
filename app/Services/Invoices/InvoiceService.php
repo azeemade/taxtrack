@@ -97,8 +97,9 @@ class InvoiceService
     public function list($request)
     {
         $records = Invoice::query()
-            ->select('id', 'due_date', 'customer_id', 'invoice_value', 'payment_status', 'status', 'invoiceID', 'additional_referenceID')
+            ->select('id', 'due_date', 'customer_id', 'invoice_value', 'payment_status', 'status', 'invoiceID', 'additional_referenceID', 'category_id')
             ->with([
+                'category:id,name',
                 'customer:id,company_name',
                 'paymentRecords:id,amount_paid,amount_due,recordable_id,recordable_type',
                 'lineItems'
