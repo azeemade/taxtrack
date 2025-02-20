@@ -34,7 +34,6 @@ class SharedActionController extends Controller
             $response = $this->getAction($action, $model, request()->all(), $id);
             if (in_array($action, ["preview", "download"])) {
                 return $response;
-                dd($action);
             }
 
             return JsonResponser::send(false, $response["message"], $response["record"], Response::HTTP_OK);
