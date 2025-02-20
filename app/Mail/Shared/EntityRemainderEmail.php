@@ -14,7 +14,7 @@ class EntityRemainderEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $cc = [];
+    public $ccEmail = [];
     public $emailMeACopy = [];
     public $emailSubject;
     public $emailBody;
@@ -26,7 +26,7 @@ class EntityRemainderEmail extends Mailable
      * Create a new message instance.
      */
     public function __construct(
-        $cc,
+        $ccEmail,
         $emailMeACopy,
         $emailSubject,
         $emailBody,
@@ -34,7 +34,7 @@ class EntityRemainderEmail extends Mailable
         $fileUrl,
         $additionalAttachments
     ) {
-        $this->cc = $cc;
+        $this->ccEmail = $ccEmail;
         $this->emailMeACopy = $emailMeACopy;
         $this->emailSubject = $emailSubject;
         $this->emailBody = $emailBody;
@@ -51,8 +51,8 @@ class EntityRemainderEmail extends Mailable
         return new Envelope(
             to: $this->recipient,
             subject: $this->emailSubject,
-            cc: $this->cc ?? [],
-            bcc: $this->emailMeACopy ? auth()->user()->email : []
+            cc: $this->ccEmail ?? null,
+            bcc: $this->emailMeACopy ? auth()->user()->email : null
         );
     }
 
@@ -90,7 +90,6 @@ class EntityRemainderEmail extends Mailable
                 $attachments[] = Attachment::fromUrl(trim($url));
             }
         }
-        // dd($attachments);
 
         return (array) $attachments;
     }
