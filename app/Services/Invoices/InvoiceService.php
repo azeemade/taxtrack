@@ -79,7 +79,7 @@ class InvoiceService
             'currency_id',
         )
             ->with([
-                'customer:id,company_name',
+                'customer:id,company_name,email',
                 'currency:id,name,symbol',
                 'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
                     'category:id,name'
