@@ -154,7 +154,16 @@ class CompanyService
 
         if (isset($data['physical_address_information'])) {
             $data['address'] = $data['physical_address_information']['address'] ?? $record['physical_address_information']['address'];
-            $data['country_id'] = $data['physical_address_information']['country_id'] ?? $record['physical_address_information']['country_id'];
+            $data['physical_address_information']['address'] = $data['physical_address_information']['address'] ?? $record['physical_address_information']['address'];
+            $data['physical_address_information']['country_id'] = $data['physical_address_information']['country_id'] ?? $record['physical_address_information']['country_id'];
+            $data['physical_address_information']['state_id'] = $data['physical_address_information']['state_id'] ?? $record['physical_address_information']['state_id'];
+            $data['physical_address_information']['city_id'] = $data['physical_address_information']['city_id'] ?? $record['physical_address_information']['city_id'];
+        }
+        if (isset($data['postal_address_information'])) {
+            $data['postal_address_information']['address'] = $data['postal_address_information']['address'] ?? $record['postal_address_information']['address'];
+            $data['postal_address_information']['country_id'] = $data['postal_address_information']['country_id'] ?? $record['postal_address_information']['country_id'];
+            $data['postal_address_information']['state_id'] = $data['postal_address_information']['state_id'] ?? $record['postal_address_information']['state_id'];
+            $data['postal_address_information']['city_id'] = $data['postal_address_information']['city_id'] ?? $record['postal_address_information']['city_id'];
         }
 
         $record->update($data);
