@@ -64,6 +64,9 @@ class QuoteService
                 return $query->where('quoteID', 'LIKE', '%' . $request->q . '%')
                     ->whereRelation('customer', 'company_name', 'LIKE', '%' . $request->q . '%');
             })
+            ->when($request->customer_id, function ($query) use ($request) {
+                return $query->where('customer_id', $request->customer_id);
+            })
             ->when($request->status, function ($query) use ($request) {
                 if ($request->status == FinancialDocumentStatusEnums::DRAFT->value) {
                     return $query->where('status', FinancialDocumentStatusEnums::DRAFT->value);

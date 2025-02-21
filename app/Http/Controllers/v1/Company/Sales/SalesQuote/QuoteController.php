@@ -75,6 +75,22 @@ class QuoteController extends Controller
         }
     }
 
+    public function store(CreateQuoteRequest $request)
+    {
+        try {
+            DB::beginTransaction();
+            $record = $this->quoteService->updateOrCreate($request->validated());
+            DB::commit();
+            return JsonResponser::send(false, 'Quote generated successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
     public function update(CreateQuoteRequest $request, $id)
     {
         try {
