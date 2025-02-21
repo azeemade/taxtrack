@@ -153,8 +153,8 @@ class CompanyService
         $record = Company::find($currentUser->current_company_id);
 
         if (isset($data['physical_address_information'])) {
-            $data['address'] = $data['physical_address_information']['address'];
-            $data['country_id'] = $data['physical_address_information']['country_id'];
+            $data['address'] = $data['physical_address_information']['address'] ?? $record['physical_address_information']['address'];
+            $data['country_id'] = $data['physical_address_information']['country_id'] ?? $record['physical_address_information']['country_id'];
         }
 
         $record->update($data);

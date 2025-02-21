@@ -125,7 +125,7 @@ class CreditNoteService
             'currency_id',
         )
             ->with([
-                'customer:id,company_name',
+                'customer:id,company_name,email',
                 'currency:id,name,symbol',
                 'creditNoteInvoices:id,credit_note_id,invoice_id,status' => [
                     'invoice:id,invoiceID,additional_referenceID,due_date' =>
@@ -146,6 +146,9 @@ class CreditNoteService
     public function update($request)
     {
         $record = CreditNote::find($request['id']);
+        if (!$record) {
+            throw new BadRequestException("Credit note not found!", Response::HTTP_NOT_FOUND);
+        }
         $record->update([
             ...$request,
             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
@@ -159,7 +162,7 @@ class CreditNoteService
                 ->first();
 
             if ($creditNoteInvoice) {
-                $creditNoteInvoice->creditNoteInvoices()->update([
+                $creditNoteInvoice->update([
                     'credit_amount_total' => $value['credit_amount'],
                     'status' => $value['status']
                 ]);

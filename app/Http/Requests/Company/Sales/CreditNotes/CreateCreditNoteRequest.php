@@ -24,7 +24,7 @@ class CreateCreditNoteRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'customer_id' => 'required|integer|exists:customers,id',
             'currency_id' => [
                 'required',
@@ -59,6 +59,7 @@ class CreateCreditNoteRequest extends FormRequest
         if ($this->isMethod('put') || $this->isMethod('patch')) {
             $rules['invoices.*.status'] = 'required|string|in:added,removed';
         }
+        return $rules;
     }
 
     /**
