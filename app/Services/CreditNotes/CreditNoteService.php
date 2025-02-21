@@ -30,7 +30,7 @@ class CreditNoteService
             ->select('id', 'issue_date', 'invoice_id', 'customer_id', 'referenceID', 'status', 'share_status')
             ->with([
                 'invoice:id,invoiceID',
-                'customer:id,company_name',
+                'customer:id,company_name,email',
             ])
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
