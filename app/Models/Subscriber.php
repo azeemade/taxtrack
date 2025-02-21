@@ -19,6 +19,11 @@ class Subscriber extends Model
         return $this->belongsTo(Company::class, 'company_id');
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function subscriptionHistory()
     {
         return $this->hasMany(SubscriptionHistory::class, 'subscriber_id');

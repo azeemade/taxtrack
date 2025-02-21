@@ -127,7 +127,7 @@ class CreditNoteService
             ->with([
                 'customer:id,company_name',
                 'currency:id,name,symbol',
-                'creditNoteInvoices:id,credit_note_id,invoice_id' => [
+                'creditNoteInvoices:id,credit_note_id,invoice_id,status' => [
                     'invoice:id,invoiceID,additional_referenceID,due_date' =>
                     [
                         'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,credit_amount,full_credit' => [

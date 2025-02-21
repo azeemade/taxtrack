@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\Subscription\SubscriptionPlanTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SubscriptionPlan extends Model
 {
-    use HasFactory;
+    use HasFactory, SubscriptionPlanTrait;
     protected $guarded = ['id'];
 
     public function subscriptionPlanFeature()
