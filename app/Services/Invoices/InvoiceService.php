@@ -102,7 +102,9 @@ class InvoiceService
                 'category:id,name',
                 'customer:id,company_name',
                 'paymentRecords:id,amount_paid,amount_due,recordable_id,recordable_type',
-                'lineItems'
+                'lineItems' => [
+                    'category:id,name'
+                ]
             ])
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
