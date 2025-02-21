@@ -19,7 +19,7 @@ class DashboardService
         $oneMonthAgo = Carbon::now()->subMonths(1);
         $dateFilter = GeneralHelper::dateFilter($request->date_filter);
         // Extract the year from the start date of $dateFilter
-        $year = Carbon::parse($dateFilter[0])->year;
+        $year = !$dateFilter ? Carbon::now()->year : Carbon::parse($dateFilter[0])->year;
 
         $records = SubscriptionHistory::query()
             ->when($dateFilter, function ($query) use ($dateFilter) {
