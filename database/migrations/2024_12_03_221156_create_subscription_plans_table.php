@@ -21,6 +21,8 @@ return new class extends Migration
             $table->string('primary_link')->nullable();
             $table->string('secondary_cta')->nullable();
             $table->string('secondary_link')->nullable();
+            $table->string('stripe_productID')->nullable();
+            $table->json('stripe_priceID')->nullable();
             $table->boolean('is_active')->default(false);
             $table->string('status')->default('active')->comment('active, inactive');
             $table->unsignedBigInteger('created_by');
