@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
-class SubscriptionManagementController extends Controller
+class SubscriptionPlanController extends Controller
 {
     protected CompanySubscriptionService $companySubscriptionService;
 
@@ -21,33 +21,7 @@ class SubscriptionManagementController extends Controller
         $this->companySubscriptionService = $companySubscriptionService;
     }
 
-    public function subscriptionHistory(SharedFilterRequest $request)
-    {
-        try {
-            $records = $this->companySubscriptionService->subscriptionHistory($request);
-
-            return JsonResponser::send(false, 'Record(s) retrieved successfully', $records, Response::HTTP_OK);
-        } catch (BadRequestException $e) {
-            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
-        }
-    }
-
-    public function viewHistory($id)
-    {
-        try {
-            $record = $this->companySubscriptionService->viewHistory($id);
-
-            return JsonResponser::send(false, 'Record retrieved successfully', $record, Response::HTTP_OK);
-        } catch (BadRequestException $e) {
-            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
-        }
-    }
-
-    public function viewCurrentPlan()
+    public function view()
     {
         try {
             $record = $this->companySubscriptionService->currentPlan();
@@ -73,7 +47,25 @@ class SubscriptionManagementController extends Controller
         }
     }
 
-    public function subscribeToPlan(CreateUpgradePlanRequest $request)
+    public function planBreakdown(Request $request)
+    {
+        try {
+            $records = $this->companySubscriptionService->calculateSubscriptionCosts(
+                $request->plan_amount,
+                $request->seat_amount,
+                false,
+                $request->additional_users_count
+            );
+
+            return JsonResponser::send(false, 'Record retrieved successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function create(CreateUpgradePlanRequest $request)
     {
         try {
             DB::beginTransaction();

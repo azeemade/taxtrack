@@ -41,4 +41,9 @@ class Company extends Model
     {
         return $this->belongsToMany(EmailTemplate::class, 'company_email_templates', 'company_id', 'email_templates_id');
     }
+
+    public function subscriber()
+    {
+        return $this->hasOne(Subscriber::class, 'company_id');
+    }
 }

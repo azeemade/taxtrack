@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('cvv');
             $table->unsignedBigInteger('company_id');
             $table->unsignedBigInteger('created_by');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null')->onUpdate('set null');
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });

@@ -21,7 +21,7 @@ class SubscriptionCancellationController extends Controller
         $this->companySubscriptionService = $companySubscriptionService;
     }
 
-    public function cancellationHistory(SharedFilterRequest $request)
+    public function index(SharedFilterRequest $request)
     {
         try {
             $records = $this->companySubscriptionService->cancellationRequests($request);
@@ -34,7 +34,7 @@ class SubscriptionCancellationController extends Controller
         }
     }
 
-    public function cancelPlan(CreatePlanCancellationRequest $request)
+    public function create(CreatePlanCancellationRequest $request)
     {
         try {
             DB::beginTransaction();
@@ -48,6 +48,19 @@ class SubscriptionCancellationController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $record = $this->companySubscriptionService->viewCancellation($id);
+
+            return JsonResponser::send(false, 'Record retrieved successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }

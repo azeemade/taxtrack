@@ -16,8 +16,8 @@ return new class extends Migration
             $table->string('name');
             $table->decimal('credit_balance', 15, 2)->default(0.00);
             $table->unsignedBigInteger('current_subscription_plan_id');
-            $table->string('stripe_customerID')->nullable();
-            $table->unsignedBigInteger('company_id');
+            $table->string('provider_customer_id')->nullable(); //stripe customer id
+            $table->unsignedBigInteger('company_id')->unique();
             $table->unsignedBigInteger('user_id')->nullable();
             $table->foreign('user_id')->references('id')->on('users')->onDelete('set null')->onUpdate('set null');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade')->onUpdate('cascade');

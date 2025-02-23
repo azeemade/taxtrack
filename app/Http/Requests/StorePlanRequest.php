@@ -30,6 +30,8 @@ class StorePlanRequest extends FormRequest
             "primary_link" => 'required|string',
             "secondary_cta" => 'required|string',
             "secondary_link" => 'required|string',
+            "default_seat" => 'nullable|numeric',
+            "seat_amount" => 'nullable',
             "features" => 'nullable|array',
             "features*" => 'required|string'
         ];

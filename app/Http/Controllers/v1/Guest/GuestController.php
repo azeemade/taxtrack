@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\v1\Guest;
 
+use App\Enums\GeneralEnums;
 use App\Http\Controllers\Controller;
 use App\Models\CardBrand;
 use App\Models\Category;
 use App\Models\Company;
 use App\Models\EmailTemplate;
 use App\Models\ErrorLog;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Responser\JsonResponser;
 use App\Services\ThirdPartyApi\FontServiceApi;
@@ -202,6 +204,21 @@ class GuestController extends Controller
         try {
             $fontService = new FontServiceApi();
             $records = $fontService->getFonts();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records->json(), Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function allSubscriptionPlans()
+    {
+        try {
+            return SubscriptionPlan::with(['subscriptionPlanFeature:id,title,subscription_plan_id'])
+                ->where('status', GeneralEnums::ACTIVE->value)
+                ->where('is_active', true)
+                ->where('is_free', false)
+                ->get();
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records->json(), Response::HTTP_OK);
         } catch (\Throwable $th) {

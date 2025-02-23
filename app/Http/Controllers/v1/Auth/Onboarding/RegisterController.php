@@ -10,6 +10,7 @@ use App\Http\Requests\Auth\CompanyUserRequest;
 use App\Http\Requests\Auth\CreateBasicInformationRequest;
 use App\Http\Requests\Auth\CreateOnboardingRoleRequest;
 use App\Http\Requests\Auth\InviteUsersRequest;
+use App\Jobs\Company\ProcessCompanyOnboarding;
 use App\Models\User;
 use App\Notifications\Auth\OnboardingOtpNotification;
 use App\Responser\JsonResponser;
@@ -336,6 +337,9 @@ class RegisterController extends Controller
                 $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
                 $company->currencies()->attach($user->currency_id);
                 $company->attachEmailTemplates();
+
+
+                // ProcessCompanyOnboarding::dispatch($company);
             }
 
             foreach ($request->users as $user) {

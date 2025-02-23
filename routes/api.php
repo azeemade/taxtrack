@@ -304,7 +304,35 @@ Route::group([
                 Route::group([
                     'prefix' => 'subscriptions',
                     "namespace" => "Subscriptions"
-                ], function () {});
+                ], function () {
+                    Route::apiResource('cancellations', 'SubscriptionCancellationController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                    Route::apiResource('refund-requests', 'SubscriptionRefundController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                    Route::apiResource('payment-methods', 'SubscriptionPaymentMethodController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                    Route::apiResource('history', 'SubscriptionHistoryController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                    Route::apiResource('history', 'SubscriptionPlanController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                    Route::group([
+                        'prefix' => 'plan',
+                    ], function () {
+                        Route::get('/current', 'SubscriptionPlanController@view');
+                        Route::post('/breakdown', 'SubscriptionPlanController@planBreakdown');
+                        Route::post('/change', 'SubscriptionPlanController@create');
+                    });
+                });
                 Route::group([
                     'prefix' => 'document',
                     "namespace" => "DocumentSettings"
@@ -368,5 +396,6 @@ Route::group([
         Route::get('/all-banks', 'GuestController@allBanks');
         Route::get('/all-email-templates', 'GuestController@allEmailTemplate');
         Route::get('/fonts', 'GuestController@fonts');
+        Route::get('/subscription-plans', 'GuestController@allSubscriptionPlans');
     });
 });

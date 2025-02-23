@@ -14,98 +14,111 @@ trait SubscriptionPlanTrait
         $stripe = new Stripe();
 
         static::created(function (Model $model) use ($stripe) {
+            if ($model->is_free) {
+                return 0;
+            }
             $product = $stripe->createProduct([
                 'name' => $model->title,
                 'description' => $model->short_description,
-                'active' => $model->is_active
+                'active' => $model->is_active,
+                'metadata' => [
+                    'default_seat_count' => $model->default_seat || SubscriptionConstant::DEFAULT_SEAT_COUNT,
+                ],
             ]);
 
-            $this->modifyStripePrice($model, $stripe);
+            $monthPrice = $this->createPrice($product->id, $model->monthly_fee, 'month', 'base', $stripe);
+            $annualPrice = $this->createPrice($product->id, $model->yearly_fee, 'year', 'base', $stripe);
+
+            $monthSeatPrice = $this->createPrice($product->id, floatval($model->seat_amount ?? 0.00), 'month', 'per_user', $stripe);
+            $annualSeatPrice = $this->createPrice($product->id, floatval($model->seat_amount ?? 0.00), 'year', 'per_user', $stripe);
+
 
             $model->update([
-                'stripe_productID' => $product->id
+                'provider_product_id' => $product->id,
+                'provider_price_ids' => [
+                    'monthly' => $monthPrice->id,
+                    'annually' => $annualPrice->id
+                ],
+                'provider_seat_amount_ids' => [
+                    'monthly' => $monthSeatPrice->id,
+                    'annually' => $annualSeatPrice->id
+                ]
             ]);
         });
 
         static::updated(function (Model $model) use ($stripe) {
+            if ($model->is_free) {
+                return 0;
+            }
             $stripe->updateProduct(
-                $model->stripe_productID,
+                $model->provider_product_id,
                 [
                     'name' => $model->title,
                     'description' => $model->short_description,
-                    'active' => $model->is_active
+                    'active' => $model->is_active,
+                    'metadata' => [
+                        'default_seat_count' => $model->default_seat || SubscriptionConstant::DEFAULT_SEAT_COUNT,
+                    ],
                 ]
             );
 
-            $this->modifyStripePrice($model, $stripe);
+
+            if ($model->wasChanged('monthly_fee')) {
+                $this->updatePrice($model->provider_price_ids->monthly, $model->monthly_fee, $stripe);
+            }
+
+            if ($model->wasChanged('yearly_fee')) {
+                $this->updatePrice($model->provider_price_ids->annually, $model->yearly_fee, $stripe);
+            }
+
+            if ($model->wasChanged('seat_amount')) {
+                $this->updatePrice($model->provider_seat_amount_ids->monthly, floatval($model->seat_amount ?? 0.00), $stripe);
+                $this->updatePrice($model->provider_seat_amount_ids->annually, floatval($model->seat_amount ?? 0.00), $stripe);
+            }
         });
 
         static::deleted(function (Model $model) use ($stripe) {
-            $stripe->deleteProduct($model->stripe_productID);
+            if ($model->is_free) {
+                return 0;
+            }
+            $stripe->deleteProduct($model->provider_product_id);
         });
     }
 
-    protected function modifyStripePrice(
-        Model $model,
-        \App\Services\ThirdPartyApi\Stripe\Stripe $stripe
-    ) {
-        if ($model->stripe_priceID) {
-            $monthly = $stripe->retrievePrice($model->stripe_priceID->monthly);
-            if ($monthly && $monthly->unit_amount != $model->monthly_fee * 100) {
-                $monthly->update($monthly->id, [
-                    "active" => false
-                ]);
-                $monthly = $this->handleMonthlyPrice($model, $stripe);
-            }
-
-            $yearly = $stripe->retrievePrice($model->stripe_priceID->yearly);
-            if ($yearly && $yearly->unit_amount != $model->yearly_fee * 100) {
-                $yearly->update($yearly->id, [
-                    "active" => false
-                ]);
-                $yearly = $this->handleYearlyPrice($model, $stripe);
-            }
-
-            $model->update([
-                'stripe_priceID' => [
-                    'monthly' => $monthly->id,
-                    'yearly' => $yearly->id
-                ]
-            ]);
-            return 0;
-        } else {
-            $monthlyPrice = $this->handleMonthlyPrice($model, $stripe);
-            $yearlyPrice = $this->handleYearlyPrice($model, $stripe);
-            $model->update([
-                'stripe_priceID' => [
-                    'monthly' => $monthlyPrice->id,
-                    'yearly' => $yearlyPrice->id
-                ]
-            ]);
-            return 0;
-        }
-    }
-    protected function handleMonthlyPrice(
-        Model $model,
+    protected function createPrice(
+        string $product_id,
+        float $amount,
+        string $interval,
+        string $type,
         \App\Services\ThirdPartyApi\Stripe\Stripe $stripe,
     ) {
         return $stripe->createPrice([
             'currency' => SubscriptionConstant::CURRENCY_USD,
-            'unit_amount' => $model->monthly_fee * 100,
-            'product' => $model->stripe_productID,
-            'active' => $model->is_active
+            'unit_amount' => $amount * 100,
+            'product' => $product_id,
+            'recurring' => [
+                'interval' => $interval,
+                'interval_count' => 1,
+            ],
+            'metadata' => ['type' => $type]
         ]);
     }
 
-    protected function handleYearlyPrice(
-        Model $model,
+    protected function updatePrice(
+        string $price_id,
+        float $amount,
         \App\Services\ThirdPartyApi\Stripe\Stripe $stripe,
     ) {
-        return $stripe->createPrice([
+        return $stripe->updatePrice($price_id, [
             'currency' => SubscriptionConstant::CURRENCY_USD,
-            'unit_amount' => $model->yearly_fee * 100,
-            'product' => $model->stripe_productID,
-            'active' => $model->is_active
+            'unit_amount' => $amount * 100,
         ]);
+    }
+
+    protected function deactivatePrice(
+        string $price_id,
+        \App\Services\ThirdPartyApi\Stripe\Stripe $stripe,
+    ) {
+        return $stripe->updatePrice($price_id, ["active" => false]);
     }
 }

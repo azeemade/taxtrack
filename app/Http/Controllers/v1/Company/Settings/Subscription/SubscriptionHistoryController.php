@@ -10,7 +10,7 @@ use App\Services\ManageSubscriptionServices\CompanySubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
-class SubscriptionPaymentMethodController extends Controller
+class SubscriptionHistoryController extends Controller
 {
     protected CompanySubscriptionService $companySubscriptionService;
 
@@ -19,13 +19,25 @@ class SubscriptionPaymentMethodController extends Controller
         $this->companySubscriptionService = $companySubscriptionService;
     }
 
-
     public function index(SharedFilterRequest $request)
     {
         try {
             $records = $this->companySubscriptionService->subscriptionHistory($request);
 
             return JsonResponser::send(false, 'Record(s) retrieved successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $record = $this->companySubscriptionService->viewHistory($id);
+
+            return JsonResponser::send(false, 'Record retrieved successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
