@@ -2,6 +2,7 @@
 
 namespace App\Services\ManageSubscriptionServices;
 
+use App\Constants\SubscriptionConstant;
 use App\Enums\GeneralEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
@@ -13,8 +14,11 @@ use App\Models\SubscriptionHistory;
 use App\Models\SubscriptionPlan;
 use App\Models\SubscriptionPlanFeature;
 use App\Models\SubscriptionRefund;
+use App\Services\ThirdPartyApi\Stripe\Stripe;
 use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
+use Illuminate\Http\Response;
+use Stripe\Subscription;
 
 class SubscriptionService
 {
@@ -178,7 +182,9 @@ class SubscriptionService
             'secondary_cta' => $data['secondary_cta'],
             'secondary_link' => $data['secondary_link'],
             'created_by' => $currentUser->id,
-            'is_active' => true
+            'is_active' => true,
+            'default_seat' => $data['default_seat'] ?? SubscriptionConstant::DEFAULT_SEAT_COUNT,
+            'seat_amount' => $data['seat_amount'] ?? null,
         ]);
 
         if (isset($data['features'])) {
@@ -297,11 +303,43 @@ class SubscriptionService
     public function approve(SubscriptionRefund $refund)
     {
         $currentUser = auth()->user();
+        $stripe = new Stripe();
+
+        $invoices = $stripe->listInvoices([
+            'customer' => $refund->subscriptionHistory->subscriber->provider_customer_id,
+            'subscription' => $refund->subscriptionHistory->provider_subscription_id,
+            'limit' => 1,
+        ]);
+
+        if (!count($invoices['data'])) {
+            throw new BadRequestException('No subscription found to refund', Response::HTTP_BAD_REQUEST);
+        }
+
+        $latestInvoice = $invoices['data'][0];
+
+        $providerRefund = $stripe->createRefund([
+            'payment_intent' =>  $latestInvoice['payment_intent'],
+            'amount' => $refund->amount_refunded,
+            'reason' => 'requested_by_customer',
+            'metadata' => [
+                'companyID' => $refund->subscriptionHistory->subscriber->company->companyUUID,
+                'reason' => $refund->reason,
+                'additional_reason' => $refund->additional_information ?? null
+            ]
+        ]);
+
         $refund->update([
             'status' => GeneralEnums::APPROVED->value,
             'approved_on' => now(),
+            'provider_refund_id' => $providerRefund['id'],
             'approved_by' => $currentUser->id
         ]);
+
+
+        $refund->subscriptionHistory()->update([
+            'status' => GeneralEnums::CANCELLED->value,
+        ]);
+        
         return $refund;
     }
 

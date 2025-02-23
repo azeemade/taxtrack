@@ -10,7 +10,7 @@ class Stripe
 
     public function __construct()
     {
-        $key = config('stripe.secret');
+        $key = config('stripe.stripe_secret');
         $this->stripe = new \Stripe\StripeClient($key);
     }
 
@@ -25,9 +25,9 @@ class Stripe
         return $this->stripe->products->create($data);
     }
 
-    public function updateProduct($data)
+    public function updateProduct($id, $data)
     {
-        return $this->stripe->products->update($data);
+        return $this->stripe->products->update($id, $data);
     }
 
     public function deleteProduct(string $id)
@@ -46,6 +46,11 @@ class Stripe
         return $this->stripe->prices->create($data);
     }
 
+    public function updatePrice($id, $data)
+    {
+        return $this->stripe->prices->update($id, $data);
+    }
+
     public function retrievePrice(string $id)
     {
         return $this->stripe->prices->retrieve($id);
@@ -62,14 +67,78 @@ class Stripe
         return $this->stripe->customers->create($data);
     }
 
+    public function updateCustomer($id, $data)
+    {
+        return $this->stripe->customers->update($id, $data);
+    }
+
 
     /**
      * 
      * Subscription section
      */
-
     public function createSubscription($data)
     {
         return $this->stripe->subscriptions->create($data);
+    }
+
+    public function cancelSubscription($id)
+    {
+        return $this->stripe->subscriptions->cancel($id);
+    }
+
+    public function updateSubscription($id, $data)
+    {
+        return $this->stripe->subscriptions->update($id, $data);
+    }
+
+    public function allSubscriptions($data)
+    {
+        return $this->stripe->subscriptions->all($data);
+    }
+
+    /**
+     * 
+     * Payment method section
+     */
+
+    public function attachPaymentMethod($id, $data)
+    {
+        return $this->stripe->paymentMethods->attach($id, $data);
+    }
+
+    /**
+     * 
+     * Invoice section
+     */
+
+    public function payInvoice($id, $data)
+    {
+        return $this->stripe->invoices->pay($id, $data);
+    }
+
+    public function listInvoices($data)
+    {
+        return $this->stripe->invoices->all($data);
+    }
+
+    /**
+     * 
+     * Payment intent section
+     */
+
+    public function confirmPaymentIntent($id, $data)
+    {
+        return $this->stripe->paymentIntents->confirm($id, $data);
+    }
+
+    /**
+     * 
+     * Refund section
+     */
+
+    public function createRefund($data)
+    {
+        return $this->stripe->refunds->create($data);
     }
 }

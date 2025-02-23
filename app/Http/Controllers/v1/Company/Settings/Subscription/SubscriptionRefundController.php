@@ -21,7 +21,7 @@ class SubscriptionRefundController extends Controller
         $this->companySubscriptionService = $companySubscriptionService;
     }
 
-    public function refundHistory(SharedFilterRequest $request)
+    public function index(SharedFilterRequest $request)
     {
         try {
             $records = $this->companySubscriptionService->refundRequests($request);
@@ -34,7 +34,7 @@ class SubscriptionRefundController extends Controller
         }
     }
 
-    public function createRefundRequest(CreateRefundRequest $request)
+    public function create(CreateRefundRequest $request)
     {
         try {
             DB::beginTransaction();
@@ -51,4 +51,18 @@ class SubscriptionRefundController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function show($id)
+    {
+        try {
+            $record = $this->companySubscriptionService->viewRefund($id);
+
+            return JsonResponser::send(false, 'Record retrieved successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+    
 }

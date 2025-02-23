@@ -24,7 +24,9 @@ class ModuleTableSeeder extends Seeder
             'budget' => ['access budget'],
             'tools' => ['access tool'],
             'report' => ['access report'],
-            'user management' => ['access manage users', 'access manage roles']
+            'user management' => ['access manage users', 'access manage roles'],
+            'settings' => ['access email settings', 'access invoice settings', 'access tax rate'],
+            'audit trail' => ['access audit trail'],
         ];
 
         foreach ($modules as $key => $module) {

@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Models\User;
 use App\Responser\JsonResponser;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -29,16 +30,16 @@ class AuthController extends Controller
 
             $token = Auth::attempt($credentials);
             if (!$token) {
-                return JsonResponser::send(true, 'Invalid email or password', [], 400);
+                return JsonResponser::send(true, 'Invalid email or password', [], Response::HTTP_BAD_REQUEST);
             }
 
             $user = Auth::user();
             if ($user?->status != GeneralEnums::ACTIVE->value) {
-                return JsonResponser::send(true, 'Account is inactive. Contact admin', [], 400);
+                return JsonResponser::send(true, 'Account is inactive. Contact admin', [], Response::HTTP_BAD_REQUEST);
             }
 
             if ($user?->hasRole('client') && $user?->company?->status != GeneralEnums::APPROVED->value) {
-                return JsonResponser::send(true, 'Company is inactive. Contact admin', [], 400);
+                return JsonResponser::send(true, 'Company is inactive. Contact admin', [], Response::HTTP_BAD_REQUEST);
             }
 
             if ($user?->hasRole('client') && !$user->company) {
@@ -51,7 +52,8 @@ class AuthController extends Controller
                 'last_login' => now()
             ]);
 
-            $user['companies'] = $user->companies;
+            $user['companies'] = $user->getCurrentSubscriptionDetails();
+
             $data = [
                 'user' => $user,
                 'token' => $token,
@@ -62,7 +64,7 @@ class AuthController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
-    
+
     /**
      * Switch companies.
      *

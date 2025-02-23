@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\AuditLogs\Auditable;
+use App\Traits\Client\ClientTrait;
 use App\Traits\Companyable;
 use App\Traits\SendOtpTrait;
 use App\Traits\UniqueEntityIdentifierTrait;
@@ -16,7 +17,7 @@ class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable, HasRoles;
     use Auditable;
-    use Companyable;
+    use Companyable, ClientTrait;
     use UniqueEntityIdentifierTrait, SendOtpTrait;
 
     protected $guarded = ['id'];

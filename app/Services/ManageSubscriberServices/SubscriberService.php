@@ -14,7 +14,6 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class SubscriberService
 {
-
     public function overview($request)
     {
         $dateFilter = GeneralHelper::dateFilter($request->date_filter);

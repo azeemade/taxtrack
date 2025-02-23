@@ -23,6 +23,7 @@ return new class extends Migration
             $table->decimal('amount_paid', 15, 2)->default(0.00);
             $table->decimal('plan_amount', 15, 2)->default(0.00);
             $table->unsignedInteger('team_size')->default(4); //no of users
+            $table->string('provider_subscription_id')->nullable();
             $table->dateTime('subscribed_at');
             $table->dateTime('end_date');
             $table->string('status')->comment('pending, expired, active, cancelled');
@@ -42,6 +43,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::disableForeignKeyConstraints();
         Schema::dropIfExists('subscription_histories');
+        Schema::enableForeignKeyConstraints();
     }
 };

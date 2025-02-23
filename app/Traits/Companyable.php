@@ -13,15 +13,20 @@ trait Companyable
         static::creating(function (Model $model) {
             $currentUser = Auth::user();
             if ($currentUser->hasRole(['client'])) {
-                if (!$model->isDirty('created_by') && Auth::check()) {
+                $tableName = $model->getTable();
+
+                $hasCreatedBy = Schema::hasColumn($tableName, 'created_by');
+                if (
+                    !$model->isDirty('created_by') &&
+                    $hasCreatedBy
+                ) {
                     $model->created_by = Auth::id();
                 }
 
-                $tableName = $model->getTable();
                 $hasCompanyId = Schema::hasColumn($tableName, 'company_id');
                 if (
                     !$model->isDirty('company_id') &&
-                    Auth::check() && $hasCompanyId
+                    $hasCompanyId
                 ) {
                     $model->company_id = Auth::user()->company->id ?? null;
                 }
