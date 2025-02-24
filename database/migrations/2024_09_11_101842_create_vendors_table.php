@@ -20,7 +20,8 @@ return new class extends Migration
             $table->string('primary_phone_number')->nullable();
             $table->string('secondary_phone_ext')->nullable();
             $table->string('secondary_phone_number')->nullable();
-            $table->string('primary_email')->unique();
+            $table->string('primary_email');
+            $table->string('vendor_type');
             $table->string('secondary_email')->nullable();
             $table->string('primary_address')->nullable();
             $table->string('secondary_address')->nullable();
