@@ -78,6 +78,7 @@ class VendorController extends Controller
 
             $data = [
                 ...$request->validated(),
+                "vendor_type" => "individual",
                 "contact_persons" => [[
                     "full_name" => $request->vendor_name,
                     ...$request->validated()
@@ -103,6 +104,7 @@ class VendorController extends Controller
 
             $data = [
                 ...$request->validated(),
+                "vendor_type" => "organization",
                 "contact_persons" => $request->contact_persons
             ];
             $record = $this->supplierService->createSupplier($data);
