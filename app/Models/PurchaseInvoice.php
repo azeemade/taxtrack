@@ -37,7 +37,7 @@ class PurchaseInvoice extends Model
                 'name' => $this->vendor->vendor_name,
                 'address' => $this->vendor->primary_address,
                 'email' => $this->vendor->primary_email,
-                'currency' => $this->vendor->currency->symbol ?? null,
+                'currency' => $this->vendor->currency->symbol,
             ],
             'issued_date' => $this->invoice_start_date,
             'due_date' => $this->invoice_end_date,

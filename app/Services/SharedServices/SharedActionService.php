@@ -110,12 +110,43 @@ class SharedActionService
                 'Inv',
                 4
             );
-            $newModel->save();
+            foreach ($model->lineItems as $lineItem) {
+                $newLineItem = $lineItem->replicate();
+                $newLineItem->documentable_id = $newModel->id;
+                $newLineItem->save();
+            }
+            $newLineItem->save();
         } elseif ($newModel instanceof \App\Models\Quote) {
             $newModel->quoteID = $this->generateModelId(
                 'App\Models\Quote',
                 'quoteID',
                 'qte',
+                4
+            );
+            foreach ($model->lineItems as $lineItem) {
+                $newLineItem = $lineItem->replicate();
+                $newLineItem->documentable_id = $newModel->id;
+                $newLineItem->save();
+            }
+            $newLineItem->save();
+        } elseif ($newModel instanceof \App\Models\PurchaseInvoice) {
+            $newModel->purchase_invoiceID = $this->generateModelId(
+                'App\Models\PurchaseInvoice',
+                'purchase_invoiceID',
+                'PID',
+                4
+            );
+            foreach ($model->lineItems as $lineItem) {
+                $newLineItem = $lineItem->replicate();
+                $newLineItem->documentable_id = $newModel->id;
+                $newLineItem->save();
+            }
+            $newLineItem->save();
+        } elseif ($newModel instanceof \App\Models\PurchaseOrder) {
+            $newModel->purchase_orderID = $this->generateModelId(
+                'App\Models\PurchaseOrder',
+                'purchase_orderID',
+                'PO',
                 4
             );
             foreach ($model->lineItems as $lineItem) {
