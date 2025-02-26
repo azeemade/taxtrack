@@ -39,7 +39,7 @@ class CreateOrganizationRequest extends FormRequest
             "bank_name" => 'nullable|string',
             "bank_account_number" => 'nullable|string',
             "bank_identification_code" => 'nullable|string',
-            "phone_ext" => 'required|string|exists:countries,phone_code',
+            "primary_phone_ext" => 'required|string|exists:countries,phone_code',
             "address" => 'nullable|string',
             "country_id" => 'nullable|integer|exists:countries,id',
             "city_id" => 'nullable|integer|exists:cities,id',
