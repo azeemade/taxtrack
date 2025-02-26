@@ -11,14 +11,6 @@ class SubscriptionCancellation extends Model
     use HasFactory;
     protected $guarded = ['id'];
 
-    protected function reason(): Attribute
-    {
-        return Attribute::make(
-            get: fn($value) => unserialize($value),
-            set: fn($value) => serialize($value)
-        );
-    }
-
     public function subscriptionHistory()
     {
         return $this->belongsTo(SubscriptionHistory::class, 'subscription_history_id');

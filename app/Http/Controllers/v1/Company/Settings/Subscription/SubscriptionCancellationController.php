@@ -34,11 +34,11 @@ class SubscriptionCancellationController extends Controller
         }
     }
 
-    public function create(CreatePlanCancellationRequest $request)
+    public function store(CreatePlanCancellationRequest $request)
     {
         try {
             DB::beginTransaction();
-            
+
             $record = $this->companySubscriptionService->cancelPlan($request);
 
             DB::commit();

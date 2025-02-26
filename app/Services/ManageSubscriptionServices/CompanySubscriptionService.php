@@ -64,7 +64,7 @@ class CompanySubscriptionService
     public function viewHistory($id)
     {
         $record = SubscriptionHistory::query()
-            ->select('id', 'subscribed_at', 'subscription_plan_id', 'billed_per', 'paid_via', 'amount_paid', 'plan_amount', 'end_date', 'receipt_no')
+            ->select('id', 'subscribed_at', 'subscription_plan_id', 'billed_per', 'paid_via', 'amount_paid', 'plan_amount', 'end_date', 'receipt_no', 'subscriber_id')
             ->with([
                 'plan:id,title',
                 'subscriber:id,company_id' => ['company:id,name,address,logo'],
@@ -255,7 +255,7 @@ class CompanySubscriptionService
         $record = Subscriber::select('id', 'current_subscription_plan_id', 'company_id')
             ->with([
                 'subscriptionPlan:id,title,short_description',
-                'currentPlanHistory:id,billed_per,amount_paid,end_date,status,subscribed_at,subscriber_id',
+                'currentSubscriptionHistory:id,billed_per,amount_paid,end_date,status,subscribed_at,subscriber_id',
             ])
             ->where('company_id', $currentUser->current_company_id)
             ->first();

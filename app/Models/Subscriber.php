@@ -13,7 +13,7 @@ class Subscriber extends Model
 
     public function subscriptionPlan()
     {
-        return $this->hasMany(SubscriptionPlan::class, 'current_subscription_plan_id');
+        return $this->belongsTo(SubscriptionPlan::class, 'current_subscription_plan_id');
     }
 
     public function company()

@@ -23,7 +23,7 @@ class CreatePlanCancellationRequest extends FormRequest
     {
         return [
             'effective_from' => 'required|string|in:instant,end_billing_period',
-            'reason' => 'required|array',
+            'reason' => 'required',
             'additional_information' => 'nullable|string|max:250'
         ];
     }

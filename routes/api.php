@@ -303,7 +303,7 @@ Route::group([
                 });
                 Route::group([
                     'prefix' => 'subscriptions',
-                    "namespace" => "Subscriptions"
+                    "namespace" => "Subscription"
                 ], function () {
                     Route::apiResource('cancellations', 'SubscriptionCancellationController')
                         ->missing(function () {
@@ -318,10 +318,6 @@ Route::group([
                             return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
                     Route::apiResource('history', 'SubscriptionHistoryController')
-                        ->missing(function () {
-                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
-                        });
-                    Route::apiResource('history', 'SubscriptionPlanController')
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
