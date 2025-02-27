@@ -71,7 +71,7 @@ class PurchaseInvoiceService
         )
             ->with([
                 'purchaseOrder:id,purchase_order_no,purchase_order_date',
-                'vendor:id,vendor_name',
+                'vendor:id,vendor_name,primary_email',
                 'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
                     'category:id,name'
                 ]

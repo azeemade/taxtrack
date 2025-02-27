@@ -98,7 +98,7 @@ class PurchaseOrderService
     {
         $records = PurchaseOrder::query()
             // ->select('id', 'recordable_id', 'recordable_type', 'purchase_order_value', 'share_status', 'vendor_id', 'invoice_id')
-            ->select('id', 'vendor_id', 'purchase_order_value', 'share_status', 'vendor_id', 'invoice_id')
+            ->select('id', 'vendor_id', 'purchase_order_value', 'share_status', 'vendor_id', 'invoice_id', 'purchase_orderID', 'purchase_order_date')
             ->with([
                 // 'recordable:id,vendor_id' => ['vendor:id,vendor_name,referenceID'],
                 'vendor:id,vendor_name,referenceID',
