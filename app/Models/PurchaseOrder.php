@@ -24,7 +24,7 @@ class PurchaseOrder extends Model
 
     public function getAllowedActionsAttribute()
     {
-        return ['preview', 'download', 'delete', 'remind'];
+        return ['preview', 'download', 'delete', 'remind', 'duplicate'];
     }
 
     public function getPreviewablesAttribute()

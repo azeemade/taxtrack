@@ -32,6 +32,8 @@ return new class extends Migration
             $table->mediumText('preview_link')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('company_id');
+            $table->unsignedBigInteger('parent_id')->nullable();
+            $table->foreign('parent_id')->references('id')->on('purchase_orders')->onDelete('set null');
             $table->foreign('vendor_id')->references('id')->on('vendors')->onDelete('cascade');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');

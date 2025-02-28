@@ -65,9 +65,10 @@ class PurchaseOrderService
             'additional_charge',
             'purchase_order_value',
             'vendor_id',
+            'purchase_orderID'
         )
             ->with([
-                'vendor:id,vendor_name',
+                'vendor:id,vendor_name,primary_email',
                 'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
                     'category:id,name'
                 ]
