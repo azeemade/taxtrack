@@ -131,6 +131,9 @@ class PurchaseOrderService
             ->when(isset($request->start_date) && $request->start_date && $request->end_date, function ($query) use ($request) {
                 return $query->where('created_at', [$request?->start_date, $request->end_date]);
             })
+            ->when($request->vendor_id, function ($query) use ($request) {
+                return $query->where('vendor_id', $request->vendor_id);
+            })
             ->latest();
 
         if (!$request->paginate) {

@@ -7,7 +7,6 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
-use App\Models\BadDebt;
 use App\Models\PurchaseInvoice;
 use App\Models\Vendor;
 use App\Models\VendorBill;
@@ -69,11 +68,11 @@ class BillsService
             'vendor_id',
         )
             ->with([
-                // 'vendor:id,vendor_name,referenceID',
+                'vendor:id,vendor_name,referenceID,primary_email',
                 'purchaseInvoice:id,purchase_invoiceID,invoice_end_date',
-                // 'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
-                //     'category:id,name'
-                // ]
+                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
+                    'category:id,name'
+                ]
             ])
             ->find($id);
 
@@ -102,7 +101,7 @@ class BillsService
         $records = VendorBill::query()
             ->select('id', 'vendor_id', 'vendor_billID', 'created_at', 'vendor_bill_total', 'share_status')
             ->with([
-                'vendor:id,vendor_name,referenceID',
+                'vendor:id,vendor_name,referenceID,primary_email',
                 'paymentRecords:id,amount_paid,amount_due,recordable_id,recordable_type'
             ])
             ->when($request->sort_by, function ($query) use ($request) {
