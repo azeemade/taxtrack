@@ -49,6 +49,13 @@ class PurchaseInvoiceService
             $this->sharedActionServices->emailEntity($record);
         }
 
+        if ($request["purchase_order_id"]) {
+            $purchaseOrder = PurchaseOrder::find($request["purchase_order_id"]);
+            $purchaseOrder->update([
+                "invoice_id" => $record->id
+            ]);
+        }
+
         return $record;
     }
 
@@ -88,7 +95,16 @@ class PurchaseInvoiceService
     public function list($request)
     {
         $records = PurchaseInvoice::query()
-            ->select('id', 'purchase_invoiceID', 'invoice_start_date', 'purchase_invoices_total', 'share_status', 'vendor_id', 'purchase_order_id')
+            ->select(
+                'id',
+                'purchase_invoiceID',
+                'invoice_start_date',
+                'purchase_invoices_total',
+                'share_status',
+                'vendor_id',
+                'purchase_order_id',
+                'invoice_end_date'
+            )
             ->with([
                 'vendor:id,vendor_name,referenceID',
                 'purchaseOrder:id,purchase_order_no,purchase_order_date',
@@ -110,6 +126,12 @@ class PurchaseInvoiceService
             })
             ->when($request->status, function ($query) use ($request) {
                 return $query->where('status', $request->status);
+            })
+            ->when($request->vendor_id, function ($query) use ($request) {
+                return $query->where('vendor_id', $request->vendor_id);
+            })
+            ->when($request->is_recurring, function ($query) use ($request) {
+                return $query->where('is_recurring', $request->is_recurring);
             })
             ->when($request->q, function ($query) use ($request) {
                 return $query->where('purchase_invoiceID', 'LIKE', '%' . $request->q . '%')

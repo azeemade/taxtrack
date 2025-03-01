@@ -15,6 +15,15 @@ class PaymentMethod extends Model
     use HasFactory, Companyable, SoftDeletes;
 
     protected $guarded = ['id'];
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        if ($this->methodable_type === 'App\Models\CardAccount') {
+            return $this->methodable->cardBrand->name;
+        }
+        return  $this->methodable->bank->name;
+    }
 
     public function company()
     {
