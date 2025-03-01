@@ -19,8 +19,8 @@ return new class extends Migration
             $table->decimal('price', 15, 2)->default(0.00);
             $table->decimal('discount', 15, 2)->default(0.00);
             $table->decimal('vat', 15, 2)->default(0.00);
-            $table->decimal('credit_amount', 15, 2)->default(0.00);
-            $table->boolean('full_credit')->default(false);
+            $table->decimal('credit_amount', 15, 2)->default(0.00); //debit and credit
+            $table->boolean('full_credit')->default(false); //debit and credit
             $table->decimal('amount', 15, 2)->default(0.00);
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('debit_note_id')->nullable();

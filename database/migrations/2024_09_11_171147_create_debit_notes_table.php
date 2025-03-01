@@ -15,14 +15,14 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->string('noteID');
             $table->string('status')->comment('issued, draft');
+            $table->string('share_status')->default('not-shared')->comment('shared, not-shared');
             $table->mediumText('attachments')->nullable();
             $table->string('additional_referenceID')->nullable();
             $table->date('date_issued');
+            $table->date('preview_link')->nullable();
             $table->unsignedBigInteger('created_by');
-            $table->unsignedBigInteger('credit_note_id');
             $table->unsignedBigInteger('vendor_id');
             $table->unsignedBigInteger('company_id');
-            $table->foreign('credit_note_id')->references('id')->on('credit_notes')->onDelete('cascade');
             $table->foreign('vendor_id')->references('id')->on('vendors')->onDelete('cascade');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');

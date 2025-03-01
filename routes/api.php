@@ -180,6 +180,16 @@ Route::group([
                     Route::get('/bills/{id}/void', 'BillsController@voidBill');
                     Route::post('/bills/{id}/recurring', 'BillsController@recurringBill');
                 });
+
+                //Debit notes
+                Route::group([
+                    "namespace" => "DebitNote"
+                ], function () {
+                    Route::apiResource('debit-notes', 'DebitNoteController')
+                        ->missing(function () {
+                            return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                        });
+                });
             });
 
             Route::group([
