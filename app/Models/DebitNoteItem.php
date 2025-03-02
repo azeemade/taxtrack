@@ -27,7 +27,7 @@ class DebitNoteItem extends Model
 
     public function debitNote()
     {
-        return $this->belongsTo(DebitNote::class);
+        return $this->belongsTo(DebitNote::class, 'debit_note_id');
     }
 
     public function modelable()
