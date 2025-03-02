@@ -69,8 +69,8 @@ class SubscriptionService
             ? round(Carbon::parse($lastUpdatedRecord->updated_at)->diffInDays(now())) . ' days ago, By ' . ($lastUpdatedRecord->subscriber->name ?? 'Unknown')
             : null; // Handle cases where no records exist
 
-        $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount');
-        $revenueGeneratedLastMonth = (clone $records)->whereMonth('created_at', Carbon::now()->subMonth()->month)->sum('amount');
+        $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount_paid');
+        $revenueGeneratedLastMonth = (clone $records)->whereMonth('created_at', Carbon::now()->subMonth()->month)->sum('amount_paid');
 
         $change = $revenueGeneratedThisMonth - $revenueGeneratedLastMonth;
 
@@ -105,7 +105,7 @@ class SubscriptionService
 
             // Calculate revenue for the month
             $revenueGenerated = (clone $records)->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->sum('amount');
+                ->sum('amount_paid');
 
             // Get month name
             $monthName = date('F', mktime(0, 0, 0, $month, 10));
@@ -140,7 +140,7 @@ class SubscriptionService
         }
 
         return [
-            'revenueGenerated' => (clone $records)->sum('amount'), // Count total revenue generated
+            'revenueGenerated' => (clone $records)->sum('amount_paid'), // Count total revenue generated
             'revenueGeneratedPercentage' => $revenueGeneratedPercentage,
             'subscriberCount' => (clone $records)->distinct('subscriber_id')->count('subscriber_id'), // Count total subscribers
             'subscriberPercentage' => $subscriberPercentage,
@@ -160,7 +160,7 @@ class SubscriptionService
                 $record->plan->title,
                 $record->status,
                 $record->billed_per,
-                $record->amount,
+                $record->amount_paid,
                 $record->created_at,
                 $record->end_date
             ];
@@ -279,7 +279,7 @@ class SubscriptionService
             'receipt_no' => $receiptNo,
             'customer_refer_no' => $customerReferNo,
             'billed_per' => $data['billed_per'],
-            'amount' => $data['amount'],
+            'amount_paid' => $data['amount'],
             'subscribed_at' => now(),
             'end_date' => $data['end_date'],
             'status' => 'active',
@@ -339,7 +339,7 @@ class SubscriptionService
         $refund->subscriptionHistory()->update([
             'status' => GeneralEnums::CANCELLED->value,
         ]);
-        
+
         return $refund;
     }
 

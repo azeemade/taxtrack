@@ -79,7 +79,7 @@ class SubscriberService
                 $record->plan->title,
                 $record->status,
                 $record->billed_per,
-                $record->amount,
+                $record->amount_paid,
                 Carbon::parse($record->created_at),
                 Carbon::parse($record->end_date)
             ];

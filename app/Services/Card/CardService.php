@@ -39,9 +39,11 @@ class CardService
     {
         $record = CardAccount::updateOrCreate(["id" => $request["id"] ?? null], [...$request]);
 
-        $record->paymentMethods()->create([
-            'referenceID' => $this->generateRefId()
-        ]);
+        if (!isset($request["id"])) {
+            $record->paymentMethods()->create([
+                'referenceID' => $this->generateRefId()
+            ]);
+        }
 
         return $record;
     }
@@ -122,6 +124,7 @@ class CardService
     public function delete($id)
     {
         $record = CardAccount::find($id);
+        $record->paymentMethods()->delete();
         $record->delete();
     }
 

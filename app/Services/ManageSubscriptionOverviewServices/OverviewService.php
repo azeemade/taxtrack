@@ -61,10 +61,10 @@ class OverviewService
                 if ($dateFilter) {
                     $query->where('created_at', '>=', $dateFilter);
                 }
-            }])->withSum('subscriptions', 'amount');
+            }])->withSum('subscriptions', 'amount_paid');
 
-        $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount');
-        $revenueGeneratedLastMonth = (clone $records)->whereMonth('created_at', Carbon::now()->subMonth()->month)->sum('amount');
+        $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount_paid');
+        $revenueGeneratedLastMonth = (clone $records)->whereMonth('created_at', Carbon::now()->subMonth()->month)->sum('amount_paid');
 
         $change = $revenueGeneratedThisMonth - $revenueGeneratedLastMonth;
 
@@ -77,7 +77,7 @@ class OverviewService
         }
 
         return [
-            'revenueGenerated' => (clone $records)->sum('amount'), // Count total revenue generated
+            'revenueGenerated' => (clone $records)->sum('amount_paid'), // Count total revenue generated
             'revenueGeneratedPercentage' => $revenueGeneratedPercentage,
             'activeSubscriber' => (clone $records)->where('status', GeneralEnums::ACTIVE->value)->count('subscriber_id'),
             'inactivesSubscriber' => (clone $records)->where('status', GeneralEnums::EXPIRED->value)->count('subscriber_id'),
@@ -97,7 +97,7 @@ class OverviewService
                 $record->plan->title,
                 $record->status,
                 $record->billed_per,
-                $record->amount,
+                $record->amount_paid,
                 Carbon::parse($record->created_at),
                 Carbon::parse($record->endDate)
             ];
