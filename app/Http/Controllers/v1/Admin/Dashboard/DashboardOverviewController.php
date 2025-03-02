@@ -7,6 +7,7 @@ use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\SuperAdminDashboardServices\DashboardService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class DashboardOverviewController extends Controller
 {
@@ -30,7 +31,7 @@ class DashboardOverviewController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 

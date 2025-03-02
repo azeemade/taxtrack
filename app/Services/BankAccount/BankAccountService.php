@@ -41,9 +41,11 @@ class BankAccountService
     {
         $record = BankAccount::updateOrCreate(["id" => $request["id"] ?? null], [...$request]);
 
-        $record->paymentMethods()->create([
-            'referenceID' => $this->generateRefId()
-        ]);
+        if (!isset($request["id"])) {
+            $record->paymentMethods()->create([
+                'referenceID' => $this->generateRefId()
+            ]);
+        }
 
         return $record;
     }
@@ -149,6 +151,7 @@ class BankAccountService
     public function delete($id)
     {
         $record = BankAccount::find($id);
+        $record->paymentMethods()->delete();
         $record->delete();
     }
 

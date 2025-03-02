@@ -66,6 +66,13 @@ class BillsService
             'vendor_bill_total',
             'purchase_invoice_id',
             'vendor_id',
+            'attachments',
+            'is_recurring',
+            'recurring_next_due_date',
+            'recurring_start_date',
+            'recurring_end_date',
+            'repeat',
+            'repeat_period',
         )
             ->with([
                 'vendor:id,vendor_name,referenceID,primary_email',
@@ -99,7 +106,20 @@ class BillsService
     public function list($request)
     {
         $records = VendorBill::query()
-            ->select('id', 'vendor_id', 'vendor_billID', 'created_at', 'vendor_bill_total', 'share_status')
+            ->select(
+                'id',
+                'vendor_id',
+                'vendor_billID',
+                'created_at',
+                'vendor_bill_total',
+                'share_status',
+                'is_recurring',
+                'recurring_next_due_date',
+                'recurring_start_date',
+                'recurring_end_date',
+                'repeat',
+                'repeat_period',
+            )
             ->with([
                 'vendor:id,vendor_name,referenceID,primary_email',
                 'paymentRecords:id,amount_paid,amount_due,recordable_id,recordable_type'

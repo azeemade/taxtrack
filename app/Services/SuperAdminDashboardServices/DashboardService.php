@@ -33,8 +33,8 @@ class DashboardService
                 return $query->whereBetween('created_at', [$dateFilter[0], $dateFilter[1]]);
             });
 
-        $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount');
-        $revenueGeneratedLastMonth = (clone $records)->whereMonth('created_at', Carbon::now()->subMonth()->month)->sum('amount');
+        $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount_paid');
+        $revenueGeneratedLastMonth = (clone $records)->whereMonth('created_at', Carbon::now()->subMonth()->month)->sum('amount_paid');
 
         $change = $revenueGeneratedThisMonth - $revenueGeneratedLastMonth;
 
@@ -66,7 +66,7 @@ class DashboardService
             $startOfMonth = Carbon::create($year, $month, 1)->startOfMonth();
             $endOfMonth = Carbon::create($year, $month, 1)->endOfMonth();
 
-            $revenueGenerated = (clone $records)->whereBetween('created_at', [$startOfMonth, $endOfMonth])->sum('amount');
+            $revenueGenerated = (clone $records)->whereBetween('created_at', [$startOfMonth, $endOfMonth])->sum('amount_paid');
             $monthName = date('F', mktime(0, 0, 0, $month, 10));
 
             $revenueChartDataByMonth[] = [
@@ -88,7 +88,7 @@ class DashboardService
                 return $query->whereBetween('created_at', [$dateFilter[0], $dateFilter[1]]);
             })
             ->with('plan:id,title')  // Eager load plan relationship
-            ->selectRaw('subscription_plan_id, SUM(amount) as total_revenue')
+            ->selectRaw('subscription_plan_id, SUM(amount_paid) as total_revenue')
             ->groupBy('subscription_plan_id')
             ->orderBy('total_revenue', 'desc')  // Order by total revenue
             ->get()
@@ -101,7 +101,7 @@ class DashboardService
             ->toArray();
 
         return [
-            'revenueGenerated' => (clone $records)->sum('amount'), // Count total revenue generated
+            'revenueGenerated' => (clone $records)->sum('amount_paid'), // Count total revenue generated
             'revenueGeneratedPercentage' => $revenueGeneratedPercentage,
             'activeUsers' => (clone $users)->where('status', GeneralEnums::ACTIVE->value)->count(), // Count active records
             'recenActiveUsers' => (clone $users)->where('status', GeneralEnums::ACTIVE->value)->where('created_at', '>=', $oneMonthAgo)->count(), // Count active records
