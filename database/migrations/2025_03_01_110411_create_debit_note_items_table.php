@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('debit_note_id');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('company_id');
-            $table->foreign('debit_note_id')->references('id')->on('line_items')->onDelete('cascade');
+            $table->foreign('debit_note_id')->references('id')->on('debit_notes')->onDelete('cascade');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
             $table->timestamps();

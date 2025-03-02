@@ -4,12 +4,10 @@ namespace App\Services\DebitNotes;
 
 use App\Enums\DocumentableModelEnums;
 use App\Enums\FinancialDocumentStatusEnums;
-use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
 use App\Models\DebitNote;
-use App\Models\Customer;
 use App\Models\PurchaseInvoice;
 use App\Models\Vendor;
 use App\Models\VendorBill;
@@ -125,7 +123,7 @@ class DebitNoteService
                     'modelable' => function (MorphTo $morphTo) {
                         $morphTo->constrain([
                             VendorBill::class => function ($subquery) {
-                                $subquery->select('id', 'vendor_billID', 'vendor_bill_due_date')
+                                $subquery->select('id', 'vendor_billID', 'vendor_bill_due_date', 'is_recurring')
                                     ->withOnly([
                                         'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,credit_amount,full_credit' => [
                                             'category:id,name'
@@ -133,7 +131,7 @@ class DebitNoteService
                                     ]);
                             },
                             PurchaseInvoice::class => function ($subquery) {
-                                $subquery->select('id', 'purchase_order_due_date', 'purchase_invoiceID')
+                                $subquery->select('id', 'purchase_order_due_date', 'purchase_invoiceID', 'is_recurring')
                                     ->withOnly([
                                         'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,credit_amount,full_credit' => [
                                             'category:id,name'
