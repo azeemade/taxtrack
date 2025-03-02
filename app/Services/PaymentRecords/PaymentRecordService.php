@@ -7,11 +7,16 @@ use App\Enums\PaymentStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Models\BankAccount;
+use App\Models\CardAccount;
 use App\Models\PaymentMethod;
 use App\Models\PaymentRecord;
+use App\Models\PurchaseInvoice;
 use App\Models\Vendor;
+use App\Models\VendorBill;
 use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Response;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -34,7 +39,7 @@ class PaymentRecordService
             ]
         );
 
-        $amountDue = $record->recordable->amount_due;
+        $amountDue = $record->recordable->amount_due ??  0.00;
         $record->recordable()->update([
             'payment_status' => $amountDue > 0 ? PaymentStatusEnums::PARTIAL_PAYMENT->value : PaymentStatusEnums::FULL_PAYMENT->value
         ]);
@@ -51,10 +56,21 @@ class PaymentRecordService
             'payment_method_id',
             'payment_proof',
             'attachments',
-            'additional_notes'
+            'additional_notes',
+            'recordable_id',
+            'recordable_type',
         )
             ->with([
-                'paymentMethod:id,methodable_id,methodable_type' => ['methodable:id,holder_name']
+                'paymentMethod:id,methodable_id,methodable_type' => ['methodable' => function (MorphTo $morphTo) {
+                    $morphTo->constrain([
+                        CardAccount::class => function ($subquery) {
+                            $subquery->select('id', 'holder_name', 'card_brand_id', 'issuer_number');
+                        },
+                        BankAccount::class => function ($subquery) {
+                            $subquery->select('id', 'holder_name', 'bank_id');
+                        },
+                    ]);
+                }]
             ])
             ->find($id);
 
@@ -83,11 +99,20 @@ class PaymentRecordService
                 'additional_notes',
                 'referenceID'
             ])
-            ->with([
-                'recordable:id,vendor_id,vendor_billID,share_status' => [
-                    'vendor:id,vendor_name,referenceID'
-                ]
-            ])
+            ->with(
+                ['recordable' => function (MorphTo $morphTo) {
+                    $morphTo->constrain([
+                        PurchaseInvoice::class => function ($subquery) {
+                            $subquery->select('id', 'vendor_id', 'purchase_invoiceID', 'share_status')
+                                ->with(['vendor:id,vendor_name,referenceID']);
+                        },
+                        VendorBill::class => function ($subquery) {
+                            $subquery->select('id', 'vendor_id', 'vendor_billID', 'share_status')
+                                ->with(['vendor:id,vendor_name,referenceID']);
+                        },
+                    ]);
+                }]
+            )
             ->when($request->sort_by, function ($query) use ($request) {
                 switch ($request->sort_by) {
                     case 'alphabetically':

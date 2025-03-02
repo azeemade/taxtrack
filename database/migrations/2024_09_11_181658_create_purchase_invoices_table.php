@@ -29,6 +29,7 @@ return new class extends Migration
             $table->decimal('tax', 15, 2)->default(0.00);
             $table->decimal('purchase_invoices_total', 15, 2)->default(0.00);
             $table->string('status')->default('draft')->comment('draft, issued');
+            $table->string('payment_status')->nullable()->comment('partial-payment, full-payment');
             $table->mediumText('attachments')->nullable();
             $table->text('terms_and_conditions')->nullable();
             $table->text('additional_comment')->nullable();
