@@ -56,7 +56,9 @@ class PaymentRecordService
             'payment_method_id',
             'payment_proof',
             'attachments',
-            'additional_notes'
+            'additional_notes',
+            'recordable_id',
+            'recordable_type',
         )
             ->with([
                 'paymentMethod:id,methodable_id,methodable_type' => ['methodable' => function (MorphTo $morphTo) {
