@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Scopes\ModelUserScope;
 use App\Traits\Companyable;
 use App\Traits\ManageLineItemTrait;
+use App\Traits\PaymentRecordTrait;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,9 +17,12 @@ class PurchaseInvoice extends Model
     use HasFactory,
         Companyable,
         SoftDeletes,
-        ManageLineItemTrait;
+        ManageLineItemTrait,
+        PaymentRecordTrait;
 
     protected $guarded = ['id'];
+    protected $appends = ['amount_due', 'total_amount_paid'];
+    protected $total_amount = 'purchase_invoices_total';
 
     public function getAllowedActionsAttribute()
     {
@@ -76,10 +80,10 @@ class PurchaseInvoice extends Model
         return $this->belongsTo(Company::class);
     }
 
-    // public function paymentRecords()
-    // {
-    //     return $this->morphMany(PaymentRecord::class, 'recordable', 'recordable_type', 'recordable_id');
-    // }
+    public function paymentRecords()
+    {
+        return $this->morphMany(PaymentRecord::class, 'recordable', 'recordable_type', 'recordable_id');
+    }
 
     public function lineItems()
     {

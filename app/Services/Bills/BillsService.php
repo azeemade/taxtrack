@@ -119,6 +119,7 @@ class BillsService
                 'recurring_end_date',
                 'repeat',
                 'repeat_period',
+                'created_at'
             )
             ->with([
                 'vendor:id,vendor_name,referenceID,primary_email',
