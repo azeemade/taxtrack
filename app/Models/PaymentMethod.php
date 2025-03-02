@@ -20,9 +20,9 @@ class PaymentMethod extends Model
     public function getNameAttribute()
     {
         if ($this->methodable_type === 'App\Models\CardAccount') {
-            return $this->methodable->cardBrand->name;
+            return $this->methodable->cardBrand->name ?? null;
         }
-        return  $this->methodable->bank->name;
+        return  $this->methodable->bank->name ?? null;
     }
 
     public function company()

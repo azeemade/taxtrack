@@ -82,8 +82,8 @@ class DebitNoteService
                 'modelable_type' => $value['model'] === 'purchase_invoices' ? DocumentableModelEnums::PURCHASE_INVOICE->value : DocumentableModelEnums::VENDOR_BILLS->value
             ]);
             $debitNoteItems->modelable->lineItems()->update([
-                'credit_amount' => $value['debit_amount'],
-                'full_credit' => $value['debit_in_full']
+                'debit_amount' => $value['debit_amount'],
+                'full_debit' => $value['debit_in_full']
             ]);
         }
 
@@ -125,7 +125,7 @@ class DebitNoteService
                             VendorBill::class => function ($subquery) {
                                 $subquery->select('id', 'vendor_billID', 'vendor_bill_due_date', 'is_recurring')
                                     ->withOnly([
-                                        'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,credit_amount,full_credit' => [
+                                        'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,debit_amount,full_debit' => [
                                             'category:id,name'
                                         ],
                                     ]);
@@ -133,7 +133,7 @@ class DebitNoteService
                             PurchaseInvoice::class => function ($subquery) {
                                 $subquery->select('id', 'purchase_order_due_date', 'purchase_invoiceID', 'is_recurring')
                                     ->withOnly([
-                                        'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,credit_amount,full_credit' => [
+                                        'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,debit_amount,full_debit' => [
                                             'category:id,name'
                                         ],
                                     ]);
@@ -180,8 +180,8 @@ class DebitNoteService
             }
 
             $debitNoteItem->modelable->lineItems()->update([
-                'credit_amount' => $value['debit_amount'],
-                'full_credit' => $value['debit_in_full']
+                'debit_amount' => $value['debit_amount'],
+                'full_debit' => $value['debit_in_full']
             ]);
         }
 
