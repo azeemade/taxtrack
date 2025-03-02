@@ -7,11 +7,14 @@ use App\Enums\PaymentStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Models\BankAccount;
+use App\Models\CardAccount;
 use App\Models\PaymentMethod;
 use App\Models\PaymentRecord;
 use App\Models\Vendor;
 use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Response;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -54,7 +57,16 @@ class PaymentRecordService
             'additional_notes'
         )
             ->with([
-                'paymentMethod:id,methodable_id,methodable_type' => ['methodable:id,holder_name']
+                'paymentMethod:id,methodable_id,methodable_type' => ['methodable' => function (MorphTo $morphTo) {
+                    $morphTo->constrain([
+                        CardAccount::class => function ($subquery) {
+                            $subquery->select('id', 'holder_name', 'card_brand_id', 'issuer_number');
+                        },
+                        BankAccount::class => function ($subquery) {
+                            $subquery->select('id', 'holder_name', 'bank_id');
+                        },
+                    ]);
+                }]
             ])
             ->find($id);
 
