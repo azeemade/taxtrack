@@ -108,7 +108,9 @@ class PurchaseInvoiceService
             ->with([
                 'vendor:id,vendor_name,referenceID',
                 'purchaseOrder:id,purchase_order_no,purchase_order_date',
-                'lineItems'
+                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
+                    'category:id,name'
+                ]
             ])
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {

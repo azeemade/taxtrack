@@ -124,7 +124,10 @@ class BillsService
             )
             ->with([
                 'vendor:id,vendor_name,referenceID,primary_email',
-                'paymentRecords:id,amount_paid,amount_due,recordable_id,recordable_type'
+                'paymentRecords:id,amount_paid,amount_due,recordable_id,recordable_type',
+                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
+                    'category:id,name'
+                ]
             ])
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
