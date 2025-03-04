@@ -83,6 +83,8 @@ class PaymentRecordService
 
     public function list($request)
     {
+        $documentType = isset($request['model']) && $request['model'] ? $this->matchRecordableType($request['model']) : null;
+
         $records = PaymentRecord::query()
             ->when($request->id, fn($query) => $query->where('recordable_id', $request->id))
             ->select([
@@ -125,6 +127,10 @@ class PaymentRecordService
             })
             ->when($request->status, function ($query) use ($request) {
                 return $query->where('status', $request->status);
+            })
+            ->when($documentType, function ($query) use ($documentType, $request) {
+                return $query->where('recordable_type', $documentType)
+                    ->where('recordable_id', $request['model_id']);
             })
             ->when($request->bank_account_id, function ($query) use ($request) {
                 return $query->whereRelation('paymentMethod', 'methodable_id', $request->bank_account_id);
