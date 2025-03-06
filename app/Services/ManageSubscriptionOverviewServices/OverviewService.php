@@ -55,7 +55,7 @@ class OverviewService
             ->latest();
 
         $plans = SubscriptionPlan::query()
-            ->select('title', 'monthly_fee', 'yearly_fee') // Select only the title of the SubscriptionPlan
+            ->select('id', 'title', 'monthly_fee', 'yearly_fee') // Select only the title of the SubscriptionPlan
             ->withCount(['subscriber as subscriber_count' => function ($query) use ($dateFilter) {
                 // Filter subscribers by the dateFilter
                 if ($dateFilter) {

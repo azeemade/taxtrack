@@ -97,9 +97,15 @@ class ResetPasswordController extends Controller
         try {
             $currentUser = auth()->user();
             $currentPassword = $request->password;
-            if (Hash::check($currentPassword, $currentUser->password)) {
-                throw new BadRequestException('Current and new password cannot be same', 400);
+
+            if (!empty($request->current_password) && Hash::check($currentPassword, $request->current_password)) {
+                throw new BadRequestException('Current password is incorrect', Response::HTTP_BAD_REQUEST);
             }
+
+            if (Hash::check($currentPassword, $currentUser->password)) {
+                throw new BadRequestException('Current and new password cannot be same', Response::HTTP_BAD_REQUEST);
+            }
+
             $currentUser->update([
                 'password' => $request->password,
             ]);
