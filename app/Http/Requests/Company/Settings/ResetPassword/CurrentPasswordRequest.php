@@ -23,6 +23,7 @@ class CurrentPasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'current_password' => 'sometimes|string',
             'password' => [
                 'required',
                 'string',
