@@ -471,6 +471,15 @@ class CompanySubscriptionService
         return $planCheck->first();
     }
 
+    public function delete($id)
+    {
+        $record = SubscriptionPaymentMethod::find($id);
+        if (!$record) {
+            throw new BadRequestException("Payment method not found!");
+        }
+        $record->delete();
+    }
+
     protected function handleSubscriber($data)
     {
         return Subscriber::firstOrCreate(
