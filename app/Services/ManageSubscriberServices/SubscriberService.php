@@ -17,14 +17,15 @@ class SubscriberService
     public function overview($request)
     {
         $dateFilter = GeneralHelper::dateFilter($request->date_filter);
-        $records = SubscriptionHistory::query()
-            ->with('subscriber:id,name', 'plan:id,title')
+
+        $records = Subscriber::query()
+            ->with(['subscriptionPlan:id,title', 'currentSubscriptionHistory'])
             ->when($request->q, function ($query) use ($request) {
-                $query->whereRelation('subscriber', 'name', 'LIKE', '%' . $request->q . '%')
-                    ->orWhereRelation('plan', 'title', 'LIKE', '%' . $request->q . '%');
+                $query->where('name', 'LIKE', '%' . $request->q . '%')
+                    ->orWhereRelation('subscriptionPlan', 'title', 'LIKE', '%' . $request->q . '%');
             })
             ->when($request->status, function ($query) use ($request) {
-                $query->where('status', $request->status);
+                $query->orWhereRelation('currentSubscriptionHistory', 'status', $request->status);
             })
             ->when($dateFilter, function ($query) use ($dateFilter) {
                 return $query->where('created_at', '>=', $dateFilter);
@@ -75,13 +76,13 @@ class SubscriberService
         $records = $records->map(function ($record) {
             return [
                 $record->id,
-                $record->subscriber->name,
-                $record->plan->title,
-                $record->status,
-                $record->billed_per,
-                $record->amount_paid,
-                Carbon::parse($record->created_at),
-                Carbon::parse($record->end_date)
+                $record->name,
+                $record->subscriptionPlan->title,
+                $record->currentSubscriptionHistory->status ?? null,
+                $record->currentSubscriptionHistory->billed_per ?? null,
+                $record->currentSubscriptionHistory->amount_paid ?? null,
+                !empty($record->currentSubscriptionHistory->subscribed_at) ? Carbon::parse($record->currentSubscriptionHistory->subscribed_at) : null,
+                !empty($record->currentSubscriptionHistory->end_date) ? Carbon::parse($record->currentSubscriptionHistory->end_date) : null
             ];
         });
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'subscribers_report.xlsx');

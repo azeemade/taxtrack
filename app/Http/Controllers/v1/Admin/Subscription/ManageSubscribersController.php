@@ -4,10 +4,12 @@ namespace App\Http\Controllers\v1\Admin\Subscription;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Shared\SharedFilterRequest;
+use App\Models\Subscriber;
 use App\Models\SubscriptionHistory;
 use App\Models\SubscriptionRefund;
 use App\Responser\JsonResponser;
 use App\Services\ManageSubscriberServices\SubscriberService;
+use App\Services\ManageSubscriptionServices\CompanySubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,10 +17,12 @@ class ManageSubscribersController extends Controller
 {
 
     protected SubscriberService $subscriberService;
+    protected CompanySubscriptionService $companySubscriptionService;
 
-    public function __construct(SubscriberService $subscriberService)
+    public function __construct(SubscriberService $subscriberService, CompanySubscriptionService $companySubscriptionService)
     {
         $this->subscriberService = $subscriberService;
+        $this->companySubscriptionService = $companySubscriptionService;
     }
 
     /**
@@ -61,23 +65,70 @@ class ManageSubscribersController extends Controller
     public function show($id)
     {
         try {
-            $record = SubscriptionHistory::where('id', $id)
-                ->with('plan', 'subscriptionRefund', 'subscriptionCancellation')
-                ->first();
+            $record = Subscriber::with([
+                'currentSubscriptionHistory:id,billed_per,subscription_plan_id,amount_paid,subscribed_at,end_date,paid_via,status,payment_type,subscriber_id' => ['plan:id,title']
+            ])->find($id);
 
             if (!$record) {
-                return JsonResponser::send(false, 'Subscription not found.');
+                return JsonResponser::send(false, 'Subscriber not found.');
             }
-            $userSubscriptionHistory = SubscriptionHistory::where('subscriber_id', $record->subscriber_id)
-                ->with('plan', 'subscriptionRefund', 'subscriptionCancellation')
-                ->get();
 
-            $data = [
-                "record" => $record,
-                "userSubscriptionHistory" => $userSubscriptionHistory
-            ];
+            return JsonResponser::send(false, 'Record(s) found successfully', $record);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+        }
+    }
 
-            return JsonResponser::send(false, 'Record(s) found successfully', $data);
+    public function histories(Request $request, $id)
+    {
+        try {
+            $records = $this->companySubscriptionService->subscriptionHistory($request, $id);
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+        }
+    }
+
+    public function refunds(Request $request, $id)
+    {
+        try {
+            $records = $this->companySubscriptionService->refundRequests($request, $id);
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+        }
+    }
+
+    public function refund($id, $refund_id)
+    {
+        try {
+            $records = $this->companySubscriptionService->viewRefund($refund_id);
+
+            return JsonResponser::send(false, 'Record found successfully', $records);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+        }
+    }
+
+    public function cancellations(Request $request, $id)
+    {
+        try {
+            $records = $this->companySubscriptionService->cancellationRequests($request, $id);
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+        }
+    }
+
+    public function cancellation($id, $cancellation_id)
+    {
+        try {
+            $records = $this->companySubscriptionService->viewCancellation($cancellation_id);
+
+            return JsonResponser::send(false, 'Record found successfully', $records);
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
         }

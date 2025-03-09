@@ -27,13 +27,16 @@ class CompanySubscriptionService
         $this->stripe = new Stripe();
     }
 
-    public function subscriptionHistory($request)
+    public function subscriptionHistory($request, ?int $subscriber_id)
     {
         $records = SubscriptionHistory::query()
             ->select('id', 'subscribed_at', 'subscription_plan_id', 'billed_per', 'status', 'amount_paid', 'plan_amount', 'subscribed_at', 'end_date', 'receipt_no')
             ->with([
                 'plan:id,title',
             ])
+            ->when($subscriber_id, function ($query) use ($subscriber_id) {
+                $query->where('subscriber_id', $subscriber_id);
+            })
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "date_ascending") {
                     return $query->orderBy('subscribed_at', 'asc');
@@ -101,13 +104,16 @@ class CompanySubscriptionService
         return $record;
     }
 
-    public function refundRequests($request)
+    public function refundRequests($request, ?int $subscriber_id)
     {
         $records = SubscriptionRefund::query()
             ->select('id', 'request_date', 'refund_type', 'amount_refunded', 'reason', 'status', 'subscription_plan_id')
             ->with([
                 'subscriptionPlan:id,title',
             ])
+            ->when($subscriber_id, function ($query) use ($subscriber_id) {
+                $query->where('subscriber_id', $subscriber_id);
+            })
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "date_ascending") {
                     return $query->orderBy('request_date', 'asc');
@@ -188,13 +194,16 @@ class CompanySubscriptionService
         return $refund;
     }
 
-    public function cancellationRequests($request)
+    public function cancellationRequests($request, ?int $subscriber_id)
     {
         $records = SubscriptionCancellation::query()
             ->select('id', 'request_date', 'effective_from', 'reason', 'status', 'subscription_plan_id')
             ->with([
                 'subscriptionPlan:id,title',
             ])
+            ->when($subscriber_id, function ($query) use ($subscriber_id) {
+                $query->where('subscriber_id', $subscriber_id);
+            })
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "date_ascending") {
                     return $query->orderBy('request_date', 'asc');
