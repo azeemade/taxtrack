@@ -34,7 +34,7 @@ class SubscriptionRefundController extends Controller
         }
     }
 
-    public function create(CreateRefundRequest $request)
+    public function store(CreateRefundRequest $request)
     {
         try {
             DB::beginTransaction();
