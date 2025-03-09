@@ -50,6 +50,11 @@ Route::group(['prefix' => 'subscriptions', "namespace" => "Subscription"], funct
         });
         Route::put('approve/refund/{id}', 'ManageSubscribersController@approveRefund');
         Route::get('view/receipts/{id}', 'ManageSubscribersController@viewReceipts');
+        Route::get('subscriber/{id}/histories', 'ManageSubscribersController@histories');
+        Route::get('subscriber/{id}/refunds', 'ManageSubscribersController@refunds');
+        Route::get('subscriber/{id}/refunds/{refund_id}', 'ManageSubscribersController@refund');
+        Route::get('subscriber/{id}/cancellations', 'ManageSubscribersController@cancellations');
+        Route::get('subscriber/{id}/cancellations/{cancellation_id}', 'ManageSubscribersController@cancellation');
     });
 });
 
