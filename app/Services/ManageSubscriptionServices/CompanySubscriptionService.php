@@ -64,7 +64,20 @@ class CompanySubscriptionService
     public function viewHistory($id)
     {
         $record = SubscriptionHistory::query()
-            ->select('id', 'subscribed_at', 'subscription_plan_id', 'billed_per', 'paid_via', 'amount_paid', 'plan_amount', 'end_date', 'receipt_no', 'subscriber_id')
+            ->select(
+                'id',
+                'subscribed_at',
+                'subscription_plan_id',
+                'billed_per',
+                'paid_via',
+                'amount_paid',
+                'plan_amount',
+                'end_date',
+                'receipt_no',
+                'subscriber_id',
+                'customer_refer_no',
+                'provider_subscription_id'
+            )
             ->with([
                 'plan:id,title',
                 'subscriber:id,company_id' => ['company:id,name,address,logo'],
@@ -133,9 +146,13 @@ class CompanySubscriptionService
     public function createRefundRequest($request)
     {
         $currentUser = auth()->user();
-        $subscriber = $this->handleSubscriber([
-            'company_id' => $currentUser->current_company_id
-        ]);
+        $subscriber = $this->findSubscriber(
+            $currentUser->current_company_id
+        );
+
+        if (!$subscriber) {
+            throw new BadRequestException('Subscriber not found', Response::HTTP_BAD_REQUEST);
+        }
 
         if ($subscriber->currentSubscriptionHistory->plan->is_free) {
             throw new BadRequestException('You cannot refund a free subscription', Response::HTTP_BAD_REQUEST);
@@ -215,9 +232,13 @@ class CompanySubscriptionService
     public function cancelPlan($request)
     {
         $currentUser = auth()->user();
-        $subscriber = $this->handleSubscriber([
-            'company_id' => $currentUser->current_company_id
-        ]);
+        $subscriber = $this->findSubscriber(
+            $currentUser->current_company_id
+        );
+
+        if (!$subscriber) {
+            throw new BadRequestException('Subscriber not found', Response::HTTP_BAD_REQUEST);
+        }
 
         $cancellation = SubscriptionCancellation::create([
             'request_date' => Carbon::now(),
@@ -494,6 +515,15 @@ class CompanySubscriptionService
                 'current_subscription_plan_id' => $data['subscription_plan_id'] ?? null,
             ]
         );
+    }
+
+    protected function findSubscriber($companyId)
+    {
+        return Subscriber::where(
+            'company_id',
+            $companyId,
+
+        )->first();
     }
 
     protected function getPlanDurationDependencies($duration, $plan, $is_free)
