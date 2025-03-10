@@ -66,7 +66,10 @@ class SubscriptionService
 
         $lastUpdatedRecord = $records->first(); // Get the first record
         $lastUpdated = $lastUpdatedRecord
-            ? round(Carbon::parse($lastUpdatedRecord->updated_at)->diffInDays(now())) . ' days ago, By ' . ($lastUpdatedRecord->subscriber->name ?? 'Unknown')
+            ? [
+                "date" => round(Carbon::parse($lastUpdatedRecord->updated_at)->diffInDays(now())) . ' days ago',
+                "by" => ($lastUpdatedRecord->subscriber->name ?? 'Unknown')
+            ]
             : null; // Handle cases where no records exist
 
         $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount_paid');
