@@ -125,7 +125,7 @@ class CompanySubscriptionService
                 return $query->where('status', $request->status);
             })
             ->when($request->q, function ($query) use ($request) {
-                return $query->whereRelation('plan', 'title', 'LIKE', '%' . $request->q . '%')
+                return $query->whereRelation('subscriptionPlan', 'title', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reason', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('amount_refunded', 'LIKE', '%' . $request->q . '%');
             })
@@ -215,7 +215,7 @@ class CompanySubscriptionService
                 return $query->where('status', $request->status);
             })
             ->when($request->q, function ($query) use ($request) {
-                return $query->whereRelation('plan', 'title', 'LIKE', '%' . $request->q . '%')
+                return $query->whereRelation('subscriptionPlan', 'title', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reason', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('amount_refunded', 'LIKE', '%' . $request->q . '%');
             })
