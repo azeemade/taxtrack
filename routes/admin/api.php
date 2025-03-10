@@ -49,6 +49,7 @@ Route::group(['prefix' => 'subscriptions', "namespace" => "Subscription"], funct
             return JsonResponser::send(true, 'Resource not found', null, 404);
         });
         Route::put('approve/refund/{id}', 'ManageSubscribersController@approveRefund');
+        Route::put('decline/refund/{id}', 'ManageSubscribersController@declineRefund');
         Route::get('view/receipts/{id}', 'ManageSubscribersController@viewReceipts');
         Route::get('subscriber/{id}/histories', 'ManageSubscribersController@histories');
         Route::get('subscriber/{id}/refunds', 'ManageSubscribersController@refunds');

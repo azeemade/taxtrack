@@ -88,11 +88,11 @@ class SubscriberService
         return Excel::download(new GeneralReportExport($records, $recordHeadings), 'subscribers_report.xlsx');
     }
 
-    public function approve(SubscriptionRefund $refund)
+    public function toggleStatus(SubscriptionRefund $refund, string $status)
     {
         $currentUser = auth()->user();
         $refund->update([
-            'status' => GeneralEnums::APPROVED->value,
+            'status' => $status,
             'approved_on' => now(),
             'approved_by' => $currentUser->id
         ]);
