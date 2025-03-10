@@ -403,5 +403,6 @@ Route::group([
         Route::get('/all-email-templates', 'GuestController@allEmailTemplate');
         Route::get('/fonts', 'GuestController@fonts');
         Route::get('/subscription-plans', 'GuestController@allSubscriptionPlans');
+        Route::get('/modules', 'GuestController@modules');
     });
 });

@@ -9,6 +9,8 @@ use App\Models\Category;
 use App\Models\Company;
 use App\Models\EmailTemplate;
 use App\Models\ErrorLog;
+use App\Models\Module;
+use App\Models\ModuleFunctionality;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Responser\JsonResponser;
@@ -214,13 +216,24 @@ class GuestController extends Controller
     public function allSubscriptionPlans()
     {
         try {
-            return SubscriptionPlan::with(['subscriptionPlanFeature:id,title,subscription_plan_id'])
+            $records = SubscriptionPlan::with(['subscriptionPlanFeature:id,title,subscription_plan_id'])
                 ->where('status', GeneralEnums::ACTIVE->value)
                 ->where('is_active', true)
                 ->where('is_free', false)
                 ->get();
 
-            return JsonResponser::send(false, 'Record(s) found successfully!', $records->json(), Response::HTTP_OK);
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function modules()
+    {
+        try {
+            $records = Module::with('moduleFunctionality')->get();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
