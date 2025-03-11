@@ -14,4 +14,14 @@ class SubscriptionFunctionality extends Model
     {
         return $this->belongsTo(ModuleFunctionality::class, 'module_functionality_id');
     }
+
+    public function module()
+    {
+        return $this->belongsTo(Module::class);
+    }
+
+    public function subscriptionPlan()
+    {
+        return $this->belongsTo(SubscriptionPlan::class);
+    }
 }
