@@ -213,13 +213,16 @@ class GuestController extends Controller
         }
     }
 
-    public function allSubscriptionPlans()
+    public function allSubscriptionPlans(Request $request)
     {
         try {
             $records = SubscriptionPlan::with(['subscriptionPlanFeature:id,title,subscription_plan_id'])
-                ->where('status', GeneralEnums::ACTIVE->value)
-                ->where('is_active', true)
-                ->where('is_free', false)
+                ->when(!$request->all, function ($query) {
+                    $query
+                        ->where('status', GeneralEnums::ACTIVE->value)
+                        ->where('is_active', true)
+                        ->where('is_free', false);
+                })
                 ->get();
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
