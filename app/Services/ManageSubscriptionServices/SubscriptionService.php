@@ -180,14 +180,16 @@ class SubscriptionService
             'monthly_fee' => $data['monthly_fee'],
             'yearly_fee' => $data['yearly_fee'],
             'short_description' => $data['short_description'],
-            'primary_cta_text' => $data['primary_cta_text'],
-            'primary_link' => $data['primary_link'],
-            'secondary_cta' => $data['secondary_cta'],
-            'secondary_link' => $data['secondary_link'],
+            'primary_cta_text' => $data['primary_cta_text'] ?? null,
+            'primary_link' => $data['primary_link'] ?? null,
+            'secondary_cta' => $data['secondary_cta'] ?? null,
+            'secondary_link' => $data['secondary_link'] ?? null,
             'created_by' => $currentUser->id,
             'is_active' => true,
             'default_seat' => $data['default_seat'] ?? SubscriptionConstant::DEFAULT_SEAT_COUNT,
-            'seat_amount' => $data['seat_amount'] ?? null,
+            'seat_amount' => $data['seat_amount'] ?? json_encode([]),
+            "provider_price_ids" => json_encode([]),
+            "provider_seat_amount_ids" => json_encode([])
         ]);
 
         if (isset($data['features'])) {

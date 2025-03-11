@@ -22,7 +22,7 @@ class StorePlanRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "title" => 'required|string',
+            "title" => 'required|string|unique:subscription_plans,title',
             "monthly_fee" => 'required|numeric',
             "yearly_fee" => 'required|numeric',
             "short_description" => 'nullable|string',

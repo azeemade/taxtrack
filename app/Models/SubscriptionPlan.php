@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\Observers\SubscriptionPlanObserver;
-use App\Traits\Subscription\SubscriptionPlanTrait;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+// use App\Observers\SubscriptionPlanObserver;
+// use App\Traits\Subscription\SubscriptionPlanTrait;
+// use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -14,6 +14,12 @@ class SubscriptionPlan extends Model
 {
     use HasFactory; //, SubscriptionPlanTrait;
     protected $guarded = ['id'];
+
+    protected $casts = [
+        'seat_amount' => 'array',
+        'provider_price_ids' => 'array',
+        'provider_seat_amount_ids' => 'array',
+    ];
 
     public function subscriptionPlanFeature()
     {

@@ -68,7 +68,7 @@ class ManageSubscriptionController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
         }
     }
 
