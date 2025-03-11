@@ -21,7 +21,7 @@ class StorePlanRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             "title" => 'required|string|unique:subscription_plans,title',
             "monthly_fee" => 'required|numeric',
             "yearly_fee" => 'required|numeric',
@@ -39,5 +39,11 @@ class StorePlanRequest extends FormRequest
             "modules*module_functionality_id" => 'required|array',
             "modules*module_functionality_id*" => 'required|integer|exists:module_functionalities:id',
         ];
+
+        if ($this->isMethod('put')) {
+            $rules['title'] = 'required|string';
+        }
+
+        return $rules;
     }
 }

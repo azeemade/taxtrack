@@ -188,7 +188,7 @@ class ManageSubscriptionController extends Controller
         try {
             DB::beginTransaction();
 
-            $plan = SubscriptionPlan::where('id', $id)->first();
+            $plan = SubscriptionPlan::find($id);
 
             if (!$plan) {
                 return JsonResponser::send(false, 'Plan not found.');
@@ -200,7 +200,7 @@ class ManageSubscriptionController extends Controller
             return JsonResponser::send(false, 'Plan updated successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
