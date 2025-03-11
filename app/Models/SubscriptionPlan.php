@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Observers\SubscriptionPlanObserver;
 use App\Traits\Subscription\SubscriptionPlanTrait;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
+// #[ObservedBy([SubscriptionPlanObserver::class])]
 class SubscriptionPlan extends Model
 {
-    use HasFactory, SubscriptionPlanTrait;
+    use HasFactory; //, SubscriptionPlanTrait;
     protected $guarded = ['id'];
 
     public function subscriptionPlanFeature()

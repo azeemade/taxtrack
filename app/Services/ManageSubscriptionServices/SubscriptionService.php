@@ -201,11 +201,13 @@ class SubscriptionService
 
         if (isset($data['modules'])) {
             foreach ($data['modules'] as $module) {
-                SubscriptionFunctionality::create([
-                    'subscription_plan_id' => $plan->id,
-                    'module_id' => $module['module_id'],
-                    'module_functionality_id' => $module['module_functionality_id']
-                ]);
+                foreach ($module['module_functionality_id'] as $functionality) {
+                    SubscriptionFunctionality::create([
+                        'subscription_plan_id' => $plan->id,
+                        'module_id' => $module['module_id'],
+                        'module_functionality_id' => $functionality
+                    ]);
+                }
             }
         }
 

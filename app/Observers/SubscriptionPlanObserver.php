@@ -1,22 +1,26 @@
 <?php
 
-namespace App\Traits\Subscription;
+namespace App\Observers;
 
 use App\Constants\SubscriptionConstant;
+use App\Models\SubscriptionPlan;
 use App\Services\ThirdPartyApi\Stripe\Stripe;
-use Illuminate\Database\Eloquent\Model;
 
-trait SubscriptionPlanTrait
+class SubscriptionPlanObserver
 {
-
-    protected static function boot(): void
+    protected $stripe;
+    public function __construct()
     {
-        $stripe = new Stripe();
+        $this->stripe = new Stripe();
+    }
+    /**
+     * Handle the SubscriptionPlan "created" event.
+     */
+    public function created(SubscriptionPlan $model): void
+    {
+        $stripe = $this->stripe;
 
-        static::created(function (Model $model) use ($stripe) {
-            if ($model->is_free) {
-                return 0;
-            }
+        if (!$model->is_free) {
             $product = $stripe->createProduct([
                 'name' => $model->title,
                 'description' => $model->short_description,
@@ -44,12 +48,17 @@ trait SubscriptionPlanTrait
                     'annually' => $annualSeatPrice->id
                 ]
             ]);
-        });
+        }
+    }
 
-        static::updated(function (Model $model) use ($stripe) {
-            if ($model->is_free) {
-                return 0;
-            }
+    /**
+     * Handle the SubscriptionPlan "updated" event.
+     */
+    public function updated(SubscriptionPlan $model): void
+    {
+        $stripe = $this->stripe;
+
+        if (!$model->is_free) {
             $stripe->updateProduct(
                 $model->provider_product_id,
                 [
@@ -64,25 +73,45 @@ trait SubscriptionPlanTrait
 
 
             if ($model->wasChanged('monthly_fee')) {
-                $this->updatePrice($model->provider_price_ids->monthly, $model->monthly_fee, $stripe);
+                $this->updatePrice($model->provider_price_ids['monthly'] ?? 0.00, $model->monthly_fee, $stripe);
             }
 
             if ($model->wasChanged('yearly_fee')) {
-                $this->updatePrice($model->provider_price_ids->annually, $model->yearly_fee, $stripe);
+                $this->updatePrice($model->provider_price_ids['annually'] ?? 0.00, $model->yearly_fee, $stripe);
             }
 
             if ($model->wasChanged('seat_amount')) {
                 $this->updatePrice($model->provider_seat_amount_ids->monthly, floatval($model->seat_amount ?? 0.00), $stripe);
                 $this->updatePrice($model->provider_seat_amount_ids->annually, floatval($model->seat_amount ?? 0.00), $stripe);
             }
-        });
+        }
+    }
 
-        static::deleted(function (Model $model) use ($stripe) {
-            if ($model->is_free) {
-                return 0;
-            }
+    /**
+     * Handle the SubscriptionPlan "deleted" event.
+     */
+    public function deleted(SubscriptionPlan $model): void
+    {
+        $stripe = $this->stripe;
+        if (!$model->is_free) {
             $stripe->deleteProduct($model->provider_product_id);
-        });
+        }
+    }
+
+    /**
+     * Handle the SubscriptionPlan "restored" event.
+     */
+    public function restored(SubscriptionPlan $subscriptionPlan): void
+    {
+        //
+    }
+
+    /**
+     * Handle the SubscriptionPlan "force deleted" event.
+     */
+    public function forceDeleted(SubscriptionPlan $subscriptionPlan): void
+    {
+        //
     }
 
     protected function createPrice(
