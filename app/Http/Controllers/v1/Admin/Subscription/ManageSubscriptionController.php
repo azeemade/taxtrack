@@ -14,6 +14,7 @@ use App\Models\SubscriptionRefund;
 use App\Responser\JsonResponser;
 use App\Services\ManageSubscriptionServices\SubscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class ManageSubscriptionController extends Controller
@@ -255,9 +256,12 @@ class ManageSubscriptionController extends Controller
 
             DB::commit();
             return JsonResponser::send(false, 'Plan deleted successfully', null);
+        } catch (BadRequestException $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, $th->getMessage(), null, $th->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 

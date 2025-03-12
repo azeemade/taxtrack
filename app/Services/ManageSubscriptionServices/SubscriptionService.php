@@ -307,6 +307,11 @@ class SubscriptionService
 
     public function toggle(SubscriptionPlan $plan)
     {
+        $activePlanCount = $plan->subscriptions()->where('end_date', '>=', now())->count();
+        if ($activePlanCount && $plan->status == GeneralEnums::ACTIVE->value) {
+            throw new BadRequestException("Unable to deactivate plan with active subscribers", Response::HTTP_BAD_REQUEST);
+        }
+
         $plan->update([
             'status' => $plan->status == GeneralEnums::ACTIVE->value ? GeneralEnums::INACTIVE->value : GeneralEnums::ACTIVE->value
         ]);
@@ -358,6 +363,11 @@ class SubscriptionService
 
     public function delete(SubscriptionPlan $plan)
     {
+        $activePlanCount = $plan->subscriptions()->where('end_date', '>=', now())->count();
+        if ($activePlanCount) {
+            throw new BadRequestException("Unable to delete plan with active subscribers", Response::HTTP_BAD_REQUEST);
+        }
+
         $plan->delete();
     }
 
