@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[ScopedBy([ModelUserScope::class])]
 class CompanyEmailTemplate extends Model
 {
-    use HasFactory, SoftDeletes, Companyable;
+    use HasFactory, SoftDeletes, Companyable, Auditable;
     protected $guarded = ['id'];
 
     protected $casts = [

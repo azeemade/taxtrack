@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use App\Traits\Subscription\PaymentProviderSubscriberTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 class Subscriber extends Model
 
 {
-    use HasFactory, PaymentProviderSubscriberTrait, Companyable;
+    use HasFactory, PaymentProviderSubscriberTrait, Companyable, Auditable;
 
     public function subscriptionPlan()
     {

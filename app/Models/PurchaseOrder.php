@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use App\Traits\ManageLineItemTrait;
 use App\Traits\PaymentRecordTrait;
@@ -18,7 +19,8 @@ class PurchaseOrder extends Model
         Companyable,
         SoftDeletes,
         // PaymentRecordTrait, 
-        ManageLineItemTrait;
+        ManageLineItemTrait, 
+        Auditable;
 
     protected $guarded = ['id'];
 

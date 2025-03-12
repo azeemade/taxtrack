@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use App\Traits\ContactPersonTrait;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
@@ -14,7 +15,7 @@ use Nnjeim\World\Models\Currency;
 #[ScopedBy([ModelUserScope::class])]
 class Vendor extends Model
 {
-    use HasFactory, ContactPersonTrait, Companyable, SoftDeletes;
+    use HasFactory, ContactPersonTrait, Companyable, SoftDeletes, Auditable;
     protected $guarded = ['id'];
     protected $appends = ['outstanding_bills', 'payable_bills'];
     protected $casts = ["is_active" => "boolean"];
