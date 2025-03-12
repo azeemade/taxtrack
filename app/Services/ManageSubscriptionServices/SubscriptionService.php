@@ -64,11 +64,11 @@ class SubscriptionService
             ->with('subscriber:id,name')
             ->latest();
 
-        $lastUpdatedRecord = $records->first(); // Get the first record
+        $lastUpdatedRecord = SubscriptionPlan::find($request->plan_id); // Get the first record
         $lastUpdated = $lastUpdatedRecord
             ? [
-                "date" => round(Carbon::parse($lastUpdatedRecord->updated_at)->diffInDays(now())) . ' days ago',
-                "by" => ($lastUpdatedRecord->subscriber->name ?? 'Unknown')
+                "date" => Carbon::parse($lastUpdatedRecord->updated_at)->diffForHumans(),
+                "by" => ($lastUpdatedRecord->createdBy->name ?? 'Unknown')
             ]
             : null; // Handle cases where no records exist
 

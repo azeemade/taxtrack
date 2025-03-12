@@ -47,6 +47,12 @@ Route::group([
             Route::group([
                 'prefix' => 'dashboard',
             ], function () {});
+            Route::group([
+                'prefix' => 'audit-trails',
+                'namespace' => 'AuditLog'
+            ], function () {
+                Route::get('/', 'AuditLogController@index');
+            });
 
             //sales
             Route::group([

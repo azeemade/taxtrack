@@ -36,6 +36,11 @@ class SubscriptionPlan extends Model
         return $this->hasMany(Subscriber::class, 'current_subscription_plan_id');
     }
 
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function subscriptions()
     {
         return $this->hasMany(SubscriptionHistory::class, 'subscription_plan_id');
