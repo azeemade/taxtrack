@@ -24,6 +24,11 @@ class InvoiceService
         $this->sharedActionServices = $sharedActionServices;
     }
 
+    public function all()
+    {
+        return Invoice::query();
+    }
+
     public function updateOrCreate($request)
     {
         $record = Invoice::updateOrCreate(

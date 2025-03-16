@@ -14,6 +14,11 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class SupplierService
 {
+    public function all()
+    {
+        return Vendor::query();
+    }
+
     public function list($request)
     {
         $records = Vendor::query()

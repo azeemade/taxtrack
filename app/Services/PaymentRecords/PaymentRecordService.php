@@ -14,7 +14,6 @@ use App\Models\PaymentRecord;
 use App\Models\PurchaseInvoice;
 use App\Models\Vendor;
 use App\Models\VendorBill;
-use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Response;
@@ -22,6 +21,10 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class PaymentRecordService
 {
+    public function all()
+    {
+        return PaymentRecord::query();
+    }
 
     public function modify($request)
     {

@@ -46,7 +46,14 @@ Route::group([
         ], function () {
             Route::group([
                 'prefix' => 'dashboard',
-            ], function () {});
+                'namespace' => 'Dashboard'
+            ], function () {
+                Route::get('/cash-flow', 'DashboardController@cashFlow');
+                Route::get('/total-receivables', 'DashboardController@totalReceivables');
+                Route::get('/total-payables', 'DashboardController@totalPayables');
+                Route::get('/income-expenses/bar-chart', 'DashboardController@incomeAndExpenseBarChart');
+                Route::get('/income-expenses/pie-chart', 'DashboardController@incomeAndExpensePieChart');
+            });
             Route::group([
                 'prefix' => 'audit-trails',
                 'namespace' => 'AuditLog'
