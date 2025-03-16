@@ -24,6 +24,11 @@ class BillsService
         $this->sharedActionServices = $sharedActionServices;
     }
 
+    public function all()
+    {
+        return VendorBill::query();
+    }
+
     public function updateOrCreate($request)
     {
         $record = VendorBill::updateOrCreate(

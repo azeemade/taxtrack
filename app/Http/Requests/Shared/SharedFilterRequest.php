@@ -19,6 +19,6 @@ class SharedFilterRequest extends FormRequest
         $limit = $this->input('limit', 10);
         $export = $this->input('export');
 
-        return compact('q', 'status', 'start_date', 'end_date', 'sort_by', 'paginate', 'export', 'limit', 'is_recurring');
+        return compact('q', 'status', 'start_date', 'end_date', 'sort_by', 'date_filter', 'paginate', 'export', 'limit', 'is_recurring');
     }
 }
