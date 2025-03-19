@@ -261,9 +261,14 @@ Route::group([
             ], function () {});
 
             Route::group([
-                'prefix' => 'budgets',
                 "namespace" => "Budget"
-            ], function () {});
+            ], function () {
+                Route::apiResource('budgets', 'BudgetController')
+                    ->missing(function () {
+                        return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
+                    });
+                Route::get('budgets/compute/periods', 'BudgetController@computePeriods');
+            });
 
             Route::group([
                 'prefix' => 'reports',

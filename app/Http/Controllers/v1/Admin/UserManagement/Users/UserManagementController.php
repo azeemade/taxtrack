@@ -99,7 +99,6 @@ class UserManagementController extends Controller
             DB::beginTransaction();
 
             $user = User::where('id', $id)->first();
-            // dd($user);
 
             if (!$user) {
                 return JsonResponser::send(false, 'User not found.');
