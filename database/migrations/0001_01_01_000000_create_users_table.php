@@ -28,6 +28,7 @@ return new class extends Migration
             $table->unsignedBigInteger('currency_id')->nullable();
             $table->unsignedBigInteger('current_company_id')->nullable();
             $table->boolean('onboarding_completed')->default(false)->comment('True, False');
+            $table->boolean('is_admin')->default(false)->comment('True, False');
             $table->boolean('is_verified')->default(false)->comment('True, False');
             $table->boolean('is_active')->default(false)->comment('True, False');
             $table->boolean('can_login')->default(false)->comment('True, False');

@@ -3,6 +3,7 @@
 namespace App\Services\AuditLog;
 
 use App\Models\AuditLog;
+use App\Models\User;
 
 class AuditService
 {
@@ -22,11 +23,17 @@ class AuditService
 
     public function fetch($request)
     {
+        $isAdmin = auth()->user()->is_admin;
+        $allAdmins = User::where('is_admin', true)->pluck('id');
+
         return AuditLog::query()
             ->select('id', 'action', 'model', 'description', 'created_at', 'company_id', 'created_by',)
             ->with(['createdBy' => function ($query) {
                 $query->without('roles', 'permissions');
             }])
+            ->when($isAdmin, function ($query) use ($allAdmins) {
+                $query->whereIn('created_by', $allAdmins);
+            })
             ->when(!empty($request->start_date) &&  !empty($request->end_date), function ($query) use ($request) {
                 return $query->whereBetween('created_at', [$request?->start_date, $request->end_date]);
             })

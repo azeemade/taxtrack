@@ -3,13 +3,6 @@
 use App\Responser\JsonResponser;
 use Illuminate\Support\Facades\Route;
 
-// Route::group(["middleware" => "auth:api"], function () {
-//     Route::group([
-//         'prefix' => 'admin',
-//         'middleware' => ['permission:access_admin_app,api'],
-//         "namespace" => "Admin"
-//     ], function () {
-
 Route::group(['prefix' => 'dashboard', "namespace" => "Dashboard"], function () {
     Route::apiResource('dashboard', 'DashboardOverviewController')->missing(function () {
         return JsonResponser::send(true, 'Resource not found', null, 404);
@@ -77,5 +70,10 @@ Route::group(['prefix' => 'user-management', "namespace" => "UserManagement"], f
         Route::post('users/roles', 'UserManagementController@roles');
     });
 });
-//     });
-// });
+
+Route::group([
+    'prefix' => 'audit-trails',
+    'namespace' => 'AuditLog'
+], function () {
+    Route::get('/', 'AuditLogController@index');
+});
