@@ -19,13 +19,14 @@ class Company extends Model
 
     public function staff()
     {
-        return $this->belongsToMany(User::class, 'clients', 'user_id', 'company_id');
+        return $this->belongsToMany(User::class, 'clients', 'company_id', 'user_id');
     }
 
-    // public function companyAdmin()
-    // {
-    //     return $this->staff->where('contact_person', true)->first();
-    // }
+    public function companyAdmin()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+        // return $this->staff->where('contact_person', true)->first();
+    }
 
     public function currencies()
     {

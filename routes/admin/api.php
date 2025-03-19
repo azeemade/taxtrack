@@ -77,3 +77,9 @@ Route::group([
 ], function () {
     Route::get('/', 'AuditLogController@index');
 });
+Route::group([
+    'prefix' => 'reports',
+    'namespace' => 'Report'
+], function () {
+    Route::get('/companies', 'ReportController@companies');
+});
