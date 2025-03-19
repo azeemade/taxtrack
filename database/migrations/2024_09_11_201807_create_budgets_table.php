@@ -13,10 +13,12 @@ return new class extends Migration
     {
         Schema::create('budgets', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('budget_name');
-            $table->string('status')->default('draft')->comment('active, draft');
-            $table->decimal('budget_value', 15, 2)->default(0.00);
-            $table->string('year');
+            $table->string('name');
+            $table->enum('status', ['active', 'inactive', 'draft'])->default('draft');
+            $table->decimal('total', 15, 2)->default(0.00);
+            $table->date('start_date');
+            $table->enum('cycle', ['monthly', 'quarterly', 'annually'])->default('quarterly');
+            $table->integer('duration')->default(12);
             $table->string('description')->nullable();
             $table->string('budgetID');
             $table->unsignedBigInteger('created_by');
