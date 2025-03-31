@@ -45,6 +45,7 @@ return new class extends Migration
         });
 
         Schema::table('users', function (Blueprint $table) {
+            $table->foreign('created_by')->references('id')->on('users')->onUpdate('set null')->onDelete('set null');
             $table->foreign('current_company_id')->references('id')->on('companies')->onDelete('set null');
         });
     }
