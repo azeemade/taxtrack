@@ -11,15 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('permissions_tables', function (Blueprint $table) {
+        Schema::table('permissions', function (Blueprint $table) {
             $table->string('app')->nullable();
             $table->string('module')->nullable();
             $table->string('submodule')->nullable();
             //
-        });
-
-        Schema::table('roles', function (Blueprint $table) {
-            $table->boolean('is_admin')->default(false);
         });
     }
 
