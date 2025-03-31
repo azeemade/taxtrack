@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;'); // Disable foreign key checks
+
         Schema::create('credit_note_invoices', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->decimal('credit_amount_total', 15, 2)->default(0.00);
@@ -19,14 +21,19 @@ return new class extends Migration
             $table->unsignedBigInteger('credit_note_id');
             $table->unsignedBigInteger('invoice_id');
             $table->unsignedBigInteger('company_id');
-            $table->foreign('credit_note_id')->references('id')->on('credit_notes')->onDelete('cascade');
             $table->unsignedBigInteger('line_item_id');
+
+            // Foreign Keys
+            $table->foreign('credit_note_id')->references('id')->on('credit_notes')->onDelete('cascade');
             $table->foreign('line_item_id')->references('id')->on('line_items')->onDelete('cascade');
             $table->foreign('invoice_id')->references('id')->on('invoices')->onDelete('cascade');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+
             $table->timestamps();
         });
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;'); // Re-enable foreign key checks
     }
 
     /**

@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;'); // Disable foreign key checks
+        
         Schema::create('bank_accounts', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('account_number');
@@ -31,6 +33,8 @@ return new class extends Migration
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
             $table->softDeletes();
             $table->timestamps();
+
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;'); // Re-enable foreign key checks
         });
     }
 

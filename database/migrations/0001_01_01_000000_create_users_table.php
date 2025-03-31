@@ -31,7 +31,7 @@ return new class extends Migration
             $table->boolean('is_verified')->default(false)->comment('True, False');
             $table->boolean('is_active')->default(false)->comment('True, False');
             $table->boolean('can_login')->default(false)->comment('True, False');
-            $table->foreign('created_by')->references('id')->on('users')->onUpdate('set_null')->onDelete('set null');
+            $table->foreign('created_by')->references('id')->on('users')->onUpdate('set null')->onDelete('set null');
             $table->softDeletes();
             $table->timestamps();
         });

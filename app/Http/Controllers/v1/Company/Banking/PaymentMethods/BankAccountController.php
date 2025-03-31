@@ -96,7 +96,7 @@ class BankAccountController extends Controller
             DB::beginTransaction();
             $record = $this->bankAccountService->toggleStatus($id);
             DB::commit();
-            return JsonResponser::send(false, 'Bank deleted successfully', $record, Response::HTTP_OK);
+            return JsonResponser::send(false, 'Bank status updated successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
