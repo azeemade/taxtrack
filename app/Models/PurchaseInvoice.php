@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use App\Traits\ManageLineItemTrait;
 use App\Traits\PaymentRecordTrait;
@@ -18,7 +19,8 @@ class PurchaseInvoice extends Model
         Companyable,
         SoftDeletes,
         ManageLineItemTrait,
-        PaymentRecordTrait;
+        PaymentRecordTrait,
+        Auditable;
 
     protected $guarded = ['id'];
     protected $appends = ['amount_due', 'total_amount_paid'];

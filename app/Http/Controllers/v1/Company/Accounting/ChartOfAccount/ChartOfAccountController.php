@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Company\Accounting\ChartOfAccount;
 
 use App\Exceptions\BadRequestException;
+use App\Exports\Accounting\ChartOfAccount\AccountTemplate;
 use App\Exports\Accounting\ChartOfAccount\ChartOfAccountDownloadTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Accounting\ChartOfAccount\StoreChartOfAccountRequest;
@@ -13,6 +14,7 @@ use App\Responser\JsonResponser;
 use App\Services\ChartOfAccount\ChartOfAccountService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Imports\Accounting\ChartOfAccount\ChartOfAccountImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -31,6 +33,10 @@ class ChartOfAccountController extends Controller
     {
         try {
             $records = $this->chartOfAccountService->allChartOfAccount($request);
+
+            if ($request->export) {
+                return $records;
+            }
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
@@ -100,7 +106,7 @@ class ChartOfAccountController extends Controller
         }
     }
 
-    public function update(UpdateChartOfAccountRequest $request, $id)
+    public function updateAccount(UpdateChartOfAccountRequest $request, $id)
     {
         try {
             $records = $this->chartOfAccountService->updateAccount($request, $id);
@@ -116,7 +122,7 @@ class ChartOfAccountController extends Controller
     {
         try {
             $records = $this->chartOfAccountService->delete($id);
-            return JsonResponser::send(false, 'Record deleted successfully', $records, Response::HTTP_OK);
+            return JsonResponser::send(false, 'Record deleted successfully', null, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_CONFLICT);
         } catch (\Throwable $th) {
@@ -175,4 +181,70 @@ class ChartOfAccountController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function getAccountsByType(string $accountType)
+    {
+        try {
+            $records = $this->chartOfAccountService->getAccountsByType($accountType);
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_CONFLICT);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function accountBySubCategoryID($id)
+    {
+        try {
+            $records = $this->chartOfAccountService->getAccountsBySubCategoryID($id);
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_CONFLICT);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function accountSubCategoryName(string $accountSubCategoryName)
+    {
+        try {
+            $records = $this->chartOfAccountService->getAccountsBySubCategoryName($accountSubCategoryName);
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_CONFLICT);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function getDownload()
+    {
+        return Excel::download(new AccountTemplate(), 'chart_of_account_template.xlsx');
+    }
+
+    public function importAccount(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|mimes:xlsx,xls',
+        ]);
+
+        if ($validator->fails()) {
+            return JsonResponser::send(true, 'Incorrect file format uploaded', [], 422);
+        }
+
+        try {
+            $result = $this->chartOfAccountService->importAccount($request);
+            
+            if (!$result['success']) {
+                return JsonResponser::send(true, $result['message'], $result['errors'] ?? [], $result['code'] ?? 422);
+            }
+
+            return JsonResponser::send(false, $result['message'], $result['data'] ?? null);
+        } catch (\Throwable $error) {
+            logger($error);
+            return JsonResponser::send(true,  $error, $error, 500);
+        }
+    }
+
 }

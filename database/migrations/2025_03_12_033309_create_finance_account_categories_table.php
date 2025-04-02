@@ -15,7 +15,9 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->unsignedBigInteger('account_type_id');
             $table->string('name');
+            $table->string('slug')->nullable();
             $table->text('description')->nullable();
+            $table->enum('is_default', ['true', 'false'])->default('false'); 
             $table->foreign('account_type_id')->references('id')->on('finance_account_types')->onDelete('cascade');   
             $table->timestamps();
             $table->softDeletes();

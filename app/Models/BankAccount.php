@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +14,7 @@ use Nnjeim\World\Models\Currency;
 #[ScopedBy([ModelUserScope::class])]
 class BankAccount extends Model
 {
-    use HasFactory, Companyable, SoftDeletes;
+    use HasFactory, Companyable, SoftDeletes, Auditable;
 
     protected $guarded = ['id'];
     protected $casts = [

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v1\Admin\Subscription;
 
+use App\Enums\GeneralEnums;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Models\Subscriber;
@@ -47,7 +48,7 @@ class ManageSubscribersController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500, $th);
         }
     }
 
@@ -75,7 +76,7 @@ class ManageSubscribersController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $record);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500, $th);
         }
     }
 
@@ -86,7 +87,7 @@ class ManageSubscribersController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500, $th);
         }
     }
 
@@ -97,7 +98,7 @@ class ManageSubscribersController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500, $th);
         }
     }
 
@@ -108,7 +109,7 @@ class ManageSubscribersController extends Controller
 
             return JsonResponser::send(false, 'Record found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500, $th);
         }
     }
 
@@ -119,7 +120,7 @@ class ManageSubscribersController extends Controller
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500, $th);
         }
     }
 
@@ -130,7 +131,7 @@ class ManageSubscribersController extends Controller
 
             return JsonResponser::send(false, 'Record found successfully', $records);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500, $th);
         }
     }
 
@@ -149,7 +150,7 @@ class ManageSubscribersController extends Controller
             }
             return JsonResponser::send(false, 'Record(s) found successfully', $record);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500, $th);
         }
     }
 
@@ -161,35 +162,43 @@ class ManageSubscribersController extends Controller
         try {
             DB::beginTransaction();
 
-            $refund = SubscriptionRefund::where('subscription_history_id', $id)->first();
+            $refund = SubscriptionRefund::find($id);
 
             if (!$refund) {
                 return JsonResponser::send(false, 'Subscription refund not found.');
             }
 
-            $record = $this->subscriberService->approve($refund);
+            $record = $this->subscriberService->toggleStatus($refund, GeneralEnums::APPROVED->value);
 
             DB::commit();
             return JsonResponser::send(false, 'Subscription refund approved successfully', $record);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the status specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function declineRefund($id)
     {
-        //
-    }
+        try {
+            DB::beginTransaction();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+            $refund = SubscriptionRefund::find($id);
+
+            if (!$refund) {
+                return JsonResponser::send(false, 'Subscription refund not found.');
+            }
+
+            $record = $this->subscriberService->toggleStatus($refund, GeneralEnums::DECLINED->value);
+
+            DB::commit();
+            return JsonResponser::send(false, 'Subscription refund declined successfully', $record);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+        }
     }
 }

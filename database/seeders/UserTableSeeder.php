@@ -46,7 +46,8 @@ class UserTableSeeder extends Seeder
                 'email' => fake()->safeEmail,
                 'phone_number' => fake()->phoneNumber,
                 'password' => Hash::make('Password1@'),
-                'company_id' => $company['id'],
+                'current_company_id' => $company['id'],
+                // 'company_id' => $company['id'],
                 'created_by' => User::where('name', 'Admin')->first()->id
             ];
         }

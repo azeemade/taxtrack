@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('finance_account_entries', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('journal_entry_id')->constrained('journal_entries')->onDelete('cascade');
+            $table->foreignId('journal_entry_id')->constrained('finance_journal_entries')->onDelete('cascade');
             $table->date('date');
             $table->foreignId('account_id')->constrained('finance_chart_of_accounts')->onDelete('cascade');
             $table->string('reference')->nullable();

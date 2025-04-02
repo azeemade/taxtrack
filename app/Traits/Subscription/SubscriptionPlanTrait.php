@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 trait SubscriptionPlanTrait
 {
 
-    protected static function bootSubscriptionPlanTrait()
+    protected static function boot(): void
     {
         $stripe = new Stripe();
 

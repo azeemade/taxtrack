@@ -10,13 +10,13 @@ class FinanceChartOfAccount extends Model
 {
     use HasFactory, SoftDeletes;
     protected $guarded = ['id'];
-    protected $with = ['user'];
+    protected $with = ['editedBy:id,name,email'];
 
     public function financeTransactions()
     {
         return $this->hasMany(FinanceAccountTransaction::class);
     }
- 
+
     public function subCategory()
     {
         return $this->belongsTo(FinanceAccountSubCategory::class, 'account_sub_category_id');
@@ -31,12 +31,12 @@ class FinanceChartOfAccount extends Model
     {
         return $this->belongsTo(FinanceAccountType::class, 'account_type_id');
     }
-    
+
     public function accountEntries()
     {
         return $this->hasMany(FinanceAccountEntry::class, 'account_id');
     }
-    
+
     public function fromAccount()
     {
         return $this->hasMany(FinanceAccountTransfer::class, 'from_account_id');
@@ -55,5 +55,26 @@ class FinanceChartOfAccount extends Model
     public function editedBy()
     {
         return $this->belongsTo(User::class, 'edited_by');
+    }
+
+
+    public function toArray()
+    {
+        $data = parent::toArray();
+
+        if (!empty($data['edited_by']) && is_array($data['edited_by'])) {
+            unset(
+                $data['edited_by']['roles'],
+                $data['edited_by']['user_permissions'],
+                $data['edited_by']['user_permissions_count'],
+                $data['edited_by']['permissions']
+            );
+        }
+
+        if (!empty($data['account_entries'])) {
+            unset($data['account_entries']);
+        }
+
+        return $data;
     }
 }

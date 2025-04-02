@@ -64,9 +64,12 @@ class SubscriptionService
             ->with('subscriber:id,name')
             ->latest();
 
-        $lastUpdatedRecord = $records->first(); // Get the first record
+        $lastUpdatedRecord = SubscriptionPlan::find($request->plan_id); // Get the first record
         $lastUpdated = $lastUpdatedRecord
-            ? round(Carbon::parse($lastUpdatedRecord->updated_at)->diffInDays(now())) . ' days ago, By ' . ($lastUpdatedRecord->subscriber->name ?? 'Unknown')
+            ? [
+                "date" => Carbon::parse($lastUpdatedRecord->updated_at)->diffForHumans(),
+                "by" => ($lastUpdatedRecord->createdBy->name ?? 'Unknown')
+            ]
             : null; // Handle cases where no records exist
 
         $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount_paid');
@@ -177,14 +180,16 @@ class SubscriptionService
             'monthly_fee' => $data['monthly_fee'],
             'yearly_fee' => $data['yearly_fee'],
             'short_description' => $data['short_description'],
-            'primary_cta_text' => $data['primary_cta_text'],
-            'primary_link' => $data['primary_link'],
-            'secondary_cta' => $data['secondary_cta'],
-            'secondary_link' => $data['secondary_link'],
+            'primary_cta_text' => $data['primary_cta_text'] ?? null,
+            'primary_link' => $data['primary_link'] ?? null,
+            'secondary_cta' => $data['secondary_cta'] ?? null,
+            'secondary_link' => $data['secondary_link'] ?? null,
             'created_by' => $currentUser->id,
             'is_active' => true,
             'default_seat' => $data['default_seat'] ?? SubscriptionConstant::DEFAULT_SEAT_COUNT,
-            'seat_amount' => $data['seat_amount'] ?? null,
+            'seat_amount' => $data['seat_amount'] ?? json_encode([]),
+            "provider_price_ids" => json_encode([]),
+            "provider_seat_amount_ids" => json_encode([])
         ]);
 
         if (isset($data['features'])) {
@@ -198,11 +203,13 @@ class SubscriptionService
 
         if (isset($data['modules'])) {
             foreach ($data['modules'] as $module) {
-                SubscriptionFunctionality::create([
-                    'subscription_plan_id' => $plan->id,
-                    'module_id' => $module['module_id'],
-                    'module_functionality_id' => $module['module_functionality_id']
-                ]);
+                foreach ($module['module_functionality_id'] as $functionality) {
+                    SubscriptionFunctionality::create([
+                        'subscription_plan_id' => $plan->id,
+                        'module_id' => $module['module_id'],
+                        'module_functionality_id' => $functionality
+                    ]);
+                }
             }
         }
 
@@ -216,10 +223,15 @@ class SubscriptionService
             'monthly_fee' => $data['monthly_fee'],
             'yearly_fee' => $data['yearly_fee'],
             'short_description' => $data['short_description'],
-            'primary_cta_text' => $data['primary_cta_text'],
-            'primary_link' => $data['primary_link'],
-            'secondary_cta' => $data['secondary_cta'],
-            'secondary_link' => $data['secondary_link'],
+            'primary_cta_text' => $data['primary_cta_text'] ?? null,
+            'primary_link' => $data['primary_link'] ?? null,
+            'secondary_cta' => $data['secondary_cta'] ?? null,
+            'secondary_link' => $data['secondary_link'] ?? null,
+            'is_active' => true,
+            'default_seat' => $data['default_seat'] ?? SubscriptionConstant::DEFAULT_SEAT_COUNT,
+            'seat_amount' => $data['seat_amount'] ?? json_encode([]),
+            "provider_price_ids" => json_encode([]),
+            "provider_seat_amount_ids" => json_encode([])
         ]);
 
         if (isset($data['features'])) {
@@ -244,18 +256,19 @@ class SubscriptionService
                 SubscriptionFunctionality::where('subscription_plan_id', $plan->id)
                     ->where('module_id', $module['module_id'])
                     ->where('module_functionality_id', $module['module_functionality_id'])->delete();
-
-                SubscriptionFunctionality::updateOrCreate(
-                    [
-                        'subscription_plan_id' => $plan->id,
-                        'module_id' => $module['module_id'],
-                        'module_functionality_id' => $module['module_functionality_id'],
-                    ],
-                    [
-                        'module_id' => $module['module_id'],
-                        'module_functionality_id' => $module['module_functionality_id'],
-                    ]
-                );
+                foreach ($module['module_functionality_id'] as $functionality) {
+                    SubscriptionFunctionality::updateOrCreate(
+                        [
+                            'subscription_plan_id' => $plan->id,
+                            'module_id' => $module['module_id'],
+                            'module_functionality_id' => $functionality,
+                        ],
+                        [
+                            'module_id' => $module['module_id'],
+                            'module_functionality_id' => $functionality,
+                        ]
+                    );
+                }
             }
         }
 
@@ -294,6 +307,11 @@ class SubscriptionService
 
     public function toggle(SubscriptionPlan $plan)
     {
+        $activePlanCount = $plan->subscriptions()->where('end_date', '>=', now())->count();
+        if ($activePlanCount && $plan->status == GeneralEnums::ACTIVE->value) {
+            throw new BadRequestException("Unable to deactivate plan with active subscribers", Response::HTTP_BAD_REQUEST);
+        }
+
         $plan->update([
             'status' => $plan->status == GeneralEnums::ACTIVE->value ? GeneralEnums::INACTIVE->value : GeneralEnums::ACTIVE->value
         ]);
@@ -345,6 +363,11 @@ class SubscriptionService
 
     public function delete(SubscriptionPlan $plan)
     {
+        $activePlanCount = $plan->subscriptions()->where('end_date', '>=', now())->count();
+        if ($activePlanCount) {
+            throw new BadRequestException("Unable to delete plan with active subscribers", Response::HTTP_BAD_REQUEST);
+        }
+
         $plan->delete();
     }
 

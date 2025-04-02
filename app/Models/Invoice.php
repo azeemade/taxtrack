@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use App\Traits\ManageLineItemTrait;
 use App\Traits\PaymentRecordTrait;
@@ -15,7 +16,7 @@ use Nnjeim\World\Models\Currency;
 #[ScopedBy([ModelUserScope::class])]
 class Invoice extends Model
 {
-    use HasFactory, Companyable, SoftDeletes, PaymentRecordTrait, ManageLineItemTrait;
+    use HasFactory, Companyable, SoftDeletes, PaymentRecordTrait, ManageLineItemTrait, Auditable;
 
     protected $guarded = ['id'];
     protected $appends = ['amount_due', 'total_amount_paid'];

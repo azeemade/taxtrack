@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Services\ChartOfAccount;
+namespace App\Services\JournalEntry;
 
 use App\Exceptions\BadRequestException;
+use App\Http\Requests\Company\Accounting\JournalEntry\JournalEntryRequest;
 use App\Models\FinanceAccountEntry;
 use App\Models\FinanceJournalEntry;
 use Carbon\Carbon;
@@ -15,59 +16,80 @@ class JournalEntryService
 {
 
     public function allJournalEntries($request)
-    {
-        try {
-            $limit = $request->limit ?? 10;
-            $sortBy = $request->sort_by;
-            $filterBy = $request->filter_by;
-            $export = $request->export;
-            $carbonDateFilter = $request->date_filter;
-            $searchParams = $request->q;
-            (!is_null($request->start_date) && !is_null($request->end_date)) ? $dateSearchParams = true : $dateSearchParams = false;
+{
+    try {
+        $limit = $request->limit ?? 10;
+        $sortBy = $request->sort_by;
+        $filterBy = $request->filter_by;
+        $export = $request->export;
+        $carbonDateFilter = $request->date_filter;
+        $searchParams = $request->q;
+        (!is_null($request->start_date) && !is_null($request->end_date)) ? $dateSearchParams = true : $dateSearchParams = false;
 
-
-            $record = FinanceJournalEntry::with("accountEntries")
-                ->when($searchParams, function ($query, $searchParams) use ($request) {
-                    return $query->whereHas('accountEntries', function ($query) use ($searchParams) {
-                        return $query->where('credit_amount', $searchParams)
-                            ->orWhere('debit_amount', $searchParams)
-                            ->orWhere("reference", 'LIKE', '%' . $searchParams . '%');
-                    });
-                })
-                ->when($filterBy, function ($query) use ($filterBy) {
-                    return $query->where('is_active', $filterBy);
-                })
-                ->when($sortBy, function ($query) use ($sortBy) {
-                    if ($sortBy === 'alphabetically') {
-                        return $query->orderBy('name', 'ASC');
-                    } elseif ($sortBy === 'date_descending') {
-                        return $query->orderBy('id', 'DESC');
-                    } elseif ($sortBy === 'date_ascending') {
-                        return $query->orderBy('id', 'ASC');
-                    }
-                })
-                ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
-                    return $query->where('created_at', '>=', $carbonDateFilter);
-                })
-                ->when($dateSearchParams, function ($query) use ($request) {
-                    $startDate = Carbon::parse($request->start_date);
-                    $endDate = Carbon::parse($request->end_date);
-                    return $query->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate]);
-                })
-                ->where("info", "JournalEntry")
-                ->orderBy('created_at', 'DESC');
-
-            $record = $export ? $record->get() : $record->paginate($limit);
-
-            if ($export) {
-                return Excel::download(new JournalEntryExport($record), 'journalentryreportdata.xlsx');
+        $record = FinanceJournalEntry::with([
+            'accountEntries' => function ($query) {
+                $query->select(
+                    'journal_entry_id',
+                    DB::raw('SUM(debit_amount) as total_debit'),
+                    DB::raw('SUM(credit_amount) as total_credit')
+                )->groupBy('journal_entry_id');
             }
+        ])
+        ->when($searchParams, function ($query, $searchParams) use ($request) {
+            return $query->whereHas('accountEntries', function ($query) use ($searchParams) {
+                return $query->where('credit_amount', $searchParams)
+                    ->orWhere('debit_amount', $searchParams)
+                    ->orWhere("reference", 'LIKE', '%' . $searchParams . '%');
+            });
+        })
+        ->when($filterBy, function ($query) use ($filterBy) {
+            return $query->where('status', $filterBy);
+        })
+        ->when($sortBy, function ($query) use ($sortBy) {
+            if ($sortBy === 'alphabetically') {
+                return $query->orderBy('name', 'ASC');
+            } elseif ($sortBy === 'date_descending') {
+                return $query->orderBy('id', 'DESC');
+            } elseif ($sortBy === 'date_ascending') {
+                return $query->orderBy('id', 'ASC');
+            }
+        })
+        ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
+            return $query->where('created_at', '>=', $carbonDateFilter);
+        })
+        ->when($dateSearchParams, function ($query) use ($request) {
+            $startDate = Carbon::parse($request->start_date);
+            $endDate = Carbon::parse($request->end_date);
+            return $query->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate]);
+        })
+        ->where("info", "JournalEntry")
+        ->orderBy('created_at', 'DESC');
 
-            return $record;
-        } catch (\Throwable $th) {
-            throw $th;
+        // Fetch records
+        $record = $export ? $record->get() : $record->paginate($limit);
+
+        // Transform data to include total_debit and total_credit
+        $record->getCollection()->transform(function ($entry) {
+            $totalDebit = $entry->accountEntries->sum('total_debit') ?? 0;
+            $totalCredit = $entry->accountEntries->sum('total_credit') ?? 0;
+            unset($entry->accountEntries); // Remove account_entries
+
+            return array_merge($entry->toArray(), [
+                'total_debit' => $totalDebit,
+                'total_credit' => $totalCredit,
+            ]);
+        });
+
+        if ($export) {
+            return Excel::download(new JournalEntryExport($record), 'journalentryreportdata.xlsx');
         }
+
+        return $record;
+    } catch (\Throwable $th) {
+        throw $th;
     }
+}
+
 
     public function createJournalEntry($request)
     {
@@ -77,9 +99,10 @@ class JournalEntryService
 
             //create journal entry
             $journalEntry = FinanceJournalEntry::create([
-                'date' => $request->journal_date,
+                'date' => now(),
                 'info' => 'JournalEntry',
                 'edited_by' => $user->id,
+                'company_id' => auth()->user()->current_company_id,
                 'status' => $request->status, //draft. pending, published
             ]);
 
@@ -109,6 +132,7 @@ class JournalEntryService
                     'debit_amount' => $debit_amount, 
                     'credit_amount' => $credit_amount,
                     'amount' => $amountValue,
+                    'date' => $transactionDate,
                     'transaction_date' => $transactionDate,
                     'status' => $request->status,
                     'edited_by' => $user->id,
@@ -151,7 +175,7 @@ class JournalEntryService
         }
     }
 
-    public function updateAccount($request, $id)
+    public function updateJournalEntry(JournalEntryRequest $request, $id)
     {
         DB::beginTransaction();
 
@@ -164,7 +188,7 @@ class JournalEntryService
             }
 
             $journalEntry->update([
-                'date' => $request->journal_date,
+                'date' => now(),
                 'edited_by' => $currentUser->id,
                 'status' => $request->status, //draft, pending, published
             ]);
@@ -205,6 +229,7 @@ class JournalEntryService
                     'debit_amount' => $debit_amount, 
                     'credit_amount' => $credit_amount,
                     'amount' => $amountValue,
+                    'date' => $transactionDate,
                     'transaction_date' => $transactionDate,
                     'edited_by' => $currentUser->id,
                 ]);

@@ -3,13 +3,6 @@
 use App\Responser\JsonResponser;
 use Illuminate\Support\Facades\Route;
 
-// Route::group(["middleware" => "auth:api"], function () {
-//     Route::group([
-//         'prefix' => 'admin',
-//         'middleware' => ['permission:access_admin_app,api'],
-//         "namespace" => "Admin"
-//     ], function () {
-
 Route::group(['prefix' => 'dashboard', "namespace" => "Dashboard"], function () {
     Route::apiResource('dashboard', 'DashboardOverviewController')->missing(function () {
         return JsonResponser::send(true, 'Resource not found', null, 404);
@@ -49,6 +42,7 @@ Route::group(['prefix' => 'subscriptions', "namespace" => "Subscription"], funct
             return JsonResponser::send(true, 'Resource not found', null, 404);
         });
         Route::put('approve/refund/{id}', 'ManageSubscribersController@approveRefund');
+        Route::put('decline/refund/{id}', 'ManageSubscribersController@declineRefund');
         Route::get('view/receipts/{id}', 'ManageSubscribersController@viewReceipts');
         Route::get('subscriber/{id}/histories', 'ManageSubscribersController@histories');
         Route::get('subscriber/{id}/refunds', 'ManageSubscribersController@refunds');
@@ -76,5 +70,16 @@ Route::group(['prefix' => 'user-management', "namespace" => "UserManagement"], f
         Route::post('users/roles', 'UserManagementController@roles');
     });
 });
-//     });
-// });
+
+Route::group([
+    'prefix' => 'audit-trails',
+    'namespace' => 'AuditLog'
+], function () {
+    Route::get('/', 'AuditLogController@index');
+});
+Route::group([
+    'prefix' => 'reports',
+    'namespace' => 'Report'
+], function () {
+    Route::get('/companies', 'ReportController@companies');
+});

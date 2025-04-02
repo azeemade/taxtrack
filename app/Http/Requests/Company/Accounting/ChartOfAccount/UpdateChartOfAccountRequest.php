@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Company\Accounting\ChartOfAccount;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class UpdateChartOfAccountRequest extends FormRequest
 {
@@ -34,5 +36,19 @@ class UpdateChartOfAccountRequest extends FormRequest
             'opening_balance.numeric' => 'The opening balance must be a valid number.',
             'opening_balance.min' => 'The opening balance must be at least 0.',
         ];
+    }
+
+    // Override failedValidation method to return custom error messages
+    protected function failedValidation(Validator $validator)
+    {
+        // Get the first error message
+        $firstError = $validator->errors()->first();
+
+        throw new HttpResponseException(
+            response()->json([
+                'error' => true,
+                'message' => "Validation failed: $firstError"
+            ], 400)
+        );
     }
 }

@@ -7,12 +7,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Http\Requests\StoreHistoryRequest;
 use App\Http\Requests\StorePlanRequest;
+use App\Http\Resources\SubscriptionPlanResource;
 use App\Models\SubscriptionHistory;
 use App\Models\SubscriptionPlan;
 use App\Models\SubscriptionRefund;
 use App\Responser\JsonResponser;
 use App\Services\ManageSubscriptionServices\SubscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class ManageSubscriptionController extends Controller
@@ -61,14 +63,16 @@ class ManageSubscriptionController extends Controller
 
             $record = $this->subscriptionService->create($request->all());
 
+            $response = new SubscriptionPlanResource($record);
+
             DB::commit();
-            return JsonResponser::send(false, 'Subscription plan created successfully', $record);
+            return JsonResponser::send(false, 'Subscription plan created successfully', $response);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', $th->getTrace(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
         }
     }
 
@@ -99,35 +103,15 @@ class ManageSubscriptionController extends Controller
     public function show($id)
     {
         try {
-            $record = SubscriptionPlan::where('id', $id)
-                ->with('subscriptionPlanFeature')
-                ->first();
+            $record = SubscriptionPlan::find($id);
 
             if (!$record) {
                 return JsonResponser::send(false, 'Plan not found.');
             }
 
-            // Group subscription functionalities by module_id
-            $groupedFunctionalities = [];
-            foreach ($record->subscriptionFunctionality as $functionality) {
-                $moduleId = $functionality->module_id;
+            $response = new SubscriptionPlanResource($record);
 
-                // Initialize group if not exists
-                if (!isset($groupedFunctionalities[$moduleId])) {
-                    $groupedFunctionalities[$moduleId] = [
-                        'module' => $functionality->moduleFunctionality->module,
-                        'functionalities' => []
-                    ];
-                }
-
-                // Add the module functionality to the grouped list
-                $groupedFunctionalities[$moduleId]['functionalities'][] = $functionality->moduleFunctionality;
-            }
-
-            // Transform the grouped functionalities into a simpler array structure
-            $record->grouped_subscription_functionality = array_values($groupedFunctionalities);
-
-            return JsonResponser::send(false, 'Record(s) found successfully', $record);
+            return JsonResponser::send(false, 'Record(s) found successfully', $response);
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
         }
@@ -188,7 +172,7 @@ class ManageSubscriptionController extends Controller
         try {
             DB::beginTransaction();
 
-            $plan = SubscriptionPlan::where('id', $id)->first();
+            $plan = SubscriptionPlan::find($id);
 
             if (!$plan) {
                 return JsonResponser::send(false, 'Plan not found.');
@@ -196,11 +180,13 @@ class ManageSubscriptionController extends Controller
 
             $record = $this->subscriptionService->update($request->all(), $plan);
 
+            $response = new SubscriptionPlanResource($record);
+
             DB::commit();
-            return JsonResponser::send(false, 'Plan updated successfully', $record);
+            return JsonResponser::send(false, 'Plan updated successfully', $response);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 
@@ -270,9 +256,12 @@ class ManageSubscriptionController extends Controller
 
             DB::commit();
             return JsonResponser::send(false, 'Plan deleted successfully', null);
+        } catch (BadRequestException $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, $th->getMessage(), null, $th->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), 500);
+            return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 

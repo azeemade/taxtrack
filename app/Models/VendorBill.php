@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use App\Traits\ManageLineItemTrait;
 use App\Traits\PaymentRecordTrait;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[ScopedBy([ModelUserScope::class])]
 class VendorBill extends Model
 {
-    use HasFactory, PaymentRecordTrait, Companyable, SoftDeletes, ManageLineItemTrait;
+    use HasFactory, PaymentRecordTrait, Companyable, SoftDeletes, ManageLineItemTrait, Auditable;
 
     protected $guarded = ['id'];
     protected $appends = ['amount_due', 'total_amount_paid'];

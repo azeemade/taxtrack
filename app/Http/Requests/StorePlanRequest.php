@@ -21,19 +21,29 @@ class StorePlanRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            "title" => 'required|string',
+        $rules = [
+            "title" => 'required|string|unique:subscription_plans,title',
             "monthly_fee" => 'required|numeric',
             "yearly_fee" => 'required|numeric',
-            "short_description" => 'required|string',
-            "primary_cta_text" => 'required|string',
-            "primary_link" => 'required|string',
-            "secondary_cta" => 'required|string',
-            "secondary_link" => 'required|string',
+            "short_description" => 'nullable|string',
+            "primary_cta_text" => 'nullable|string',
+            "primary_link" => 'nullable|string',
+            "secondary_cta" => 'nullable|string',
+            "secondary_link" => 'nullable|string',
             "default_seat" => 'nullable|numeric',
             "seat_amount" => 'nullable',
             "features" => 'nullable|array',
-            "features*" => 'required|string'
+            "features*" => 'required|string',
+            "modules" => 'nullable|array',
+            "modules*module_id" => 'required|integer|exists:modules:id',
+            "modules*module_functionality_id" => 'required|array',
+            "modules*module_functionality_id*" => 'required|integer|exists:module_functionalities:id',
         ];
+
+        if ($this->isMethod('put')) {
+            $rules['title'] = 'required|string';
+        }
+
+        return $rules;
     }
 }

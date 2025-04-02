@@ -24,7 +24,7 @@ class UserService
         $dateFilter = GeneralHelper::dateFilter($request->date_filter);
 
         $records = User::query()
-            ->where('created_by', $currentUser->id)
+            ->where('is_admin', true)
             ->with('roles:id,roleID,name', 'author:id,name')
             ->when($request->q, function ($query) use ($request) {
                 $query->where('name', 'LIKE', '%' . $request->q . '%');
@@ -54,7 +54,7 @@ class UserService
         $dateFilter = GeneralHelper::dateFilter($request->date_filter);
 
         $records = User::query()
-            ->where('created_by', $currentUser->id)
+            ->where('is_admin', true)
             ->when($dateFilter, function ($query) use ($dateFilter) {
                 return $query->where('created_at', '>=', $dateFilter);
             });
@@ -97,6 +97,7 @@ class UserService
                 'password' => Hash::make($password),
                 'uei_id' => Str::uuid(),
                 'created_by' => $currentUser->id,
+                'is_admin' => true
             ]);
         }
 

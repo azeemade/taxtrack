@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Company\Accounting\JournalEntry;
 
+use App\Enums\JournalEntryStatusEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rules\Enum;
 
 class JournalEntryRequest extends FormRequest
 {
@@ -18,25 +20,14 @@ class JournalEntryRequest extends FormRequest
     public function rules()
     {
         $rules = [
-
-            'journal_date' => 'required|date', // Ensure journal date is provided and is a valid date
-            // 'is_recurring' => 'nullable|boolean', // Check if the entry is recurring (nullable, as it's optional)
-            'is_published' => 'required|boolean', // Journal entry must have a published status (either 0 or 1)
-
+            // 'journal_date' => 'required|date', // Ensure journal date is provided and is a valid date
+            'status' => ['required', new Enum(JournalEntryStatusEnum::class)],
             'accountEntries' => 'required|array',
             'accountEntries.*.account_id' => 'required|integer|exists:finance_chart_of_accounts,id',
-            'accountEntries.*.profit_center_id' => 'nullable|integer|exists:profit_centers,id',
             'accountEntries.*.credit_amount' => 'nullable|min:0', //numeric
             'accountEntries.*.debit_amount' => 'nullable|min:0', //numeric
             'accountEntries.*.description' => 'nullable|string|max:255',
             'accountEntries.*.transaction_date' => 'required|date',
-
-
-            'reoccurring_option' => 'nullable|string', // Recurring option should be either 'custom' or 'none' (nullable) //|in:custom,none
-            'reoccurring_figure' => 'nullable|integer|min:1', // If recurring option is custom, a figure (integer) is required
-            'reoccurring_period' => 'nullable|string', // Recurring period should be one of days, months, or years (nullable) //|in:days,months,years
-            'reoccurring_start_date' => 'nullable|date', // Start date for recurring entries (nullable, must be a valid date)
-            'reoccurring_due_date' => 'nullable|date', // Due date for recurring entries (nullable, must be a valid date)
         ];
 
 
@@ -52,34 +43,21 @@ class JournalEntryRequest extends FormRequest
     public function messages()
     {
         return [
-            'journal_date.required' => 'The journal date is required.',
-            'journal_date.date' => 'The journal date must be a valid date.',
-            'is_recurring.boolean' => 'The recurring field must be true or false.',
-            'is_published.required' => 'The published field is required.',
-            'is_published.boolean' => 'The published field must be true or false.',
-
-
+            // 'journal_date.required' => 'The journal date is required.',
+            // 'journal_date.date' => 'The journal date must be a valid date.',
+            'status.required' => 'The status field is required.',
+            'status.string' => 'The status must be a valid string.',
+            'status.in' => 'The status must be one of the following: published, pending, or draft.',
             'accountEntries.*.transaction_date.required' => 'The transaction date is required.',
             'accountEntries.*.transaction_date.date' => 'The transaction date must be a valid date.',
             'accountEntries.*.account_id.required' => 'The account ID is required.',
             'accountEntries.*.account_id.integer' => 'The account ID must be an integer.',
             'accountEntries.*.account_id.exists' => 'Account not selected in one or more entries.',
-            // 'accountEntries.*.profit_center_id.exists' => 'Profit center not selected in one or more entries.',
             // 'accountEntries.*.credit_amount.numeric' => 'The credit amount must be a number.',
             // 'accountEntries.*.debit_amount.numeric' => 'The debit amount must be a number.',
             'accountEntries.*.credit_amount.min' => 'The credit amount must be at least 0.',
             'accountEntries.*.debit_amount.min' => 'The debit amount must be at least 0.',
             'accountEntries.*.description.max' => 'The description may not be greater than 255 characters.',
-
-
-            // 'reoccurring_option.string' => 'The recurring option must be a string.',
-            // 'reoccurring_option.in' => 'The recurring option must be either "custom" or "none".',
-            // 'reoccurring_figure.integer' => 'The recurring figure must be an integer.',
-            // 'reoccurring_figure.min' => 'The recurring figure must be at least 1.',
-            // 'reoccurring_period.string' => 'The recurring period must be a string.',
-            // 'reoccurring_period.in' => 'The recurring period must be either "days", "months", or "years".',
-            // 'reoccurring_start_date.date' => 'The start date must be a valid date.',
-            // 'reoccurring_due_date.date' => 'The due date must be a valid date.',
         ];
     }
 

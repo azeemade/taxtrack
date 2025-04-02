@@ -14,6 +14,11 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class CustomerService
 {
+    public function all()
+    {
+        return Customer::query();
+    }
+
     public function list($request)
     {
         $records = Customer::query()

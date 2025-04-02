@@ -28,10 +28,10 @@ return new class extends Migration
             $table->unsignedBigInteger('currency_id')->nullable();
             $table->unsignedBigInteger('current_company_id')->nullable();
             $table->boolean('onboarding_completed')->default(false)->comment('True, False');
+            $table->boolean('is_admin')->default(false)->comment('True, False');
             $table->boolean('is_verified')->default(false)->comment('True, False');
             $table->boolean('is_active')->default(false)->comment('True, False');
             $table->boolean('can_login')->default(false)->comment('True, False');
-            $table->foreign('created_by')->references('id')->on('users')->onUpdate('set null')->onDelete('set null');
             $table->softDeletes();
             $table->timestamps();
         });

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('additional_charge', 15, 2)->default(0.00);
             $table->decimal('tax', 15, 2)->default(0.00);
             $table->decimal('sub_total', 15, 2)->default(0.00);
-            $table->unsignedInteger('payment_method_id')->nullable();
+            $table->unsignedBigInteger('payment_method_id')->nullable();
             $table->decimal('amount_paid', 15, 2)->default(0.00);
             $table->decimal('plan_amount', 15, 2)->default(0.00);
             $table->unsignedInteger('team_size')->default(4); //no of users

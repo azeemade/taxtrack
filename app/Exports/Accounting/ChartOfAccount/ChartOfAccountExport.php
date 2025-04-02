@@ -2,54 +2,64 @@
 
 namespace App\Exports\Accounting\ChartOfAccount;
 
-use App\Models\FinanceChartOfAccount;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ChartOfAccountExport implements FromCollection, WithHeadings, WithMapping
+class ChartOfAccountExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
-    /**
-     * Retrieve all Chart of Accounts.
-     */
-    public function collection()
+    protected $accounts;
+    protected $startDate;
+    protected $endDate;
+
+    public function __construct($accounts, $startDate = null, $endDate = null)
     {
-        return FinanceChartOfAccount::with(['subCategory', 'accountCategory', 'accountType'])->get();
+        $this->accounts = $accounts;
+        $this->startDate = $startDate;
+        $this->endDate = $endDate;
     }
 
-    /**
-     * Define column headings.
-     */
+    public function collection()
+    {
+        return $this->accounts;
+    }
+
     public function headings(): array
     {
         return [
-            'ID',
-            'Account Name',
             'Account Number',
-            'Sub Category',
-            'Account Category',
+            'Account Name',
             'Account Type',
-            'Description',
-            'Opening Balance',
-            'Created At'
+            'Account Category',
+            'Sub Category',
+            // 'Opening Balance',
+            // 'Total Debit',
+            // 'Total Credit',
+            'Balance',
         ];
     }
 
-    /**
-     * Map data for export.
-     */
-    public function map($coa): array
+    public function map($account): array
     {
         return [
-            $coa->id,
-            $coa->name,
-            $coa->account_number,
-            $coa->subCategory ? $coa->subCategory->name : 'N/A',
-            $coa->accountCategory ? $coa->accountCategory->name : 'N/A',
-            $coa->accountType ? $coa->accountType->name : 'N/A',
-            $coa->description,
-            $coa->opening_balance,
-            $coa->created_at->format('d/m/Y')
+            $account->account_number,
+            $account->name,
+            $account->accountType->name,
+            $account->accountCategory->name ?? '',
+            $account->subCategory->name ?? '',
+            // $account->opening_balance,
+            // $account->total_debit,
+            // $account->total_credit,
+            $account->current_balance,
+        ];
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            1 => ['font' => ['bold' => true]], // Bold first row
         ];
     }
 }

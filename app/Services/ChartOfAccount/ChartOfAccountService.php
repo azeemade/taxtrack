@@ -4,6 +4,7 @@ namespace App\Services\ChartOfAccount;
 
 use App\Exceptions\BadRequestException;
 use App\Exports\Accounting\ChartOfAccount\ChartOfAccountExport;
+use App\Helpers\FinanceAccountBalanceHelper;
 use App\Models\FinanceAccountCategory;
 use App\Models\FinanceAccountSubCategory;
 use App\Models\FinanceAccountType;
@@ -12,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Imports\Accounting\ChartOfAccount\ChartOfAccountImport;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ChartOfAccountService
@@ -27,27 +29,19 @@ class ChartOfAccountService
             $searchParams = $request->q;
             (!is_null($request->start_date) && !is_null($request->end_date)) ? $dateSearchParams = true : $dateSearchParams = false;
 
+            $userCompanyId = auth()->user()->current_company_id;
 
-            $record = FinanceChartOfAccount::with('accountType:id,name', 'accountCategory:id,name', 'subCategory:id,name')
-                // ->withCount([
-                //     'accountEntries as debit_amount' => function ($query) use ($previousYear, $currentYear) {
-                //         $query->select(DB::raw('SUM(debit_amount)'))
-                //             ->whereYear('date', $previousYear)
-                //             ->orWhereYear('date', $currentYear);
-                //     },
-                //     'accountEntries as credit_amount' => function ($query) use ($previousYear, $currentYear) {
-                //         $query->select(DB::raw('SUM(credit_amount)'))
-                //             ->whereYear('date', $previousYear)
-                //             ->orWhereYear('date', $currentYear);
-                //     }
-                // ])
-                // ->where(function ($query) use ($previousYear, $currentYear) {
-                //     $query->whereHas('accountEntries', function ($subQuery) use ($previousYear, $currentYear) {
-                //         $subQuery->whereYear('date', $previousYear)
-                //             ->orWhereYear('date', $currentYear);
-                //     })
-                //     ->orWhereDoesntHave('accountEntries');
-                // })
+            $record = FinanceChartOfAccount::with([
+                'accountType:id,name,slug',
+                'accountCategory:id,name',
+                'subCategory:id,name',
+                'accountEntries' => function ($query) use ($request, $dateSearchParams) {
+                    if ($dateSearchParams) {
+                        $query->whereBetween('date', [$request->start_date, $request->end_date]);
+                    }
+                }
+            ])
+                ->where('company_id', $userCompanyId)
                 ->when($searchParams, function ($query) use ($searchParams) {
                     return $query->where('name', 'LIKE', '%' . $searchParams . '%')
                         ->orWhere('account_number', $searchParams)
@@ -83,8 +77,25 @@ class ChartOfAccountService
 
             $record = $export ? $record->get() : $record->paginate($limit);
 
+            // Add balance information to each account
+            $record->transform(function ($account) use ($request, $dateSearchParams) {
+                $balanceInfo = FinanceAccountBalanceHelper::calculateCurrentBalance($account, $request->start_date, $request->end_date, $dateSearchParams);
+
+                $account->current_balance = $balanceInfo['current_balance'];
+                $account->balance_type = $balanceInfo['balance_type'];
+                $account->total_debit = $balanceInfo['total_debit'];
+                $account->total_credit = $balanceInfo['total_credit'];
+
+                return $account;
+            });
+
             if ($export) {
-                return Excel::download(new ChartOfAccountExport($record), 'chartofaccountreportdata.xlsx');
+                $fileName = 'chart_of_accounts_' . now()->format('Ymd_His') . '.xlsx';
+
+                return Excel::download(
+                    new ChartOfAccountExport($record, $request->start_date, $request->end_date),
+                    $fileName
+                );
             }
 
             return $record;
@@ -147,15 +158,21 @@ class ChartOfAccountService
                 'account_type_id' => $getSubCategoryInfo->account_type_id,
                 'account_category_id' => $getSubCategoryInfo->account_category_id,
                 'account_sub_category_id' => $request->account_sub_category_id,
+                'company_id' => auth()->user()->current_company_id,
                 'name' => $request->name,
                 'slug' => Str::slug($request->name),
                 'account_number' => $accountNumber,
-                'description' => $request->description,
-                'reference_code' => $request->reference_code ?? $request->name,
+                'description' => $request->description ?? $request->name,
+                'reference_code' => $request->name,
                 'opening_balance' => $request->opening_balance,
                 'balance_date' => $request->balance_date,
+                'status' => $request->status ?? "published",
                 'edited_by' => $user->id
             ]);
+
+            if (!$coa) {
+                throw new BadRequestException("Unable to create account.", Response::HTTP_CONFLICT);
+            }
 
             DB::commit();
             return $coa;
@@ -200,7 +217,7 @@ class ChartOfAccountService
             $nameExists = FinanceChartOfAccount::where("account_sub_category_id", $getSubCategoryInfo->id)
                 ->where("name", $request->name)
                 ->where('id', '!=', $id)
-                ->exists(); // More efficient than first()
+                ->exists();
 
             if ($nameExists) {
                 throw new BadRequestException("Name already exists for the account type.", Response::HTTP_CONFLICT);
@@ -210,11 +227,14 @@ class ChartOfAccountService
                 'account_type_id' =>  $getSubCategoryInfo->account_type_id,
                 'account_category_id' =>  $getSubCategoryInfo->account_category_id,
                 'account_sub_category_id' =>  $request->account_sub_category_id,
-                'name' => $request->name,
-                'slug' => Str::slug($request->name),
-                'description' => $request->description,
-                'reference_code' => $request->reference_code ?? $request->name,
-                'opening_balance' => $request->opening_balance,
+                'company_id' => auth()->user()->current_company_id,
+                'name' => $record->name ?? $request->name,
+                'slug' => Str::slug($record->name) ?? Str::slug($request->name),
+                'description' => $record->description ?? $request->description,
+                'reference_code' => $record->reference_code ?? $request->reference_code,
+                'opening_balance' => $record->opening_balance ?? $request->opening_balance,
+                'balance_date' => $record->balance_date ?? $request->balance_date,
+                'status' => $record->status ?? $request->status,
                 'edited_by' => $currentUser->id
             ]);
 
@@ -265,11 +285,12 @@ class ChartOfAccountService
                 throw new BadRequestException("You cannot update a default account.", Response::HTTP_CONFLICT);
             }
 
-            // Toggle between 'published' and 'unpublished'
             $newStatus = $record->status === 'published' ? 'unpublished' : 'published';
+            $newActiveStatus = $record->is_active === 'true' ? 'false' : 'true';
 
             $record->update([
                 'status' => $newStatus,
+                'is_active' => $newActiveStatus,
             ]);
 
             DB::commit();
@@ -317,6 +338,78 @@ class ChartOfAccountService
         } catch (\Throwable $th) {
             DB::rollBack();
             return ['error' => 'Bulk upload failed', 'message' => $th->getMessage()];
+        }
+    }
+
+    public function getAccountsByType(string $accountType)
+    {
+        try {
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_type_id')
+                ->whereHas('accountType', function ($query) use ($accountType) {
+                    $query->where('slug', $accountType);
+                })->get();
+
+            return $records;
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function getAccountsBySubCategoryID($id)
+    {
+        try {
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_number')
+                ->where("account_sub_category_id", $id)
+                ->get();
+
+            return $records;
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function getAccountsBySubCategoryName(string $accountSubCategoryName)
+    {
+        try {
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_sub_category_id')
+                ->whereHas('subCategory', function ($query) use ($accountSubCategoryName) {
+                    $query->where('slug', $accountSubCategoryName);
+                })->get();
+
+            return $records;
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function importAccount($request)
+    {
+        DB::beginTransaction();
+
+        try {
+            $import = new ChartOfAccountImport;
+            Excel::import($import, $request->file('file'));
+
+            if (!empty($import->getErrors())) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Validation errors in imported file',
+                    'errors' => $import->getErrors(),
+                    'code' => 422
+                ];
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Accounts imported successfully',
+                'data' => null
+            ];
+        } catch (\Throwable $error) {
+            DB::rollBack();
+            throw $error;
         }
     }
 }

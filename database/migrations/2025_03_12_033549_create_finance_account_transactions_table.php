@@ -15,7 +15,7 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->unsignedBigInteger('edited_by');
             $table->unsignedBigInteger('account_id');
-            $table->unsignedBigInteger('transaction_group_id')->nullable();
+            $table->unsignedBigInteger('trans_group_id')->nullable();
             $table->unsignedBigInteger('journal_entry_id')->nullable();
             $table->date('transaction_date');
             $table->string('transactionID')->nullable();
@@ -31,7 +31,7 @@ return new class extends Migration
             $table->text('mode_of_payment')->nullable()->comment('cash', 'bank transfer', 'credit/debit card', 'cheque');
             $table->foreign('edited_by')->references('id')->on('users')->onDelete('cascade'); 
             $table->foreign('account_id')->references('id')->on('finance_chart_of_accounts')->onDelete('cascade'); 
-            $table->foreign('transaction_group_id')->references('id')->on('finance_transaction_groups')->onDelete('cascade'); 
+            $table->foreign('trans_group_id')->references('id')->on('finance_account_transaction_groups')->onDelete('cascade'); 
             $table->foreign('journal_entry_id')->references('id')->on('finance_journal_entries')->onDelete('cascade'); 
             $table->timestamps();
             $table->softDeletes();

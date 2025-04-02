@@ -15,10 +15,13 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->string('model');
             $table->string('action');
+            $table->string('description')->nullable();
             $table->json('old_data')->nullable();
             $table->json('new_data')->nullable();
             $table->unsignedBigInteger('model_id');
             $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('set null');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->timestamps();
         });

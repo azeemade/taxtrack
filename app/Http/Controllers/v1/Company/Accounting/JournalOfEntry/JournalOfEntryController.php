@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Accounting\JournalEntry\JournalEntryRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
-use App\Services\ChartOfAccount\JournalEntryService;
+use App\Services\JournalEntry\JournalEntryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -37,7 +37,7 @@ class JournalOfEntryController extends Controller
     {
         try {
             $record = $this->journalEntryService->createJournalEntry($request);
-            return JsonResponser::send(false, 'Account created successfully!', $record, Response::HTTP_CREATED);
+            return JsonResponser::send(false, 'Journal entry created successfully!', $record, Response::HTTP_CREATED);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
@@ -57,15 +57,15 @@ class JournalOfEntryController extends Controller
         }
     }
 
-    public function update(JournalEntryRequest $request, $id)
+    public function updateJournalEntry(JournalEntryRequest $request, $id)
     {
         try {
-            $records = $this->journalEntryService->updateAccount($request, $id);
+            $records = $this->journalEntryService->updateJournalEntry($request, $id);
             return JsonResponser::send(false, 'Record updated successfully', $records, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_CONFLICT);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, $th, [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 

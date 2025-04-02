@@ -13,10 +13,14 @@ return new class extends Migration
     {
         Schema::create('finance_account_sub_categories', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->unsignedBigInteger('account_type_id');
             $table->unsignedBigInteger('account_category_id');
             $table->string('name');
+            $table->string('slug')->nullable();
             $table->integer('ref_code')->nullable();
             $table->text('description')->nullable();
+            $table->enum('is_default', ['true', 'false'])->default('false'); 
+            $table->foreign('account_type_id')->references('id')->on('finance_account_types')->onDelete('cascade');   
             $table->foreign('account_category_id')->references('id')->on('finance_account_categories')->onDelete('cascade');   
             $table->timestamps();
             $table->softDeletes();

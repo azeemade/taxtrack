@@ -17,8 +17,10 @@ return new class extends Migration
             $table->unsignedBigInteger('account_category_id');
             $table->unsignedBigInteger('account_sub_category_id');
             $table->unsignedBigInteger('edited_by')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();
             $table->string('name');
             $table->string('account_number')->unique();
+            $table->string('old_account_number')->nullable();
             $table->string('reference_code')->unique();
             $table->text('description')->nullable();
             $table->date('balance_date')->nullable();
@@ -27,12 +29,14 @@ return new class extends Migration
             $table->double('opening_balance', 15, 2)->default(0.00)->nullable();
             $table->double('balance', 15, 2)->default(0.00)->nullable();
             $table->enum('status', ['draft', 'pending', 'published', 'unpublished'])->default('draft'); 
+            $table->enum('is_active', ['true', 'false'])->default('true');
             $table->enum('is_hidden', ['true', 'false'])->default('false');
             $table->enum('is_default', ['true', 'false'])->default('false');
             $table->foreign('account_type_id')->references('id')->on('finance_account_types')->onDelete('cascade');   
             $table->foreign('account_category_id')->references('id')->on('finance_account_categories')->onDelete('cascade');   
             $table->foreign('account_sub_category_id')->references('id')->on('finance_account_sub_categories')->onDelete('cascade');   
-            $table->foreign('edited_by')->references('id')->on('users')->onDelete('cascade');   
+            $table->foreign('edited_by')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');   
             $table->timestamps();
             $table->softDeletes();
         });

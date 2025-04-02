@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\ModelUserScope;
+use App\Traits\AuditLogs\Auditable;
 use App\Traits\Companyable;
 use App\Traits\ManageLineItemTrait;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
@@ -14,7 +15,7 @@ use Nnjeim\World\Models\Currency;
 #[ScopedBy([ModelUserScope::class])]
 class Quote extends Model
 {
-    use HasFactory, Companyable, SoftDeletes, ManageLineItemTrait;
+    use HasFactory, Companyable, SoftDeletes, ManageLineItemTrait, Auditable;
     protected $guarded = ['id'];
 
     public function getAllowedActionsAttribute()
