@@ -38,7 +38,7 @@ return new class extends Migration
             $table->string('status')->default('approved')->comment('pending, approved, declined, suspended');
             $table->boolean('is_active')->default(true);
             $table->unsignedBigInteger('country_id')->nullable();
-            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->foreign('created_by')->references('id')->on('users')->onUpdate('cascade')->onDelete('cascade');
             $table->softDeletes();
             $table->timestamps();
