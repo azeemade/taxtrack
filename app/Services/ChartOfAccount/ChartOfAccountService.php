@@ -226,15 +226,15 @@ class ChartOfAccountService
             $record->update([
                 'account_type_id' =>  $getSubCategoryInfo->account_type_id,
                 'account_category_id' =>  $getSubCategoryInfo->account_category_id,
-                'account_sub_category_id' =>  $request->account_sub_category_id,
+                'account_sub_category_id' =>  $getSubCategoryInfo->id,
                 'company_id' => auth()->user()->current_company_id,
-                'name' => $record->name ?? $request->name,
-                'slug' => Str::slug($record->name) ?? Str::slug($request->name),
-                'description' => $record->description ?? $request->description,
-                'reference_code' => $record->reference_code ?? $request->reference_code,
-                'opening_balance' => $record->opening_balance ?? $request->opening_balance,
-                'balance_date' => $record->balance_date ?? $request->balance_date,
-                'status' => $record->status ?? $request->status,
+                'name' => $request->name ?? $record->name,
+                'slug' => Str::slug($request->name) ?? Str::slug($record->name),
+                'description' => $request->description ?? $record->description,
+                'reference_code' => $request->reference_code ?? $record->reference_code,
+                'opening_balance' => $request->opening_balance ?? $record->opening_balance,
+                'balance_date' => $request->balance_date ?? $record->balance_date,
+                'status' => $request->status ?? $record->status,
                 'edited_by' => $currentUser->id
             ]);
 

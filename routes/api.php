@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\v1\Company\Report\FinancialPerformance\BusinessSnapshotController;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -252,14 +253,8 @@ Route::group([
                     });
                 });
 
-                Route::group([
-                    'prefix' => 'accounting',
-                    "namespace" => "Accounting"
-                ], function () {
-                    Route::group([
-                        'prefix' => 'chart-of-accounts',
-                        "namespace" => "ChartOfAccount"
-                    ], function () {
+                Route::group(['prefix' => 'accounting', "namespace" => "Accounting"], function () {
+                    Route::group(['prefix' => 'chart-of-accounts', "namespace" => "ChartOfAccount"], function () {
                         Route::post('/', 'ChartOfAccountController@index');
                         Route::post('/store', 'ChartOfAccountController@createAccount');
                         Route::get('/{id}', 'ChartOfAccountController@show');
@@ -276,10 +271,7 @@ Route::group([
                     });
 
 
-                    Route::group([
-                        'prefix' => 'journal-entry',
-                        "namespace" => "JournalOfEntry"
-                    ], function () {
+                    Route::group(['prefix' => 'journal-entry', "namespace" => "JournalOfEntry"], function () {
                         Route::post('/', 'JournalOfEntryController@index');
                         Route::post('/store', 'JournalOfEntryController@createJournalEntry');
                         Route::get('/{id}', 'JournalOfEntryController@show');
@@ -303,10 +295,24 @@ Route::group([
                     Route::get('budgets/compute/periods', 'BudgetController@computePeriods');
                 });
 
-                Route::group([
-                    'prefix' => 'reports',
-                    "namespace" => "Report"
-                ], function () {});
+                Route::group(['prefix' => 'report', "namespace" => "Report"], function () {
+                    Route::group(['prefix' => 'financial-performance', "namespace" => "FinancialPerformance"], function () {
+                        Route::group(['prefix' => 'business-snapshot'], function () {
+                            Route::post('/profit-or-loss', [BusinessSnapshotController::class, 'getProfitAndLossReport']);
+                            Route::post('/income', [BusinessSnapshotController::class, 'getIncomeReport']);
+                            Route::post('/expense', [BusinessSnapshotController::class, 'getExpensesReport']);
+                            Route::post('/net-profit-margin', [BusinessSnapshotController::class, 'getNetProfitMarginReport']);
+                            Route::post('/balance-sheet', [BusinessSnapshotController::class, 'getBalanceSheetReport']);
+                            Route::post('/cash-balance', [BusinessSnapshotController::class, 'getCashBalancesReport']);
+                            Route::post('/operating-expenses', [BusinessSnapshotController::class, 'getOperatingExpensesReport']);
+                            Route::post('/average-time', [BusinessSnapshotController::class, 'getAverageTime']);
+                            Route::post('/business-snapshot-summary', [BusinessSnapshotController::class, 'businessSnapshotSummary']);
+                        });
+
+                        
+    
+                    });
+                });
 
                 Route::group([
                     'prefix' => 'user-management',

@@ -16,79 +16,79 @@ class JournalEntryService
 {
 
     public function allJournalEntries($request)
-{
-    try {
-        $limit = $request->limit ?? 10;
-        $sortBy = $request->sort_by;
-        $filterBy = $request->filter_by;
-        $export = $request->export;
-        $carbonDateFilter = $request->date_filter;
-        $searchParams = $request->q;
-        (!is_null($request->start_date) && !is_null($request->end_date)) ? $dateSearchParams = true : $dateSearchParams = false;
+    {
+        try {
+            $limit = $request->limit ?? 10;
+            $sortBy = $request->sort_by;
+            $filterBy = $request->filter_by;
+            $export = $request->export;
+            $carbonDateFilter = $request->date_filter;
+            $searchParams = $request->q;
+            (!is_null($request->start_date) && !is_null($request->end_date)) ? $dateSearchParams = true : $dateSearchParams = false;
 
-        $record = FinanceJournalEntry::with([
-            'accountEntries' => function ($query) {
-                $query->select(
-                    'journal_entry_id',
-                    DB::raw('SUM(debit_amount) as total_debit'),
-                    DB::raw('SUM(credit_amount) as total_credit')
-                )->groupBy('journal_entry_id');
-            }
-        ])
-        ->when($searchParams, function ($query, $searchParams) use ($request) {
-            return $query->whereHas('accountEntries', function ($query) use ($searchParams) {
-                return $query->where('credit_amount', $searchParams)
-                    ->orWhere('debit_amount', $searchParams)
-                    ->orWhere("reference", 'LIKE', '%' . $searchParams . '%');
+            $record = FinanceJournalEntry::with([
+                'accountEntries' => function ($query) {
+                    $query->select(
+                        'journal_entry_id',
+                        DB::raw('SUM(debit_amount) as total_debit'),
+                        DB::raw('SUM(credit_amount) as total_credit')
+                    )->groupBy('journal_entry_id');
+                }
+            ])
+                ->when($searchParams, function ($query, $searchParams) use ($request) {
+                    return $query->whereHas('accountEntries', function ($query) use ($searchParams) {
+                        return $query->where('credit_amount', $searchParams)
+                            ->orWhere('debit_amount', $searchParams)
+                            ->orWhere("reference", 'LIKE', '%' . $searchParams . '%');
+                    });
+                })
+                ->when($filterBy, function ($query) use ($filterBy) {
+                    return $query->where('status', $filterBy);
+                })
+                ->when($sortBy, function ($query) use ($sortBy) {
+                    if ($sortBy === 'alphabetically') {
+                        return $query->orderBy('name', 'ASC');
+                    } elseif ($sortBy === 'date_descending') {
+                        return $query->orderBy('id', 'DESC');
+                    } elseif ($sortBy === 'date_ascending') {
+                        return $query->orderBy('id', 'ASC');
+                    }
+                })
+                ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
+                    return $query->where('created_at', '>=', $carbonDateFilter);
+                })
+                ->when($dateSearchParams, function ($query) use ($request) {
+                    $startDate = Carbon::parse($request->start_date);
+                    $endDate = Carbon::parse($request->end_date);
+                    return $query->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate]);
+                })
+                ->where("info", "JournalEntry")
+                ->orderBy('created_at', 'DESC');
+
+            // Fetch records
+            $record = $export ? $record->get() : $record->paginate($limit);
+
+            // Transform data to include total_debit and total_credit
+            $record->getCollection()->transform(function ($entry) {
+                $totalDebit = $entry->accountEntries->sum('total_debit') ?? 0;
+                $totalCredit = $entry->accountEntries->sum('total_credit') ?? 0;
+                unset($entry->accountEntries); // Remove account_entries
+
+                return array_merge($entry->toArray(), [
+                    'total_debit' => $totalDebit,
+                    'total_credit' => $totalCredit,
+                ]);
             });
-        })
-        ->when($filterBy, function ($query) use ($filterBy) {
-            return $query->where('status', $filterBy);
-        })
-        ->when($sortBy, function ($query) use ($sortBy) {
-            if ($sortBy === 'alphabetically') {
-                return $query->orderBy('name', 'ASC');
-            } elseif ($sortBy === 'date_descending') {
-                return $query->orderBy('id', 'DESC');
-            } elseif ($sortBy === 'date_ascending') {
-                return $query->orderBy('id', 'ASC');
+
+            if ($export) {
+                return Excel::download(new JournalEntryExport($record), 'journalentryreportdata.xlsx');
             }
-        })
-        ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
-            return $query->where('created_at', '>=', $carbonDateFilter);
-        })
-        ->when($dateSearchParams, function ($query) use ($request) {
-            $startDate = Carbon::parse($request->start_date);
-            $endDate = Carbon::parse($request->end_date);
-            return $query->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate]);
-        })
-        ->where("info", "JournalEntry")
-        ->orderBy('created_at', 'DESC');
 
-        // Fetch records
-        $record = $export ? $record->get() : $record->paginate($limit);
-
-        // Transform data to include total_debit and total_credit
-        $record->getCollection()->transform(function ($entry) {
-            $totalDebit = $entry->accountEntries->sum('total_debit') ?? 0;
-            $totalCredit = $entry->accountEntries->sum('total_credit') ?? 0;
-            unset($entry->accountEntries); // Remove account_entries
-
-            return array_merge($entry->toArray(), [
-                'total_debit' => $totalDebit,
-                'total_credit' => $totalCredit,
-            ]);
-        });
-
-        if ($export) {
-            return Excel::download(new JournalEntryExport($record), 'journalentryreportdata.xlsx');
+            return $record;
+        } catch (\Throwable $th) {
+            throw $th;
         }
-
-        return $record;
-    } catch (\Throwable $th) {
-        throw $th;
     }
-}
 
 
     public function createJournalEntry($request)
@@ -129,7 +129,7 @@ class JournalEntryService
                     'account_id' => $accountEntry['account_id'],
                     'reference' => $accountEntry['reference'],
                     'description' => $accountEntry['description'],
-                    'debit_amount' => $debit_amount, 
+                    'debit_amount' => $debit_amount,
                     'credit_amount' => $credit_amount,
                     'amount' => $amountValue,
                     'date' => $transactionDate,
@@ -194,19 +194,19 @@ class JournalEntryService
             ]);
 
 
-             //delete all account entries for that journal
-             $accountEntries = FinanceAccountEntry::where("journal_entry_id", $id)->get();
-             if ($accountEntries->isEmpty()) {
+            //delete all account entries for that journal
+            $accountEntries = FinanceAccountEntry::where("journal_entry_id", $id)->get();
+            if ($accountEntries->isEmpty()) {
                 throw new BadRequestException("Record not found!", Response::HTTP_NOT_FOUND);;
-             }
- 
-             $accountEntries->each(function ($accountEntry) {
-                 $accountEntry->delete();
-             });
- 
-             $totalCreditAmount = 0;
-             $totalDebitAmount = 0;
-             
+            }
+
+            $accountEntries->each(function ($accountEntry) {
+                $accountEntry->delete();
+            });
+
+            $totalCreditAmount = 0;
+            $totalDebitAmount = 0;
+
             foreach ($request->accountEntries as $key => $accountEntry) {
                 $debit_amount = $accountEntry['debit_amount'];
                 $credit_amount = $accountEntry['credit_amount'];
@@ -226,7 +226,7 @@ class JournalEntryService
                     'account_id' => $accountEntry['account_id'],
                     'reference' => $accountEntry['reference'],
                     'description' => $accountEntry['description'],
-                    'debit_amount' => $debit_amount, 
+                    'debit_amount' => $debit_amount,
                     'credit_amount' => $credit_amount,
                     'amount' => $amountValue,
                     'date' => $transactionDate,
@@ -247,7 +247,7 @@ class JournalEntryService
             }
 
             DB::commit();
-            return $journalEntry->refresh(); 
+            return $journalEntry->refresh();
         } catch (\Throwable $th) {
             DB::rollback(); // Rollback changes if any error occurs
             throw $th; // Re-throw the exception to be caught by the controller
