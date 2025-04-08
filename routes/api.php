@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\v1\Company\Report\FinancialPerformance\BusinessPerformanceController;
 use App\Http\Controllers\v1\Company\Report\FinancialPerformance\BusinessSnapshotController;
+use App\Http\Controllers\v1\Company\Report\FinancialStatement\FinancialStatementController;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -309,8 +311,21 @@ Route::group([
                             Route::post('/business-snapshot-summary', [BusinessSnapshotController::class, 'businessSnapshotSummary']);
                         });
 
-                        
-    
+                        Route::group(['prefix' => 'business-performance', "namespace" => "FinancialPerformance"], function () {
+                            Route::post('/liability-to-net-worth', [BusinessPerformanceController::class, 'getLiabilityToNetWorthRatio']);
+                            Route::post('/debt-to-equity', [BusinessPerformanceController::class, 'getDebtToEquityRatio']);
+                            Route::post('/fixed-asset-to-net-worth', [BusinessPerformanceController::class, 'getFixedAssetToNetWorthRatio']);
+                            Route::post('/gross-profit', [BusinessPerformanceController::class, 'getGrossProfitPercentage']);
+                            Route::post('/net-profit-to-net-sales', [BusinessPerformanceController::class, 'getNetProfitOnNetSales']);
+                            Route::post('/working-capital-to-asset', [BusinessPerformanceController::class, 'getWorkingCapitalToTotalAssets']);
+                            Route::post('/business-performance-summary', [BusinessPerformanceController::class, 'getBusinessSnapshotSummary']);
+                        });
+                    });
+
+                    Route::group(['prefix' => 'financial-statement', "namespace" => "FinancialStatement"], function () {
+                        Route::post('/balance-sheet', [FinancialStatementController::class, 'getBalanceSheetReport']);
+                        Route::post('/balance-sheet-run-at-date', [FinancialStatementController::class, 'getBalanceSheetMajorRunAtDate']);
+                        Route::post('/cash-balance', [FinancialStatementController::class, 'getCashBalancesReport']);
                     });
                 });
 

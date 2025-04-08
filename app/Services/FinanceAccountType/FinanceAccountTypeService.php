@@ -3,6 +3,8 @@
 namespace App\Services\FinanceAccountType;
 
 use App\Exceptions\BadRequestException;
+use App\Helpers\AccountEntriesCalculationHelper;
+use App\Helpers\FinanceTotalsHelper;
 use App\Http\Requests\Company\Accounting\JournalEntry\JournalEntryRequest;
 use App\Models\FinanceAccountEntry;
 use App\Models\FinanceAccountSubCategory;
@@ -399,118 +401,6 @@ class FinanceAccountTypeService
         }
     }
 
-
-    // public function getExpensesReport($request)
-    // {
-    //     try {
-    //         $export = $request->export;
-    //         $currentDate = Carbon::now()->format('d/M/Y');
-
-    //         $endDate = is_numeric($request->end_date) && strlen($request->end_date) === 4
-    //             ? Carbon::create($request->end_date, 12, 31)->toDateString()
-    //             : Carbon::parse($request->end_date)->toDateString();
-
-    //         $startDate = Carbon::parse($endDate)->startOfYear()->toDateString();
-    //         $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
-    //         $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
-
-    //         // Get expense account type with data for current and previous year
-    //         $expenseAccountType = FinanceAccountType::where("slug", "expense")
-    //             ->with([
-    //                 'accountCategories.accountSubCategories.accounts' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
-    //                     $query->with(['accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
-    //                         $query->whereHas('journalEntry', function ($query) {
-    //                             $query->where('status', 'published');
-    //                         })
-    //                             ->where(function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
-    //                                 $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
-    //                                     ->orWhereBetween(DB::raw('DATE(date)'), [$pYStartDate, $pYEndDate]);
-    //                             });
-    //                     }]);
-    //                 }
-    //             ])
-    //             ->first();
-
-    //         $reportData = [
-    //             'currentYear' => Carbon::parse($endDate)->year,
-    //             'previousYear' => Carbon::parse($pYEndDate)->year,
-    //             'categories' => [],
-    //             'totalCurrent' => 0,
-    //             'totalPrevious' => 0,
-    //             'currentDate' => $currentDate,
-    //         ];
-
-    //         foreach ($expenseAccountType->accountCategories as $category) {
-    //             $categoryData = [
-    //                 'name' => $category->name,
-    //                 'totalCurrent' => 0,
-    //                 'totalPrevious' => 0,
-    //                 'subcategories' => [],
-    //             ];
-
-    //             foreach ($category->accountSubCategories as $subCategory) {
-    //                 $subCategoryData = [
-    //                     'name' => $subCategory->name,
-    //                     'totalCurrent' => 0,
-    //                     'totalPrevious' => 0,
-    //                     'accounts' => [],
-    //                 ];
-
-    //                 foreach ($subCategory->accounts as $account) {
-    //                     // Current year amounts
-    //                     $cyDebit = $account->accountEntries
-    //                         ->whereBetween('date', [$startDate, $endDate])
-    //                         ->sum('debit_amount');
-    //                     $cyCredit = $account->accountEntries
-    //                         ->whereBetween('date', [$startDate, $endDate])
-    //                         ->sum('credit_amount');
-    //                     $cyBalance = $cyDebit - $cyCredit; // Expense is debit - credit
-
-    //                     // Previous year amounts
-    //                     $pyDebit = $account->accountEntries
-    //                         ->whereBetween('date', [$pYStartDate, $pYEndDate])
-    //                         ->sum('debit_amount');
-    //                     $pyCredit = $account->accountEntries
-    //                         ->whereBetween('date', [$pYStartDate, $pYEndDate])
-    //                         ->sum('credit_amount');
-    //                     $pyBalance = $pyDebit - $pyCredit;
-
-    //                     $accountData = [
-    //                         'name' => $account->name,
-    //                         'current' => $cyBalance,
-    //                         'previous' => $pyBalance,
-    //                     ];
-
-    //                     $subCategoryData['accounts'][] = $accountData;
-    //                     $subCategoryData['totalCurrent'] += $cyBalance;
-    //                     $subCategoryData['totalPrevious'] += $pyBalance;
-    //                 }
-
-    //                 $categoryData['subcategories'][] = $subCategoryData;
-    //                 $categoryData['totalCurrent'] += $subCategoryData['totalCurrent'];
-    //                 $categoryData['totalPrevious'] += $subCategoryData['totalPrevious'];
-    //             }
-
-    //             $reportData['categories'][] = $categoryData;
-    //             $reportData['totalCurrent'] += $categoryData['totalCurrent'];
-    //             $reportData['totalPrevious'] += $categoryData['totalPrevious'];
-    //         }
-
-    //         if ($export) {
-    //             $fileName = 'expenses_report' . now()->format('Ymd_His') . '.xlsx';
-
-    //             return Excel::download(
-    //                 new ExpensesReportExport($reportData),
-    //                 $fileName
-    //             );
-    //         }
-
-    //         return $reportData;
-    //     } catch (\Throwable $th) {
-    //         return $th;
-    //     }
-    // }
-
     public function getNetProfitMarginReport($request)
     {
         try {
@@ -623,6 +513,456 @@ class FinanceAccountTypeService
                     $fileName
                 );
             }
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    public function getOperatingExpensesReport($request)
+    {
+        try {
+            $export = $request->export;
+
+            // Determine dates
+            $endDate = is_numeric($request->end_date) && strlen($request->end_date) === 4
+                ? Carbon::create($request->end_date, 12, 31)->toDateString()
+                : Carbon::parse($request->end_date)->toDateString();
+
+            $startDate = Carbon::parse($endDate)->startOfYear()->toDateString();
+            $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
+            $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
+
+            // Get operating expenses accounts (under account subcategory with slug 'operating-expenses')
+            $operatingExpenses = FinanceAccountSubCategory::where('slug', 'operating-expenses')
+                ->with([
+                    'accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
+                        $query->whereHas('journalEntry', function ($query) {
+                            $query->where('status', 'published');
+                        })
+                            ->where(function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
+                                $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
+                                    ->orWhereBetween(DB::raw('DATE(date)'), [$pYStartDate, $pYEndDate]);
+                            });
+                    },
+                    'accounts.accountSubCategory.accountCategory'
+                ])
+                ->first();
+
+            // If no operating expenses subcategory found
+            if (!$operatingExpenses) {
+                throw new BadRequestException("Operating sub-category not found!", Response::HTTP_NOT_FOUND);
+            }
+
+            $reportData = [
+                'subcategoryName' => $operatingExpenses->name,
+                'currentYear' => Carbon::parse($endDate)->year,
+                'previousYear' => Carbon::parse($pYEndDate)->year,
+                'currentPeriod' => ['start' => $startDate, 'end' => $endDate],
+                'previousPeriod' => ['start' => $pYStartDate, 'end' => $pYEndDate],
+                'accounts' => [],
+                'totalCurrent' => 0,
+                'totalPrevious' => 0,
+            ];
+
+            foreach ($operatingExpenses->accounts as $account) {
+                // Current year amounts
+                $cyDebit = $account->accountEntries
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->sum('debit_amount');
+                $cyCredit = $account->accountEntries
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->sum('credit_amount');
+                $cyBalance = $cyDebit - $cyCredit; // Expense is debit - credit
+
+                // Previous year amounts
+                $pyDebit = $account->accountEntries
+                    ->whereBetween('date', [$pYStartDate, $pYEndDate])
+                    ->sum('debit_amount');
+                $pyCredit = $account->accountEntries
+                    ->whereBetween('date', [$pYStartDate, $pYEndDate])
+                    ->sum('credit_amount');
+                $pyBalance = $pyDebit - $pyCredit;
+
+                // Calculate percentage change
+                $percentageChange = $pyBalance != 0
+                    ? (($cyBalance - $pyBalance) / abs($pyBalance)) * 100
+                    : ($cyBalance != 0 ? 100 : 0);
+
+                $reportData['accounts'][] = [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'code' => $account->code,
+                    'category' => $account->accountSubCategory->accountCategory->name,
+                    'currentYear' => $cyBalance,
+                    'previousYear' => $pyBalance,
+                    'change' => $cyBalance - $pyBalance,
+                    'percentageChange' => round($percentageChange, 2),
+                    'isIncrease' => $cyBalance > $pyBalance,
+                ];
+
+                $reportData['totalCurrent'] += $cyBalance;
+                $reportData['totalPrevious'] += $pyBalance;
+            }
+
+            // Calculate total percentage change
+            $totalPercentageChange = $reportData['totalPrevious'] != 0
+                ? (($reportData['totalCurrent'] - $reportData['totalPrevious']) / abs($reportData['totalPrevious'])) * 100
+                : ($reportData['totalCurrent'] != 0 ? 100 : 0);
+
+            $reportData['totalChange'] = $reportData['totalCurrent'] - $reportData['totalPrevious'];
+            $reportData['totalPercentageChange'] = round($totalPercentageChange, 2);
+            $reportData['isTotalIncrease'] = $reportData['totalCurrent'] > $reportData['totalPrevious'];
+
+            // Sort accounts by highest current year amount (descending)
+            usort($reportData['accounts'], function ($a, $b) {
+                return $b['currentYear'] <=> $a['currentYear'];
+            });
+
+            if ($export) {
+                $fileName = 'operating_expenses_' . now()->format('Ymd_His') . '.xlsx';
+
+                return Excel::download(
+                    new OperatingExpensesReportExport($reportData),
+                    $fileName
+                );
+            }
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    public function getAverageTime($request)
+    {
+        try {
+            $export = $request->export;
+
+            // Determine dates
+            $endDate = is_numeric($request->end_date) && strlen($request->end_date) === 4
+                ? Carbon::create($request->end_date, 12, 31)->toDateString()
+                : Carbon::parse($request->end_date)->toDateString();
+
+            $startDate = Carbon::parse($endDate)->startOfYear()->toDateString();
+            $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
+            $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
+
+            $reportData = [
+                'reportDate' => [
+                    'startDate' => $startDate,
+                    'endDate' => $endDate,
+                    'previousYearStartDate' => $pYStartDate,
+                    'previousYearEndDate' => $pYEndDate,
+                ],
+                'averageDayToGetPaid' => self::averageDayToGetPaid(),
+                'valueOfUnpaidInvoices' => self::valueOfUnpaidInvoices(),
+                'averageDayToToPaySuppliers' => self::averageDayToToPaySuppliers(),
+                'valueOfUnpaidBills' => self::valueOfUnpaidBills(),
+            ];
+
+            if ($export) {
+                $fileName = 'average_days_' . now()->format('Ymd_His') . '.xlsx';
+
+                return Excel::download(
+                    new AverageTimeReportExport($reportData),
+                    $fileName
+                );
+            }
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+
+    public function getLiabilityToNetWorthRatio($request)
+    {
+        $year = $request->year ?? Carbon::now()->year;
+
+        try {
+            $monthlyData = [];
+
+            for ($month = 1; $month <= 12; $month++) {
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+                // Get total liabilities
+                $liabilities = FinanceTotalsHelper::getAccountTypeTotal('liability', $startDate, $endDate);
+
+                // Get total equity (net worth)
+                $equity = FinanceTotalsHelper::getAccountTypeTotal('equity', $startDate, $endDate);
+
+                // Calculate ratio
+                $ratio = $equity != 0 ? $liabilities / $equity : 0;
+
+                $monthlyData[] = [
+                    'month' => $startDate->format('M Y'),
+                    'total_liabilities' => $liabilities,
+                    'total_equity' => $equity,
+                    'ratio' => $ratio
+                ];
+            }
+
+            // Current ratio (year-to-date)
+            $currentLiabilities = FinanceTotalsHelper::getAccountTypeTotal('liability', Carbon::create($year, 1, 1), Carbon::now());
+            $currentEquity = FinanceTotalsHelper::getAccountTypeTotal('equity', Carbon::create($year, 1, 1), Carbon::now());
+            $currentRatio = $currentEquity != 0 ? $currentLiabilities / $currentEquity : 0;
+
+            $reportData = [
+                'year' => $year,
+                'monthly_data' => $monthlyData,
+                'current_ratio' => $currentRatio,
+            ];
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    public function getDebtToEquityRatio($request)
+    {
+        $year = $request->year ?? Carbon::now()->year;
+
+        try {
+            $monthlyData = [];
+
+            for ($month = 1; $month <= 12; $month++) {
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+                // Get total debt (long-term liabilities)
+                $debt = FinanceTotalsHelper::getAccountCategoryTotal('long-term-liabilities', $startDate, $endDate);
+
+                // Get total equity (net worth)
+                $equity = FinanceTotalsHelper::getAccountTypeTotal('equity', $startDate, $endDate);
+
+                // Calculate ratio
+                $ratio = $equity != 0 ? $debt / $equity : 0;
+
+                $monthlyData[] = [
+                    'month' => $startDate->format('M Y'),
+                    'total_debt' => $debt,
+                    'total_equity' => $equity,
+                    'ratio' => $ratio
+                ];
+            }
+
+            // Current ratio (year-to-date)
+            $currentDebt = FinanceTotalsHelper::getAccountCategoryTotal('long-term-liabilities', Carbon::create($year, 1, 1), Carbon::now());
+            $currentEquity = FinanceTotalsHelper::getAccountTypeTotal('equity', Carbon::create($year, 1, 1), Carbon::now());
+            $currentRatio = $currentEquity != 0 ? $currentDebt / $currentEquity : 0;
+
+            $reportData = [
+                'year' => $year,
+                'monthly_data' => $monthlyData,
+                'current_ratio' => $currentRatio,
+            ];
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    public function getFixedAssetToNetWorthRatio($request)
+    {
+        $year = $request->year ?? Carbon::now()->year;
+
+        try {
+            $monthlyData = [];
+
+            for ($month = 1; $month <= 12; $month++) {
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+                // Get fixed assets
+                $fixedAssets = FinanceTotalsHelper::getAccountCategoryTotal('fixed-assets', $startDate, $endDate);
+
+                // Get net worth (equity)
+                $netWorth = FinanceTotalsHelper::getAccountTypeTotal('equity', $startDate, $endDate);
+
+                // Calculate ratio
+                $ratio = $netWorth != 0 ? $fixedAssets / $netWorth : 0;
+
+                $monthlyData[] = [
+                    'month' => $startDate->format('M Y'),
+                    'fixed_assets' => $fixedAssets,
+                    'net_worth' => $netWorth,
+                    'ratio' => $ratio
+                ];
+            }
+
+            // Current ratio (year-to-date)
+            $currentFixedAssets = FinanceTotalsHelper::getAccountCategoryTotal('fixed-assets', Carbon::create($year, 1, 1), Carbon::now());
+            $currentNetWorth = FinanceTotalsHelper::getAccountTypeTotal('equity', Carbon::create($year, 1, 1), Carbon::now());
+            $currentRatio = $currentNetWorth != 0 ? $currentFixedAssets / $currentNetWorth : 0;
+
+            $reportData = [
+                'year' => $year,
+                'monthly_data' => $monthlyData,
+                'current_ratio' => $currentRatio,
+            ];
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    public function getGrossProfitPercentage($request)
+    {
+        $year = $request->year ?? Carbon::now()->year;
+
+        try {
+            $monthlyData = [];
+
+            for ($month = 1; $month <= 12; $month++) {
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+                // Get revenue
+                $revenue = FinanceTotalsHelper::getAccountCategoryTotal('revenue', $startDate, $endDate);
+
+                // Get cost of goods sold
+                $cogs = FinanceTotalsHelper::getAccountCategoryTotal('cost-of-goods-sold', $startDate, $endDate);
+
+                // Calculate gross profit percentage
+                $grossProfit = $revenue - $cogs;
+                $percentage = $revenue != 0 ? ($grossProfit / $revenue) * 100 : 0;
+
+
+                $monthlyData[] = [
+                    'month' => $startDate->format('M Y'),
+                    'revenue' => $revenue,
+                    'cogs' => $cogs,
+                    'gross_profit' => $grossProfit,
+                    'percentage' => $percentage
+                ];
+            }
+
+            // Current percentage (year-to-date)
+            $currentRevenue = FinanceTotalsHelper::getAccountCategoryTotal('revenue', Carbon::create($year, 1, 1), Carbon::now());
+            $currentCogs = FinanceTotalsHelper::getAccountCategoryTotal('cost-of-goods-sold', Carbon::create($year, 1, 1), Carbon::now());
+            $currentGrossProfit = $currentRevenue - $currentCogs;
+            $currentPercentage = $currentRevenue != 0 ? ($currentGrossProfit / $currentRevenue) * 100 : 0;
+
+
+            $reportData = [
+                'year' => $year,
+                'monthly_data' => $monthlyData,
+                'current_percentage' => $currentPercentage,
+            ];
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    public function getNetProfitOnNetSales($request)
+    {
+        $year = $request->year ?? Carbon::now()->year;
+
+        try {
+            $monthlyData = [];
+
+            for ($month = 1; $month <= 12; $month++) {
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+                // Get net sales (revenue minus returns/allowances)
+                $netSales = FinanceTotalsHelper::getAccountCategoryTotal('revenue', $startDate, $endDate)
+                    - FinanceTotalsHelper::getAccountCategoryTotal('sales-returns', $startDate, $endDate)
+                    - FinanceTotalsHelper::getAccountCategoryTotal('sales-allowances', $startDate, $endDate);
+
+                // Get net profit (revenue - all expenses)
+                $revenue = FinanceTotalsHelper::getAccountTypeTotal('income', $startDate, $endDate);
+                $expenses = FinanceTotalsHelper::getAccountTypeTotal('expense', $startDate, $endDate);
+                $netProfit = $revenue - $expenses;
+
+                // Calculate percentage
+                $percentage = $netSales != 0 ? ($netProfit / $netSales) * 100 : 0;
+
+                $monthlyData[] = [
+                    'month' => $startDate->format('M Y'),
+                    'net_sales' => $netSales,
+                    'net_profit' => $netProfit,
+                    'percentage' => $percentage
+                ];
+            }
+
+            // Current percentage (year-to-date)
+            $currentNetSales = FinanceTotalsHelper::getAccountCategoryTotal('revenue', Carbon::create($year, 1, 1), Carbon::now())
+                - FinanceTotalsHelper::getAccountCategoryTotal('sales-returns', Carbon::create($year, 1, 1), Carbon::now())
+                - FinanceTotalsHelper::getAccountCategoryTotal('sales-allowances', Carbon::create($year, 1, 1), Carbon::now());
+
+            $currentRevenue = FinanceTotalsHelper::getAccountTypeTotal('income', Carbon::create($year, 1, 1), Carbon::now());
+            $currentExpenses = FinanceTotalsHelper::getAccountTypeTotal('expense', Carbon::create($year, 1, 1), Carbon::now());
+            $currentNetProfit = $currentRevenue - $currentExpenses;
+            $currentPercentage = $currentNetSales != 0 ? ($currentNetProfit / $currentNetSales) * 100 : 0;
+
+            $reportData = [
+                'year' => $year,
+                'monthly_data' => $monthlyData,
+                'current_percentage' => $currentPercentage,
+            ];
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    public function getWorkingCapitalToTotalAssets($request)
+    {
+        $year = $request->year ?? Carbon::now()->year;
+
+        try {
+            $monthlyData = [];
+
+            for ($month = 1; $month <= 12; $month++) {
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+                // Get current assets
+                $currentAssets = FinanceTotalsHelper::getAccountCategoryTotal('current-assets', $startDate, $endDate);
+
+                // Get current liabilities
+                $currentLiabilities = FinanceTotalsHelper::getAccountCategoryTotal('current-liabilities', $startDate, $endDate);
+
+                // Get total assets
+                $totalAssets = FinanceTotalsHelper::getAccountTypeTotal('asset', $startDate, $endDate);
+
+                // Calculate working capital and ratio
+                $workingCapital = $currentAssets - $currentLiabilities;
+                $ratio = $totalAssets != 0 ? $workingCapital / $totalAssets : 0;
+
+                $monthlyData[] = [
+                    'month' => $startDate->format('M Y'),
+                    'current_assets' => $currentAssets,
+                    'current_liabilities' => $currentLiabilities,
+                    'working_capital' => $workingCapital,
+                    'total_assets' => $totalAssets,
+                    'ratio' => $ratio
+                ];
+            }
+
+            // Current ratio (year-to-date)
+            $currentCurrentAssets = FinanceTotalsHelper::getAccountCategoryTotal('current-assets', Carbon::create($year, 1, 1), Carbon::now());
+            $currentCurrentLiabilities = FinanceTotalsHelper::getAccountCategoryTotal('current-liabilities', Carbon::create($year, 1, 1), Carbon::now());
+            $currentWorkingCapital = $currentCurrentAssets - $currentCurrentLiabilities;
+            $currentTotalAssets = FinanceTotalsHelper::getAccountTypeTotal('asset', Carbon::create($year, 1, 1), Carbon::now());
+            $currentRatio = $currentTotalAssets != 0 ? $currentWorkingCapital / $currentTotalAssets : 0;
+
+            $reportData = [
+                'year' => $year,
+                'monthly_data' => $monthlyData,
+                'current_ratio' => $currentRatio,
+            ];
 
             return $reportData;
         } catch (\Throwable $th) {
@@ -850,24 +1190,33 @@ class FinanceAccountTypeService
         }
     }
 
-    public function getOperatingExpensesReport($request)
+    public function getBalanceSheetMajorRunAtDate($request)
     {
         try {
-            $export = $request->export;
+            $export = $request->export; // pdf, excel
+            $currentDate = Carbon::now()->format('d/M/Y');
 
-            // Determine dates
-            $endDate = is_numeric($request->end_date) && strlen($request->end_date) === 4
-                ? Carbon::create($request->end_date, 12, 31)->toDateString()
-                : Carbon::parse($request->end_date)->toDateString();
+            // Parse primary date filter
+            $primaryDate = $this->parseDateFilter($request->primary_date, $request->primary_period_type);
+            $endDate = $primaryDate['end_date'];
+            $startDate = $primaryDate['start_date'];
 
-            $startDate = Carbon::parse($endDate)->startOfYear()->toDateString();
-            $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
-            $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
+            // Parse comparison date filter if provided
+            $comparisonDate = null;
+            if ($request->has('compare_with') && $request->compare_with !== 'none') {
+                $comparisonDate = $this->parseComparisonDate($endDate, $request->compare_with, $request->compare_period, $request->compare_value);
+                $pYEndDate = $comparisonDate['end_date'];
+                $pYStartDate = $comparisonDate['start_date'];
+            } else {
+                // Default to previous year if no comparison selected
+                $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
+                $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
+            }
 
-            // Get operating expenses accounts (under account subcategory with slug 'operating-expenses')
-            $operatingExpenses = FinanceAccountSubCategory::where('slug', 'operating-expenses')
+            // Get account types with their balances
+            $accountTypes = FinanceAccountType::whereIn("slug", ["asset", "liability", "equity"])
                 ->with([
-                    'accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
+                    'accountCategories.accountSubCategories.accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
                         $query->whereHas('journalEntry', function ($query) {
                             $query->where('status', 'published');
                         })
@@ -876,137 +1225,364 @@ class FinanceAccountTypeService
                                     ->orWhereBetween(DB::raw('DATE(date)'), [$pYStartDate, $pYEndDate]);
                             });
                     },
-                    'accounts.accountSubCategory.accountCategory'
+                    'accountCategories.accountSubCategories.accounts.accountEntries.journalEntry:id,status'
                 ])
-                ->first();
+                ->get();
 
-            // If no operating expenses subcategory found
-            if (!$operatingExpenses) {
-                throw new BadRequestException("Operating sub-category not found!", Response::HTTP_NOT_FOUND);
-            }
+            // Calculate retained earnings for both periods
+            $currentRetainedEarnings = AccountEntriesCalculationHelper::calculateRetainedEarningsByDate($startDate, $endDate);
+            $previousRetainedEarnings = AccountEntriesCalculationHelper::calculateRetainedEarningsByDate($pYStartDate, $pYEndDate);
 
-            $reportData = [
-                'subcategoryName' => $operatingExpenses->name,
+            // Process balance sheet data
+            $balanceSheet = $this->processBalanceSheetData(
+                $accountTypes,
+                $startDate,
+                $endDate,
+                $pYStartDate,
+                $pYEndDate,
+                $currentRetainedEarnings,
+                $previousRetainedEarnings
+            );
+
+            // Prepare response
+            $record = [
+                'balanceSheet' => $balanceSheet,
+                'totalAssetCy' => $balanceSheet[0]['totalCyBalance'] ?? 0,
+                'totalAssetPy' => $balanceSheet[0]['totalPyBalance'] ?? 0,
+                'totalLiabilityCy' => $balanceSheet[1]['totalCyBalance'] ?? 0,
+                'totalLiabilityPy' => $balanceSheet[1]['totalPyBalance'] ?? 0,
+                'totalEquityCy' => $balanceSheet[2]['totalCyBalance'] ?? 0,
+                'totalEquityPy' => $balanceSheet[2]['totalPyBalance'] ?? 0,
+                'equityLiabilityCyTotal' => ($balanceSheet[1]['totalCyBalance'] ?? 0) + ($balanceSheet[2]['totalCyBalance'] ?? 0),
+                'equityLiabilityPyTotal' => ($balanceSheet[1]['totalPyBalance'] ?? 0) + ($balanceSheet[2]['totalPyBalance'] ?? 0),
+                'currentDate' => $currentDate,
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'previousStartDate' => $pYStartDate,
+                'previousEndDate' => $pYEndDate,
                 'currentYear' => Carbon::parse($endDate)->year,
                 'previousYear' => Carbon::parse($pYEndDate)->year,
-                'currentPeriod' => ['start' => $startDate, 'end' => $endDate],
-                'previousPeriod' => ['start' => $pYStartDate, 'end' => $pYEndDate],
-                'accounts' => [],
-                'totalCurrent' => 0,
-                'totalPrevious' => 0,
+                'comparisonDate' => $comparisonDate,
+                'filterDescription' => $this->getFilterDescription($request),
+                'comparisonDescription' => $comparisonDate ? $this->getComparisonDescription($request) : null,
             ];
 
-            foreach ($operatingExpenses->accounts as $account) {
-                // Current year amounts
-                $cyDebit = $account->accountEntries
-                    ->whereBetween('date', [$startDate, $endDate])
-                    ->sum('debit_amount');
-                $cyCredit = $account->accountEntries
-                    ->whereBetween('date', [$startDate, $endDate])
-                    ->sum('credit_amount');
-                $cyBalance = $cyDebit - $cyCredit; // Expense is debit - credit
+            // Handle exports
+            if ($export) {
+                $fileName = 'balance_sheet_' . now()->format('Ymd_His') . '.xlsx';
 
-                // Previous year amounts
-                $pyDebit = $account->accountEntries
-                    ->whereBetween('date', [$pYStartDate, $pYEndDate])
-                    ->sum('debit_amount');
-                $pyCredit = $account->accountEntries
-                    ->whereBetween('date', [$pYStartDate, $pYEndDate])
-                    ->sum('credit_amount');
-                $pyBalance = $pyDebit - $pyCredit;
+                return Excel::download(
+                    new BalanceSheetFirstLevelReportExportCYPY($record),
+                    $fileName
+                );
+            }
 
-                // Calculate percentage change
-                $percentageChange = $pyBalance != 0
-                    ? (($cyBalance - $pyBalance) / abs($pyBalance)) * 100
-                    : ($cyBalance != 0 ? 100 : 0);
+            return $record;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
 
-                $reportData['accounts'][] = [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'code' => $account->code,
-                    'category' => $account->accountSubCategory->accountCategory->name,
-                    'currentYear' => $cyBalance,
-                    'previousYear' => $pyBalance,
-                    'change' => $cyBalance - $pyBalance,
-                    'percentageChange' => round($percentageChange, 2),
-                    'isIncrease' => $cyBalance > $pyBalance,
+    /**
+     * Parse the primary date filter based on user selection
+     */
+    private function parseDateFilter($dateInput, $periodType)
+    {
+        $carbonDate = Carbon::parse($dateInput);
+
+        switch ($periodType) {
+            case 'specific_date':
+                return [
+                    'start_date' => $carbonDate->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
                 ];
 
-                $reportData['totalCurrent'] += $cyBalance;
-                $reportData['totalPrevious'] += $pyBalance;
-            }
+            case 'quarter_end':
+                return [
+                    'start_date' => $carbonDate->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->endOfQuarter()->toDateString()
+                ];
 
-            // Calculate total percentage change
-            $totalPercentageChange = $reportData['totalPrevious'] != 0
-                ? (($reportData['totalCurrent'] - $reportData['totalPrevious']) / abs($reportData['totalPrevious'])) * 100
-                : ($reportData['totalCurrent'] != 0 ? 100 : 0);
+            case 'year_end':
+                return [
+                    'start_date' => $carbonDate->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->endOfYear()->toDateString()
+                ];
 
-            $reportData['totalChange'] = $reportData['totalCurrent'] - $reportData['totalPrevious'];
-            $reportData['totalPercentageChange'] = round($totalPercentageChange, 2);
-            $reportData['isTotalIncrease'] = $reportData['totalCurrent'] > $reportData['totalPrevious'];
+            case 'financial_year_end':
+                // Assuming financial year ends March 31 (adjust as needed)
+                $financialYearEnd = $carbonDate->month < 4
+                    ? Carbon::create($carbonDate->year - 1, 3, 31)
+                    : Carbon::create($carbonDate->year, 3, 31);
 
-            // Sort accounts by highest current year amount (descending)
-            usort($reportData['accounts'], function ($a, $b) {
-                return $b['currentYear'] <=> $a['currentYear'];
-            });
+                return [
+                    'start_date' => $financialYearEnd->copy()->subYear()->addDay()->toDateString(),
+                    'end_date' => $financialYearEnd->toDateString()
+                ];
 
-            if ($export) {
-                $fileName = 'operating_expenses_' . now()->format('Ymd_His') . '.xlsx';
-
-                return Excel::download(
-                    new OperatingExpensesReportExport($reportData),
-                    $fileName
-                );
-            }
-
-            return $reportData;
-        } catch (\Throwable $th) {
-            return $th;
+            default:
+                return [
+                    'start_date' => $carbonDate->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->endOfYear()->toDateString()
+                ];
         }
     }
 
-    public function getAverageTime($request)
+    /**
+     * Parse the comparison date based on user selection
+     */
+    private function parseComparisonDate($baseDate, $compareWith, $periodType, $value)
     {
-        try {
-            $export = $request->export;
+        $base = Carbon::parse($baseDate);
+        $value = (int)$value;
 
-            // Determine dates
-            $endDate = is_numeric($request->end_date) && strlen($request->end_date) === 4
-                ? Carbon::create($request->end_date, 12, 31)->toDateString()
-                : Carbon::parse($request->end_date)->toDateString();
+        switch ($compareWith) {
+            case 'years_ago':
+                return [
+                    'start_date' => $base->copy()->subYears($value)->startOfYear()->toDateString(),
+                    'end_date' => $base->copy()->subYears($value)->endOfYear()->toDateString()
+                ];
 
-            $startDate = Carbon::parse($endDate)->startOfYear()->toDateString();
-            $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
-            $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
+            case 'quarters_ago':
+                return [
+                    'start_date' => $base->copy()->subQuarters($value)->startOfQuarter()->toDateString(),
+                    'end_date' => $base->copy()->subQuarters($value)->endOfQuarter()->toDateString()
+                ];
 
-            $reportData = [
-                'reportDate' => [
-                    'startDate' => $startDate,
-                    'endDate' => $endDate,
-                    'previousYearStartDate' => $pYStartDate,
-                    'previousYearEndDate' => $pYEndDate,
-                ],
-                'averageDayToGetPaid' => self::averageDayToGetPaid(),
-                'valueOfUnpaidInvoices' => self::valueOfUnpaidInvoices(),
-                'averageDayToToPaySuppliers' => self::averageDayToToPaySuppliers(),
-                'valueOfUnpaidBills' => self::valueOfUnpaidBills(),
+            case 'months_ago':
+                return [
+                    'start_date' => $base->copy()->subMonths($value)->startOfMonth()->toDateString(),
+                    'end_date' => $base->copy()->subMonths($value)->endOfMonth()->toDateString()
+                ];
+
+            case 'days_ago':
+                return [
+                    'start_date' => $base->copy()->subDays($value)->toDateString(),
+                    'end_date' => $base->copy()->subDays($value)->toDateString()
+                ];
+
+            case 'previous_period':
+                // Compare with same duration before the current period
+                $currentStart = Carbon::parse($request->primary_start_date);
+                $currentEnd = Carbon::parse($request->primary_end_date);
+                $duration = $currentStart->diffInDays($currentEnd);
+
+                return [
+                    'start_date' => $currentStart->copy()->subDays($duration + 1)->toDateString(),
+                    'end_date' => $currentStart->copy()->subDay()->toDateString()
+                ];
+
+            default:
+                return [
+                    'start_date' => $base->copy()->subYear()->startOfYear()->toDateString(),
+                    'end_date' => $base->copy()->subYear()->endOfYear()->toDateString()
+                ];
+        }
+    }
+
+    /**
+     * Process the balance sheet data structure
+     */
+    private function processBalanceSheetData($accountTypes, $startDate, $endDate, $pYStartDate, $pYEndDate, $currentRE, $previousRE)
+    {
+        $balanceSheet = [];
+
+        foreach ($accountTypes as $accountType) {
+            $accountTypeData = [
+                'id' => $accountType->id,
+                'name' => $accountType->name,
+                'slug' => $accountType->slug,
+                'totalCyBalance' => 0,
+                'totalPyBalance' => 0,
+                'movement' => 0,
+                'accountCategories' => [],
             ];
 
-            if ($export) {
-                $fileName = 'average_days_' . now()->format('Ymd_His') . '.xlsx';
+            foreach ($accountType->accountCategories as $accountCategory) {
+                $accountCategoryData = [
+                    'id' => $accountCategory->id,
+                    'name' => $accountCategory->name,
+                    'slug' => $accountCategory->slug,
+                    'totalCyBalance' => 0,
+                    'totalPyBalance' => 0,
+                    'movement' => 0,
+                    'accountSubCategories' => [],
+                ];
 
-                return Excel::download(
-                    new AverageTimeReportExport($reportData),
-                    $fileName
-                );
+                foreach ($accountCategory->accountSubCategories as $accountSubCategory) {
+                    $accountSubCategoryData = [
+                        'id' => $accountSubCategory->id,
+                        'name' => $accountSubCategory->name,
+                        'slug' => $accountSubCategory->slug,
+                        'cyBalance' => 0,
+                        'pyBalance' => 0,
+                        'movement' => 0,
+                    ];
+
+                    foreach ($accountSubCategory->accounts as $account) {
+                        // Get current period balances
+                        $cyDebitBalance = $account->accountEntries
+                            ->whereBetween('date', [$startDate, $endDate])
+                            ->sum('debit_amount');
+
+                        $cyCreditBalance = $account->accountEntries
+                            ->whereBetween('date', [$startDate, $endDate])
+                            ->sum('credit_amount');
+
+                        // Get previous period balances
+                        $pyDebitBalance = $account->accountEntries
+                            ->whereBetween('date', [$pYStartDate, $pYEndDate])
+                            ->sum('debit_amount');
+
+                        $pyCreditBalance = $account->accountEntries
+                            ->whereBetween('date', [$pYStartDate, $pYEndDate])
+                            ->sum('credit_amount');
+
+                        // Determine account type treatment
+                        [$entryType, $cyDebit, $cyCredit] = AccountEntriesCalculationHelper::determineCreditOrDebitAccountBalanceSheet(
+                            $account,
+                            $cyDebitBalance,
+                            $cyCreditBalance
+                        );
+
+                        [$entryType, $pyDebit, $pyCredit] = AccountEntriesCalculationHelper::determineCreditOrDebitAccountBalanceSheet(
+                            $account,
+                            $pyDebitBalance,
+                            $pyCreditBalance
+                        );
+
+                        $cyAccountBalance = $entryType == "debit" ? $cyDebit : ($entryType == "credit" ? $cyCredit : 0);
+                        $pyAccountBalance = $entryType == "debit" ? $pyDebit : ($entryType == "credit" ? $pyCredit : 0);
+
+                        $movement = $cyAccountBalance - $pyAccountBalance;
+
+                        $accountSubCategoryData['movement'] += $movement;
+                        $accountSubCategoryData['cyBalance'] += $cyAccountBalance;
+                        $accountSubCategoryData['pyBalance'] += $pyAccountBalance;
+                    }
+
+                    $accountCategoryData['accountSubCategories'][] = $accountSubCategoryData;
+                    $accountCategoryData['totalCyBalance'] += $accountSubCategoryData['cyBalance'];
+                    $accountCategoryData['totalPyBalance'] += $accountSubCategoryData['pyBalance'];
+                    $accountCategoryData['movement'] += $accountSubCategoryData['movement'];
+                }
+
+                $accountTypeData['accountCategories'][] = $accountCategoryData;
+                $accountTypeData['totalCyBalance'] += $accountCategoryData['totalCyBalance'];
+                $accountTypeData['totalPyBalance'] += $accountCategoryData['totalPyBalance'];
+                $accountTypeData['movement'] += $accountCategoryData['movement'];
             }
 
-            return $reportData;
-        } catch (\Throwable $th) {
-            return $th;
+            // Handle retained earnings for equity
+            if ($accountType->slug === 'equity') {
+                $totalAssetCy = $balanceSheet[0]['totalCyBalance'] ?? 0;
+                $totalLiabilityCy = $balanceSheet[1]['totalCyBalance'] ?? 0;
+                $totalEquityCy = $accountTypeData['totalCyBalance'];
+
+                $totalAssetPy = $balanceSheet[0]['totalPyBalance'] ?? 0;
+                $totalLiabilityPy = $balanceSheet[1]['totalPyBalance'] ?? 0;
+                $totalEquityPy = $accountTypeData['totalPyBalance'];
+
+                $retainedEarningsCy = $totalAssetCy - $totalLiabilityCy - $totalEquityCy;
+                $retainedEarningsPy = $totalAssetPy - $totalLiabilityPy - $totalEquityPy;
+
+                // Add calculated retained earnings to the appropriate subcategory
+                foreach ($accountTypeData['accountCategories'] as &$category) {
+                    foreach ($category['accountSubCategories'] as &$subCategory) {
+                        if ($subCategory['slug'] === 'retained-earnings') {
+                            $subCategory['cyBalance'] = $retainedEarningsCy + $currentRE;
+                            $subCategory['pyBalance'] = $retainedEarningsPy + $previousRE;
+                            $subCategory['movement'] = ($retainedEarningsCy + $currentRE) - ($retainedEarningsPy + $previousRE);
+
+                            // Update category totals
+                            $category['totalCyBalance'] += $retainedEarningsCy + $currentRE;
+                            $category['totalPyBalance'] += $retainedEarningsPy + $previousRE;
+                            $category['movement'] += $subCategory['movement'];
+                        }
+                    }
+                }
+
+                // Update type totals
+                $accountTypeData['totalCyBalance'] += $retainedEarningsCy + $currentRE;
+                $accountTypeData['totalPyBalance'] += $retainedEarningsPy + $previousRE;
+                $accountTypeData['movement'] += ($retainedEarningsCy + $currentRE) - ($retainedEarningsPy + $previousRE);
+            }
+
+            $balanceSheet[] = $accountTypeData;
+        }
+
+        return $balanceSheet;
+    }
+
+    /**
+     * Generate human-readable filter description
+     */
+    private function getFilterDescription($request)
+    {
+        $primaryDate = Carbon::parse($request->primary_date);
+
+        switch ($request->primary_period_type) {
+            case 'specific_date':
+                return "As at " . $primaryDate->format('jS M Y');
+
+            case 'quarter_end':
+                return $primaryDate->format('F Y') . " Quarter";
+
+            case 'year_end':
+                return $primaryDate->format('Y') . " Year End";
+
+            case 'financial_year_end':
+                return $primaryDate->format('Y') . " Financial Year End";
+
+            default:
+                return $primaryDate->format('Y') . " Year End";
         }
     }
 
+    /**
+     * Generate human-readable comparison description
+     */
+    private function getComparisonDescription($request)
+    {
+        if ($request->compare_with === 'none') {
+            return null;
+        }
+
+        $value = (int)$request->compare_value;
+        $period = $this->getPeriodName($request->compare_period, $value);
+
+        switch ($request->compare_with) {
+            case 'years_ago':
+                return "Compared with $value $period ago";
+
+            case 'quarters_ago':
+                return "Compared with $value $period ago";
+
+            case 'months_ago':
+                return "Compared with $value $period ago";
+
+            case 'days_ago':
+                return "Compared with $value $period ago";
+
+            case 'previous_period':
+                return "Compared with previous period";
+
+            default:
+                return "Compared with previous year";
+        }
+    }
+
+    private function getPeriodName($period, $value)
+    {
+        $periods = [
+            'years' => $value === 1 ? 'year' : 'years',
+            'quarters' => $value === 1 ? 'quarter' : 'quarters',
+            'months' => $value === 1 ? 'month' : 'months',
+            'days' => $value === 1 ? 'day' : 'days',
+        ];
+
+        return $periods[$period] ?? 'period';
+    }
 
 
 

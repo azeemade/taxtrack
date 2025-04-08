@@ -107,7 +107,7 @@ class ChartOfAccountService
     public function allChartOfAccountNotPaginated()
     {
         try {
-            return FinanceChartOfAccount::select("id", "name")->orderBy("name", "ASC")->get();
+            return FinanceChartOfAccount::select("id", "name", "account_number")->orderBy("name", "ASC")->get();
         } catch (\Throwable $th) {
             throw $th;
         }
