@@ -73,7 +73,7 @@ class ChartOfAccountService
                     return $query->where('created_at', '>=', $carbonDateFilter);
                 })
                 ->orderBy("account_type_id", "ASC")
-                ->orderBy("account_number", "ASC");
+                ->orderBy('account_number', "ASC");
 
             $record = $export ? $record->get() : $record->paginate($limit);
 
@@ -107,7 +107,7 @@ class ChartOfAccountService
     public function allChartOfAccountNotPaginated()
     {
         try {
-            return FinanceChartOfAccount::select("id", "name")->orderBy("name", "ASC")->get();
+            return FinanceChartOfAccount::select("id", "name", 'account_number')->orderBy("name", "ASC")->get();
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -226,15 +226,15 @@ class ChartOfAccountService
             $record->update([
                 'account_type_id' =>  $getSubCategoryInfo->account_type_id,
                 'account_category_id' =>  $getSubCategoryInfo->account_category_id,
-                'account_sub_category_id' =>  $request->account_sub_category_id,
+                'account_sub_category_id' =>  $getSubCategoryInfo->id,
                 'company_id' => auth()->user()->current_company_id,
-                'name' => $record->name ?? $request->name,
-                'slug' => Str::slug($record->name) ?? Str::slug($request->name),
-                'description' => $record->description ?? $request->description,
-                'reference_code' => $record->reference_code ?? $request->reference_code,
-                'opening_balance' => $record->opening_balance ?? $request->opening_balance,
-                'balance_date' => $record->balance_date ?? $request->balance_date,
-                'status' => $record->status ?? $request->status,
+                'name' => $request->name ?? $record->name,
+                'slug' => Str::slug($request->name) ?? Str::slug($record->name),
+                'description' => $request->description ?? $record->description,
+                'reference_code' => $request->reference_code ?? $record->reference_code,
+                'opening_balance' => $request->opening_balance ?? $record->opening_balance,
+                'balance_date' => $request->balance_date ?? $record->balance_date,
+                'status' => $request->status ?? $record->status,
                 'edited_by' => $currentUser->id
             ]);
 
@@ -344,7 +344,7 @@ class ChartOfAccountService
     public function getAccountsByType(string $accountType)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_type_id')
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_type_id', 'account_number')
                 ->whereHas('accountType', function ($query) use ($accountType) {
                     $query->where('slug', $accountType);
                 })->get();
@@ -358,7 +358,7 @@ class ChartOfAccountService
     public function getAccountsBySubCategoryID($id)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_number')
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_number', 'account_number')
                 ->where("account_sub_category_id", $id)
                 ->get();
 
@@ -371,7 +371,7 @@ class ChartOfAccountService
     public function getAccountsBySubCategoryName(string $accountSubCategoryName)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_sub_category_id')
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_sub_category_id', 'account_number')
                 ->whereHas('subCategory', function ($query) use ($accountSubCategoryName) {
                     $query->where('slug', $accountSubCategoryName);
                 })->get();
