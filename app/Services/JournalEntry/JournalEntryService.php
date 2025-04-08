@@ -3,6 +3,7 @@
 namespace App\Services\JournalEntry;
 
 use App\Exceptions\BadRequestException;
+use App\Exports\Accounting\JournalEntry\JournalEntryExport;
 use App\Http\Requests\Company\Accounting\JournalEntry\JournalEntryRequest;
 use App\Models\FinanceAccountEntry;
 use App\Models\FinanceJournalEntry;
@@ -26,20 +27,30 @@ class JournalEntryService
             $searchParams = $request->q;
             (!is_null($request->start_date) && !is_null($request->end_date)) ? $dateSearchParams = true : $dateSearchParams = false;
 
-            $record = FinanceJournalEntry::with([
-                'accountEntries' => function ($query) {
-                    $query->select(
-                        'journal_entry_id',
-                        DB::raw('SUM(debit_amount) as total_debit'),
-                        DB::raw('SUM(credit_amount) as total_credit')
-                    )->groupBy('journal_entry_id');
-                }
-            ])
-                ->when($searchParams, function ($query, $searchParams) use ($request) {
-                    return $query->whereHas('accountEntries', function ($query) use ($searchParams) {
-                        return $query->where('credit_amount', $searchParams)
-                            ->orWhere('debit_amount', $searchParams)
-                            ->orWhere("reference", 'LIKE', '%' . $searchParams . '%');
+            $record = FinanceJournalEntry::where('company_id',  auth()->user()->current_company_id)
+                ->with([
+                    'accountEntries' => function ($query) {
+                        $query->select(
+                            'journal_entry_id',
+                            DB::raw('SUM(debit_amount) as total_debit'),
+                            DB::raw('SUM(credit_amount) as total_credit')
+                        )->groupBy('journal_entry_id');
+                    }
+                ])
+                ->when($searchParams, function ($query) use ($searchParams) {
+                    // Option 1: Search amounts if numeric
+                    if (is_numeric($searchParams)) {
+                        $amount = (float)$searchParams;
+                        return $query->whereHas('accountEntries', function ($q) use ($amount) {
+                            $q->where('credit_amount', $amount)
+                              ->orWhere('debit_amount', $amount);
+                        });
+                    }
+                    
+                    // Option 2: Search text fields
+                    return $query->whereHas('accountEntries', function ($q) use ($searchParams) {
+                        $q->where('reference', 'like', "%{$searchParams}%")
+                          ->orWhere('description', 'like', "%{$searchParams}%");
                     });
                 })
                 ->when($filterBy, function ($query) use ($filterBy) {
@@ -68,22 +79,38 @@ class JournalEntryService
             // Fetch records
             $record = $export ? $record->get() : $record->paginate($limit);
 
-            // Transform data to include total_debit and total_credit
+            if ($export) {
+                // Transform collection directly
+                $record->transform(function ($entry) {
+                    $totalDebit = $entry->accountEntries->sum('total_debit') ?? 0;
+                    $totalCredit = $entry->accountEntries->sum('total_credit') ?? 0;
+                    unset($entry->accountEntries);
+            
+                    return array_merge($entry->toArray(), [
+                        'total_debit' => $totalDebit,
+                        'total_credit' => $totalCredit,
+                    ]);
+                });
+
+                $fileName = 'journal_entry_report_' . now()->format('Ymd_His') . '.xlsx';
+
+                return Excel::download(
+                    new JournalEntryExport($record),
+                    $fileName
+                );
+            }
+            
+            // Paginated data transform
             $record->getCollection()->transform(function ($entry) {
                 $totalDebit = $entry->accountEntries->sum('total_debit') ?? 0;
                 $totalCredit = $entry->accountEntries->sum('total_credit') ?? 0;
-                unset($entry->accountEntries); // Remove account_entries
-
+                unset($entry->accountEntries);
+            
                 return array_merge($entry->toArray(), [
                     'total_debit' => $totalDebit,
                     'total_credit' => $totalCredit,
                 ]);
             });
-
-            if ($export) {
-                return Excel::download(new JournalEntryExport($record), 'journalentryreportdata.xlsx');
-            }
-
             return $record;
         } catch (\Throwable $th) {
             throw $th;
@@ -127,8 +154,8 @@ class JournalEntryService
                     'journal_entry_id' => $journalEntry->id,
                     'date' => $request->journal_date,
                     'account_id' => $accountEntry['account_id'],
-                    'reference' => $accountEntry['reference'],
-                    'description' => $accountEntry['description'],
+                    'reference' => $accountEntry['reference'] ?? null,
+                    'description' => $accountEntry['description'] ?? null,
                     'debit_amount' => $debit_amount,
                     'credit_amount' => $credit_amount,
                     'amount' => $amountValue,
@@ -162,6 +189,7 @@ class JournalEntryService
     {
         try {
             $record = FinanceJournalEntry::with('accountEntries', 'accountEntries.account:id,name')
+                ->where('company_id',  auth()->user()->current_company_id)
                 ->where('id', $id)
                 ->first();
 
@@ -224,8 +252,8 @@ class JournalEntryService
                     'journal_entry_id' => $journalEntry->id,
                     'date' => $request->journal_date,
                     'account_id' => $accountEntry['account_id'],
-                    'reference' => $accountEntry['reference'],
-                    'description' => $accountEntry['description'],
+                    'reference' => $accountEntry['reference'] ?? null,
+                    'description' => $accountEntry['description'] ?? null,
                     'debit_amount' => $debit_amount,
                     'credit_amount' => $credit_amount,
                     'amount' => $amountValue,
@@ -268,6 +296,10 @@ class JournalEntryService
                 throw new BadRequestException("You cannot delete a default account.", Response::HTTP_CONFLICT);
             }
 
+            // Delete related account entries
+            $record->accountEntries()->delete();
+
+            // Now delete the journal entry itself
             $record->delete();
 
             DB::commit();

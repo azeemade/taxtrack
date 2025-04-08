@@ -107,7 +107,9 @@ class ChartOfAccountService
     public function allChartOfAccountNotPaginated()
     {
         try {
-            return FinanceChartOfAccount::select("id", "name", 'account_number')->orderBy("name", "ASC")->get();
+            return FinanceChartOfAccount::where('company_id',  auth()->user()->current_company_id)
+                ->select("id", "name", 'account_number')->orderBy("name", "ASC")
+                ->get();
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -116,7 +118,9 @@ class ChartOfAccountService
     public function allSubCategoriesNotPaginated()
     {
         try {
-            return FinanceAccountSubCategory::select("id", "name")->orderBy("name", "ASC")->get();
+            return FinanceAccountSubCategory::where('company_id',  auth()->user()->current_company_id)
+                ->select("id", "name")->orderBy("name", "ASC")
+                ->get();
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -185,7 +189,11 @@ class ChartOfAccountService
     public function show($id)
     {
         try {
-            $record = FinanceChartOfAccount::with("accountType:id,name", "subCategory:id,name")->where('id', $id)->first();
+            $record = FinanceChartOfAccount::where('company_id',  auth()->user()->current_company_id)
+                ->with("accountType:id,name", "subCategory:id,name")
+                ->where('id', $id)
+                ->first();
+
             if (is_null($record)) {
                 throw new BadRequestException("Record not found!", Response::HTTP_NOT_FOUND);
             }
@@ -276,7 +284,10 @@ class ChartOfAccountService
         try {
             DB::beginTransaction();
 
-            $record = FinanceChartOfAccount::where('id', $id)->first();
+            $record = FinanceChartOfAccount::where('company_id',  auth()->user()->current_company_id)
+                ->where('id', $id)
+                ->first();
+
             if (is_null($record)) {
                 throw new BadRequestException("Record not found!", Response::HTTP_NOT_FOUND);
             }
@@ -344,7 +355,8 @@ class ChartOfAccountService
     public function getAccountsByType(string $accountType)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_type_id', 'account_number')
+            $records = FinanceChartOfAccount::where('company_id',  auth()->user()->current_company_id)
+                ->select('id', 'name', 'account_type_id', 'account_number')
                 ->whereHas('accountType', function ($query) use ($accountType) {
                     $query->where('slug', $accountType);
                 })->get();
@@ -358,7 +370,8 @@ class ChartOfAccountService
     public function getAccountsBySubCategoryID($id)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_number', 'account_number')
+            $records = FinanceChartOfAccount::where('company_id',  auth()->user()->current_company_id)
+                ->select('id', 'name', 'account_number', 'account_number')
                 ->where("account_sub_category_id", $id)
                 ->get();
 
@@ -371,7 +384,8 @@ class ChartOfAccountService
     public function getAccountsBySubCategoryName(string $accountSubCategoryName)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_sub_category_id', 'account_number')
+            $records = FinanceChartOfAccount::where('company_id',  auth()->user()->current_company_id)
+                ->select('id', 'name', 'account_sub_category_id', 'account_number')
                 ->whereHas('subCategory', function ($query) use ($accountSubCategoryName) {
                     $query->where('slug', $accountSubCategoryName);
                 })->get();
