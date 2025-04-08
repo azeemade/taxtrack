@@ -53,7 +53,7 @@ class ChartOfAccountService
                         });
                 })
                 ->when($filterBy, function ($query) use ($filterBy) {
-                    return $query->where('is_active', $filterBy);
+                    return $query->where('status', $filterBy);
                 })
                 ->when($sortBy, function ($query) use ($sortBy) {
                     if ($sortBy === 'alphabetically') {
@@ -118,8 +118,8 @@ class ChartOfAccountService
     public function allSubCategoriesNotPaginated()
     {
         try {
-            return FinanceAccountSubCategory::where('company_id',  auth()->user()->current_company_id)
-                ->select("id", "name")->orderBy("name", "ASC")
+            return FinanceAccountSubCategory::
+                select("id", "name")->orderBy("name", "ASC")
                 ->get();
         } catch (\Throwable $th) {
             throw $th;

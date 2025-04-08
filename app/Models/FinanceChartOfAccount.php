@@ -12,6 +12,13 @@ class FinanceChartOfAccount extends Model
     protected $guarded = ['id'];
     protected $with = ['editedBy:id,name,email'];
 
+    protected function setUniqueKeys()
+    {
+        $this->uniqueKeys = [
+            ['company_id', 'account_number']
+        ];
+    }
+    
     public function financeTransactions()
     {
         return $this->hasMany(FinanceAccountTransaction::class);
