@@ -18,8 +18,8 @@ class ChartOfAccountImport implements ToModel, WithHeadingRow
             $user = auth()->user();
             
             // Validate required fields
-            if (empty($row['account_subcategory_reference_code'])) {
-                $this->errors[] = "Account sub category reference code is required";
+            if (empty($row['account_subcategory_name'])) {
+                $this->errors[] = "Account sub category name is required";
                 return null;
             }
 
@@ -28,9 +28,9 @@ class ChartOfAccountImport implements ToModel, WithHeadingRow
                 return null;
             }
 
-            $accountSubCategory = FinanceAccountSubCategory::where("ref_code", $row['account_subcategory_reference_code'])->first();
+            $accountSubCategory = FinanceAccountSubCategory::where("name", $row['account_subcategory_name'])->first();
             if (!$accountSubCategory) {
-                $this->errors[] = "Sub category with ref code '{$row['account_subcategory_reference_code']}' not found";
+                $this->errors[] = "Sub category with ref code '{$row['account_subcategory_name']}' not found";
                 return null;
             }
 
@@ -59,7 +59,7 @@ class ChartOfAccountImport implements ToModel, WithHeadingRow
                 "name" => $row['name'],
                 "account_number" => $accountNumber,
                 "slug" => Str::slug($row['name']),
-                "reference_code" => $row['account_subcategory_reference_code'] ?? $row['name'],
+                "reference_code" => $row['name'],
                 "description" => $row['description'] ?? $row['name'],
                 "opening_balance" => $row['opening_balance'] ?? 0.00,
                 "balance_date" => $row['balance_date'] ?? null,
