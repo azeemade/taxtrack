@@ -73,7 +73,7 @@ class ChartOfAccountService
                     return $query->where('created_at', '>=', $carbonDateFilter);
                 })
                 ->orderBy("account_type_id", "ASC")
-                ->orderBy("account_number", "ASC");
+                ->orderBy('account_number', "ASC");
 
             $record = $export ? $record->get() : $record->paginate($limit);
 
@@ -107,7 +107,7 @@ class ChartOfAccountService
     public function allChartOfAccountNotPaginated()
     {
         try {
-            return FinanceChartOfAccount::select("id", "name", "account_number")->orderBy("name", "ASC")->get();
+            return FinanceChartOfAccount::select("id", "name", 'account_number')->orderBy("name", "ASC")->get();
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -344,7 +344,7 @@ class ChartOfAccountService
     public function getAccountsByType(string $accountType)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_type_id')
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_type_id', 'account_number')
                 ->whereHas('accountType', function ($query) use ($accountType) {
                     $query->where('slug', $accountType);
                 })->get();
@@ -358,7 +358,7 @@ class ChartOfAccountService
     public function getAccountsBySubCategoryID($id)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_number')
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_number', 'account_number')
                 ->where("account_sub_category_id", $id)
                 ->get();
 
@@ -371,7 +371,7 @@ class ChartOfAccountService
     public function getAccountsBySubCategoryName(string $accountSubCategoryName)
     {
         try {
-            $records = FinanceChartOfAccount::select('id', 'name', 'account_sub_category_id')
+            $records = FinanceChartOfAccount::select('id', 'name', 'account_sub_category_id', 'account_number')
                 ->whereHas('subCategory', function ($query) use ($accountSubCategoryName) {
                     $query->where('slug', $accountSubCategoryName);
                 })->get();
