@@ -38,7 +38,8 @@ class FinanceAccountTypeService
                 ->with([
                     'accountCategories.accountSubCategories.accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
                         $query->whereHas('journalEntry', function ($query) {
-                            $query->where('status', 'published');
+                            $query->where('status', 'published')
+                                ->where('company_id',  auth()->user()->current_company_id);
                         })
                             ->where(function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
                                 $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
@@ -175,7 +176,8 @@ class FinanceAccountTypeService
                     'accountCategories.accountSubCategories.accounts' => function ($query) use ($startDate, $endDate) {
                         $query->with(['accountEntries' => function ($query) use ($startDate, $endDate) {
                             $query->whereHas('journalEntry', function ($query) {
-                                $query->where('status', 'published');
+                                $query->where('status', 'published')
+                                    ->where('company_id',  auth()->user()->current_company_id);
                             })
                                 ->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate]);
                         }]);
@@ -299,7 +301,8 @@ class FinanceAccountTypeService
                     'accountCategories.accountSubCategories.accounts' => function ($query) use ($startDate, $endDate) {
                         $query->with(['accountEntries' => function ($query) use ($startDate, $endDate) {
                             $query->whereHas('journalEntry', function ($query) {
-                                $query->where('status', 'published');
+                                $query->where('status', 'published')
+                                    ->where('company_id',  auth()->user()->current_company_id);
                             })->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate]);
                         }]);
                     }
@@ -420,7 +423,8 @@ class FinanceAccountTypeService
                     'accountCategories.accountSubCategories.accounts' => function ($query) use ($startDate, $endDate) {
                         $query->with(['accountEntries' => function ($query) use ($startDate, $endDate) {
                             $query->whereHas('journalEntry', function ($query) {
-                                $query->where('status', 'published');
+                                $query->where('status', 'published')
+                                    ->where('company_id',  auth()->user()->current_company_id);
                             })
                                 ->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate]);
                         }]);
@@ -539,7 +543,8 @@ class FinanceAccountTypeService
                 ->with([
                     'accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
                         $query->whereHas('journalEntry', function ($query) {
-                            $query->where('status', 'published');
+                            $query->where('status', 'published')
+                                ->where('company_id',  auth()->user()->current_company_id);
                         })
                             ->where(function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
                                 $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
@@ -986,7 +991,8 @@ class FinanceAccountTypeService
                 ->with([
                     'accountCategories.accountSubCategories.accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYEndDate) {
                         $query->whereHas('journalEntry', function ($query) {
-                            $query->where('status', 'published');
+                            $query->where('status', 'published')
+                                ->where('company_id',  auth()->user()->current_company_id);
                         })
                             ->where(function ($query) use ($startDate, $endDate, $pYEndDate) {
                                 $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
@@ -1129,7 +1135,8 @@ class FinanceAccountTypeService
             })
                 ->with(['accountEntries' => function ($query) use ($startDate, $endDate, $pYEndDate) {
                     $query->whereHas('journalEntry', function ($query) {
-                        $query->where('status', 'published');
+                        $query->where('status', 'published')
+                            ->where('company_id',  auth()->user()->current_company_id);
                     })
                         ->where(function ($query) use ($startDate, $endDate, $pYEndDate) {
                             $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
@@ -1218,7 +1225,8 @@ class FinanceAccountTypeService
                 ->with([
                     'accountCategories.accountSubCategories.accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
                         $query->whereHas('journalEntry', function ($query) {
-                            $query->where('status', 'published');
+                            $query->where('status', 'published')
+                                ->where('company_id',  auth()->user()->current_company_id);
                         })
                             ->where(function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
                                 $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])

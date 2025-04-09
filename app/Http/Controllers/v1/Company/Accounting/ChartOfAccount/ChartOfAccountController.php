@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Imports\Accounting\ChartOfAccount\ChartOfAccountImport;
+use App\Imports\Accounting\ChartOfAccount\ChartOfAccountImport;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ChartOfAccountController extends Controller
@@ -33,29 +33,13 @@ class ChartOfAccountController extends Controller
     {
         try {
             $records = $this->chartOfAccountService->allChartOfAccount($request);
-
-            if ($request->export) {
-                return $records;
-            }
+            if ($request->export) return $records;
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
-    }
-
-    private function calculateYearlyBalance($accountId, $year)
-    {
-        $debitSum = FinanceAccountEntry::where('account_id', $accountId)
-            ->whereYear('date', $year)
-            ->sum('debit_amount');
-
-        $creditSum = FinanceAccountEntry::where('account_id', $accountId)
-            ->whereYear('date', $year)
-            ->sum('credit_amount');
-
-        return $debitSum - $creditSum;
     }
 
     public function allChartOfAccountNotPaginated()

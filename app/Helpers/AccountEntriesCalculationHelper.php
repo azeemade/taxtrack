@@ -67,7 +67,7 @@ class AccountEntriesCalculationHelper
         // $startDate = $request->start_date;
         // $endDate = $request->end_date;
 
-        $retainedEarningsAccount = FinanceChartOfAccount::where('slug', 'retained-earnings')->first();
+        $retainedEarningsAccount = FinanceChartOfAccount::where('company_id',  auth()->user()->current_company_id)->where('slug', 'retained-earnings')->first();
         if (!$retainedEarningsAccount) {
             throw new \Exception("Retained earnings account not found.");
         }
