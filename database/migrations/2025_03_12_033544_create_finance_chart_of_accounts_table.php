@@ -28,8 +28,8 @@ return new class extends Migration
             $table->string('currency')->nullable();
             $table->double('opening_balance', 15, 2)->default(0.00)->nullable();
             $table->double('balance', 15, 2)->default(0.00)->nullable();
-            $table->enum('status', ['draft', 'pending', 'published', 'unpublished'])->default('draft'); 
-            $table->enum('is_active', ['true', 'false'])->default('true');
+            $table->enum('status', ['draft', 'pending', 'published', 'unpublished'])->default('unpublished'); 
+            $table->enum('is_active', ['true', 'false'])->default('false');
             $table->enum('is_hidden', ['true', 'false'])->default('false');
             $table->enum('is_default', ['true', 'false'])->default('false');
             $table->foreign('account_type_id')->references('id')->on('finance_account_types')->onDelete('cascade');   

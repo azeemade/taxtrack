@@ -118,8 +118,7 @@ class ChartOfAccountService
     public function allSubCategoriesNotPaginated()
     {
         try {
-            return FinanceAccountSubCategory::
-                select("id", "name")->orderBy("name", "ASC")
+            return FinanceAccountSubCategory::select("id", "name")->orderBy("name", "ASC")
                 ->get();
         } catch (\Throwable $th) {
             throw $th;
@@ -171,6 +170,7 @@ class ChartOfAccountService
                 'opening_balance' => $request->opening_balance,
                 'balance_date' => $request->balance_date,
                 'status' => $request->status ?? "published",
+                'is_active' => $request->status == "published" ? "true" : "false",
                 'edited_by' => $user->id
             ]);
 
@@ -242,6 +242,9 @@ class ChartOfAccountService
                 'reference_code' => $request->reference_code ?? $record->reference_code,
                 'opening_balance' => $request->opening_balance ?? $record->opening_balance,
                 'balance_date' => $request->balance_date ?? $record->balance_date,
+                'is_active' =>  $request->filled('status')
+                    ? ($request->status == "published" ? "true" : "false")
+                    : $record->is_active,
                 'status' => $request->status ?? $record->status,
                 'edited_by' => $currentUser->id
             ]);
