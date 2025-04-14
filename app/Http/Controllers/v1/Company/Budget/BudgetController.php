@@ -96,6 +96,35 @@ class BudgetController extends Controller
         }
     }
 
+    public function toggleStatus(Request $request, $id)
+    {
+        $request->validate([
+            "status" => "required|in:active,draft,inactive"
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $record = $this->budgetService->view($id);
+            if(!$record){
+                throw new BadRequestException("Budget not found", Response::HTTP_BAD_REQUEST);
+            }
+            
+            $record->update([
+                "status" => $request->status
+            ]);
+
+            DB::commit();
+            return JsonResponser::send(false, 'Budget status modified successfully', $record);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
     /**
      * Remove the specified resource from storage.
      */

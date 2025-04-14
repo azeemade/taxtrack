@@ -294,6 +294,7 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
+                    Route::put('budgets/{id}/toggle-status', 'BudgetController@toggleStatus');
                     Route::get('budgets/compute/periods', 'BudgetController@computePeriods');
                 });
 
