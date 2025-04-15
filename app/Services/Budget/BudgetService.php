@@ -92,7 +92,7 @@ class BudgetService
                 $record->budgetItems()->where('id', $lineItem['id'])->update($lineItem);
             } else {
                 $budgetItem = $record->budgetItems()->create($lineItem);
-                $periodIdsToKeep[] = $budgetItem['id'];
+                $idsToKeep[] = $budgetItem['id'];
             }
         }
         $record->budgetItems()->whereNotIn('id', $idsToKeep)->delete();
