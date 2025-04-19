@@ -100,7 +100,8 @@ class GeneralHelper
 
     public static function dateFilter(?string $period = null, ?array $customDate = null): array|bool
     {
-        if ($period === "Today") {
+        $currentUserCompany = auth()->user()->company;
+        if (in_array($period, ["today", "Today"])) {
             $carbonDateFilter = [Carbon::now()->startOfDay(), Carbon::now()->endOfDay()];
         } elseif ($period === "3 days") {
             // Last 3 days
@@ -114,14 +115,28 @@ class GeneralHelper
         } elseif ($period == "this month") {
             // This month
             $carbonDateFilter = [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()];
+        } elseif ($period == "last month") {
+            // Last month
+            $carbonDateFilter = [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()];
         } elseif ($period == "30 days") {
             // Last 30 days
             $carbonDateFilter = [Carbon::now()->subDays(30), Carbon::now()];
         } elseif ($period == "3 months") {
             // Last 3 months
             $carbonDateFilter = [Carbon::now()->subMonths(3)->startOfDay(), Carbon::now()->endOfDay()];
+        } elseif ($period == "last quarter") {
+            // Last month
+            $carbonDateFilter = [Carbon::now()->subQuarter()->startOfQuarter(), Carbon::now()->subQuarter()->endOfQuarter()];
         } elseif ($period == "this year") {
             $carbonDateFilter = [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
+        } elseif ($period == "last financial year") {
+            $start = $currentUserCompany->fiscal_year_start ? Carbon::createFromFormat('m-d', $currentUserCompany->fiscal_year_start, Carbon::now()->year)->subYear()->format("Y-m-d") : Carbon::now()->subYear()->startOfYear();
+            $end = $currentUserCompany->fiscal_year_end ? Carbon::createFromFormat('m-d', $currentUserCompany->fiscal_year_end, Carbon::now()->year)->subYear()->format("Y-m-d") : Carbon::now()->subYear()->endOfYear();
+
+            $carbonDateFilter = [$start, $end];
+        } elseif ($period && strpos($period, ',') !== false) {
+            $dates = explode('|', $period);
+            $carbonDateFilter = [Carbon::parse(trim($dates[0])), Carbon::parse(trim($dates[1]))];
         } elseif (preg_match('/^\d{4}$/', $period)) {
             // If period is a specific year (e.g., 2024, 2025, etc.)
             $carbonDateFilter = [
