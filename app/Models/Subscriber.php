@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 class Subscriber extends Model
 
 {
+    protected $guarded = ["id"];
     use HasFactory, PaymentProviderSubscriberTrait, Companyable, Auditable;
 
     public function subscriptionPlan()

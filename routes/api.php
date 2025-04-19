@@ -299,6 +299,7 @@ Route::group([
                         ->missing(function () {
                             return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                         });
+                    Route::put('budgets/{id}/toggle-status', 'BudgetController@toggleStatus');
                     Route::get('budgets/compute/periods', 'BudgetController@computePeriods');
                 });
 
@@ -359,6 +360,16 @@ Route::group([
 
                     Route::group(['prefix' => 'transaction', "namespace" => "Transaction"], function () {
                         Route::post('/account-transactions', [AccountTransactionController::class, 'index']);
+                    });
+                    Route::group(['prefix' => 'payables-receivables'], function () {
+                        Route::get('/aged-payable-details', 'PayablesAndReceivablesController@agedPayableDetails');
+                        Route::get('/aged-payable-summary', 'PayablesAndReceivablesController@agedPayableSummary');
+                        Route::get('/aged-receivable-details', 'PayablesAndReceivablesController@agedReceivableDetails');
+                        Route::get('/aged-receivable-summary', 'PayablesAndReceivablesController@agedReceivableSummary');
+                        Route::get('/payable-invoice-details', 'PayablesAndReceivablesController@payableInvoiceDetails');
+                        Route::get('/payable-invoice-summary', 'PayablesAndReceivablesController@payableInvoiceSummary');
+                        Route::get('/receivable-invoice-details', 'PayablesAndReceivablesController@receivableInvoiceDetails');
+                        Route::get('/receivable-invoice-summary', 'PayablesAndReceivablesController@receivableInvoiceSummary');
                     });
                 });
 

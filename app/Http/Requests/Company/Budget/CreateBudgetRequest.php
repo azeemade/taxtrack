@@ -22,7 +22,7 @@ class CreateBudgetRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|unique:budgets,name|max:255',
+            'name' => 'required|string|max:255|unique:budgets,name' . ($this->isMethod('PUT') ? ',' . $this->route('budget') : ''),
             'status' => 'required|in:active,draft',
             'start_date' => 'required|date',
             'cycle' => 'required|in:monthly,quarterly,annually',

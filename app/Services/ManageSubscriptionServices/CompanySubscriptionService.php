@@ -350,6 +350,7 @@ class CompanySubscriptionService
             'team_size' => $request['additional_users_count'] ?? 0 + SubscriptionConstant::DEFAULT_SEAT_COUNT,
             'sub_total' => $amountPaid['sub_total'] ?? 0.00,
             'payment_method_id' => $paymentMethod->id ?? null,
+            'payment_type' => 'card',
             'amount_paid' => $amountPaid['total'] ?? 0.00,
             'plan_amount' => $durationDependencies['plan_amount'],
             'end_date' => $durationDependencies['end_date'],
