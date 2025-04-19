@@ -328,6 +328,16 @@ Route::group([
                         Route::post('/balance-sheet-run-at-date', [FinancialStatementController::class, 'getBalanceSheetMajorRunAtDate']);
                         Route::post('/cash-balance', [FinancialStatementController::class, 'getCashBalancesReport']);
                     });
+                    Route::group(['prefix' => 'payables-receivables'], function () {
+                        Route::get('/aged-payable-details', 'PayablesAndReceivablesController@agedPayableDetails');
+                        Route::get('/aged-payable-summary', 'PayablesAndReceivablesController@agedPayableSummary');
+                        Route::get('/aged-receivable-details', 'PayablesAndReceivablesController@agedReceivableDetails');
+                        Route::get('/aged-receivable-summary', 'PayablesAndReceivablesController@agedReceivableSummary');
+                        Route::get('/payable-invoice-details', 'PayablesAndReceivablesController@payableInvoiceDetails');
+                        Route::get('/payable-invoice-summary', 'PayablesAndReceivablesController@payableInvoiceSummary');
+                        Route::get('/receivable-invoice-details', 'PayablesAndReceivablesController@receivableInvoiceDetails');
+                        Route::get('/receivable-invoice-summary', 'PayablesAndReceivablesController@receivableInvoiceSummary');
+                    });
                 });
 
                 Route::group([
