@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\v1\Company\Report;
+namespace App\Http\Controllers\v1\Company\Report\Reconciliation;
 
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use Maatwebsite\Excel\Facades\Excel;
 
-class AccountTransactionController extends Controller
+class ReconciliationController extends Controller
 {
 
 
