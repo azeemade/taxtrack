@@ -304,7 +304,7 @@ Route::group([
                 });
 
                 Route::group(['prefix' => 'report', "namespace" => "Report"], function () {
-                    Route::group(['prefix' => 'financial-performance', "namespace" => "FinancialPerformance"], function () {
+                    Route::group(['prefix' => 'financial-performance'], function () {
                         Route::group(['prefix' => 'business-snapshot'], function () {
                             Route::post('/profit-or-loss', [BusinessSnapshotController::class, 'getProfitAndLossReport']);
                             Route::post('/income', [BusinessSnapshotController::class, 'getIncomeReport']);
@@ -336,13 +336,13 @@ Route::group([
                         });
                     });
 
-                    Route::group(['prefix' => 'financial-statement', "namespace" => "FinancialStatement"], function () {
+                    Route::group(['prefix' => 'financial-statement'], function () {
                         Route::post('/balance-sheet', [FinancialStatementController::class, 'getBalanceSheetReport']);
                         Route::post('/balance-sheet-run-at-date', [FinancialStatementController::class, 'getBalanceSheetMajorRunAtDate']);
                         Route::post('/profit-or-loss', [FinancialStatementController::class, 'profitAndLossGroupbyCategory']);
                     });
 
-                    Route::group(['prefix' => 'reconciliation', "namespace" => "Reconciliation"], function () {
+                    Route::group(['prefix' => 'reconciliation'], function () {
                         Route::post('/', [CashSummaryController::class, 'index']);
                         Route::post('/account-summary', [ReconciliationController::class, 'accountSummary']);
                         Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'bankReconciliationSummary']);
@@ -350,7 +350,7 @@ Route::group([
                         Route::post('/trial-balance', [ReconciliationController::class, 'trialBalance']);
                     });
 
-                    Route::group(['prefix' => 'tax-and-balances', "namespace" => "TaxAndBalances"], function () {
+                    Route::group(['prefix' => 'tax-and-balances'], function () {
                         Route::post('/sales-tax-report', [TaxBalancesController::class, 'salesTaxReport']);
                         Route::post('/journal-report', [TaxBalancesController::class, 'journalReport']);
                         Route::post('/foreign-currency-gain-and-losses', [TaxBalancesController::class, 'foreignCurrencyGainAndLosses']);
@@ -358,9 +358,10 @@ Route::group([
                         Route::post('/general-ledger-summary', [TaxBalancesController::class, 'generalLedgerSummary']);
                     });
 
-                    Route::group(['prefix' => 'transaction', "namespace" => "Transaction"], function () {
+                    Route::group(['prefix' => 'transaction'], function () {
                         Route::post('/account-transactions', [AccountTransactionController::class, 'index']);
                     });
+
                     Route::group(['prefix' => 'payables-receivables'], function () {
                         Route::get('/aged-payable-details', 'PayablesAndReceivablesController@agedPayableDetails');
                         Route::get('/aged-payable-summary', 'PayablesAndReceivablesController@agedPayableSummary');
