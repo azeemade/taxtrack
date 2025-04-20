@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\v1\Company\Report\TaxAndBalance;
+namespace App\Http\Controllers\v1\Company\Report\TaxAndBalances;
 
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
@@ -41,7 +41,7 @@ class TaxBalancesController extends Controller
     public function journalReport(Request $request)
     {
         try {
-            $records = $this->financeAccountTypeService->getBalanceSheetReport($request);
+            $records = $this->financeAccountTypeService->journalEntryReport($request);
 
             if ($request->export) {
                 return $records;
@@ -89,7 +89,7 @@ class TaxBalancesController extends Controller
     public function generalLedgerSummary(Request $request)
     {
         try {
-            $records = $this->financeAccountTypeService->getBalanceSheetReport($request);
+            $records = $this->financeAccountTypeService->generalLedgerSummary($request);
 
             if ($request->export) {
                 return $records;

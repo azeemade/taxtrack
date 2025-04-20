@@ -1131,7 +1131,6 @@ class FinanceAccountTypeService
         }
     }
 
-
     public function getCashBalancesReport($request)
     {
         try {
@@ -2129,6 +2128,713 @@ class FinanceAccountTypeService
     //         return $th;
     //     }
     // }
+
+
+    public function journalEntryReport($request)
+    {
+        try {
+            $export = $request->export ?? false;
+            $rangeType = $request->range_type ?? 'monthly';
+            $year = $request->year ?? now()->year;
+            $month = $request->month ?? null;
+            $quarter = $request->quarter ?? null;
+            $customStart = $request->custom_start ?? null;
+            $customEnd = $request->custom_end ?? null;
+            $accountIds = $request->account_ids ?? [];
+
+            // Determine date range
+            list($startDate, $endDate, $periodName) = $this->determineDateRange(
+                $rangeType,
+                $year,
+                $month,
+                $quarter,
+                $customStart,
+                $customEnd
+            );
+
+            // Base query for journal entries
+            $query = FinanceJournalEntry::where('status', 'published')
+                ->where('company_id', auth()->user()->current_company_id)
+                // Remove this if not needed: ->where('info', 'JournalEntry')
+                ->whereBetween('date', [$startDate, $endDate])
+                ->with([
+                    'accountEntries.account:id,name,account_number',
+                    'editedBy:id,name' // Changed from editedBy to match usage
+                ])
+                ->orderBy('date', 'desc')
+                ->orderBy('created_at', 'desc');
+
+            // Apply account filtering if accounts are specified
+            if (!empty($accountIds)) {
+                $query->whereHas('accountEntries', function ($q) use ($accountIds) {
+                    $q->whereIn('account_id', $accountIds);
+                });
+            }
+
+            $journalEntries = $query->get();
+
+            // Process journal entries
+            $processedEntries = [];
+            $totalDebit = 0;
+            $totalCredit = 0;
+
+            foreach ($journalEntries as $entry) {
+                $entryDebit = 0;
+                $entryCredit = 0;
+                $entryAccounts = [];
+
+                foreach ($entry->accountEntries as $accountEntry) {
+                    $entryDebit += $accountEntry->debit_amount;
+                    $entryCredit += $accountEntry->credit_amount;
+
+                    $entryAccounts[] = [
+                        'account_id' => $accountEntry->account_id,
+                        'account_name' => $accountEntry->account->name,
+                        'account_number' => $accountEntry->account->account_number, // Fixed typo
+                        'debit' => $accountEntry->debit_amount,
+                        'credit' => $accountEntry->credit_amount,
+                        'reference' => $accountEntry->reference,
+                        'description' => $accountEntry->description,
+                    ];
+                }
+
+                // If filtering by accounts, check if this entry has at least one requested account
+                // if (!empty($accountIds)) {
+                //     $entryAccountIds = collect($entry->accountEntries)->pluck('account_id')->toArray();
+                //     if (count(array_intersect($accountIds, $entryAccountIds)) === 0) {
+                //         continue; // Skip if no matching accounts
+                //     }
+                // }
+
+                // If filtering by accounts, check if this entry has at least all requested account
+                if (!empty($accountIds)) {
+                    $entryAccountIds = collect($entry->accountEntries)->pluck('account_id')->toArray();
+
+                    // Only include if ALL selected account IDs exist in this entry
+                    if (!empty(array_diff($accountIds, $entryAccountIds))) {
+                        continue; // Skip if not all accountIds are found
+                    }
+                }
+
+                $processedEntries[] = [
+                    'id' => $entry->id,
+                    'date' => $entry->date,
+                    'created_by' => $entry->createdBy->name ?? 'System',
+                    // 'total_debit' => $entryDebit,
+                    // 'total_credit' => $entryCredit,
+                    'accounts' => $entryAccounts
+                ];
+
+                $totalDebit += $entryDebit;
+                $totalCredit += $entryCredit;
+            }
+
+            $reportData = [
+                'journal_entries' => $processedEntries,
+                'summary' => [
+                    'total_debit' => $totalDebit,
+                    'total_credit' => $totalCredit,
+                    'count' => count($processedEntries)
+                ],
+                'period_info' => [
+                    'range_type' => $rangeType,
+                    'period_name' => $periodName,
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                    'account_ids' => $accountIds
+                ]
+            ];
+
+            if ($export) {
+                $fileName = 'journal_entry_' . Str::slug($periodName) . '_' . now()->format('Ymd_His') . '.xlsx';
+
+                return Excel::download(
+                    new JournalEntriesExport($reportData['data']), // Pass the correct data
+                    $fileName
+                );
+            }
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return [
+                'error' => true,
+                'message' => $th->getMessage(),
+                'trace' => $th->getTraceAsString()
+            ];
+        }
+    }
+
+    public function generalLedgerSummary($request)
+    {
+        try {
+            $export = $request->export ?? false;
+            $rangeType = $request->range_type ?? 'monthly';
+            $year = $request->year ?? now()->year;
+            $month = $request->month ?? null;
+            $quarter = $request->quarter ?? null;
+            $customStart = $request->custom_start ?? null;
+            $customEnd = $request->custom_end ?? null;
+            $accountIds = $request->account_ids ?? [];
+
+            // Determine date range
+            list($startDate, $endDate, $periodName) = $this->determineDateRange(
+                $rangeType,
+                $year,
+                $month,
+                $quarter,
+                $customStart,
+                $customEnd
+            );
+
+            // Get all accounts with their types
+            $accounts = FinanceChartOfAccount::when(!empty($accountIds), function ($query) use ($accountIds) {
+                $query->whereIn('id', $accountIds);
+            })
+                ->with(['accountCategory.accountType'])
+                ->get();
+
+            // Initialize summary totals
+            $summaryTotals = [
+                'opening_balance' => 0,
+                'total_debit' => 0,
+                'total_credit' => 0,
+                'net_movement' => 0,
+                'closing_balance' => 0
+            ];
+
+            $accountDetails = [];
+
+            foreach ($accounts as $account) {
+                $accountType = $account->accountCategory->accountType->slug ?? 'asset';
+
+                // Calculate opening balance (before start date)
+                $openingEntries = FinanceAccountEntry::where('account_id', $account->id)
+                    ->whereHas('journalEntry', function ($query) {
+                        $query->where('status', 'published')
+                            ->where('company_id', auth()->user()->current_company_id);
+                    })
+                    ->whereDate('date', '<', $startDate)
+                    ->get();
+
+                $openingDebit = $openingEntries->sum('debit_amount');
+                $openingCredit = $openingEntries->sum('credit_amount');
+
+                list($entryType, $openingBalance) = $this->calculateAccountBalance(
+                    $accountType,
+                    $openingDebit,
+                    $openingCredit
+                );
+
+                // Get period transactions
+                $periodEntries = FinanceAccountEntry::where('account_id', $account->id)
+                    ->whereHas('journalEntry', function ($query) {
+                        $query->where('status', 'published')
+                            ->where('company_id', auth()->user()->current_company_id);
+                    })
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->get();
+
+                $periodDebit = $periodEntries->sum('debit_amount');
+                $periodCredit = $periodEntries->sum('credit_amount');
+
+                // Calculate net movement based on account type
+                $netMovement = $this->calculateNetMovement(
+                    $accountType,
+                    $periodDebit,
+                    $periodCredit
+                );
+
+                // Calculate closing balance
+                $closingBalance = $openingBalance + $netMovement;
+
+                // Add to account details
+                $accountDetails[] = [
+                    'account_id' => $account->id,
+                    'account_name' => $account->name,
+                    'account_number' => $account->account_number,
+                    'account_type' => $accountType,
+                    'opening_balance' => $openingBalance,
+                    'total_debit' => $periodDebit,
+                    'total_credit' => $periodCredit,
+                    'net_movement' => $netMovement,
+                    'closing_balance' => $closingBalance
+                ];
+
+                // Update summary totals
+                $summaryTotals['opening_balance'] += $openingBalance;
+                $summaryTotals['total_debit'] += $periodDebit;
+                $summaryTotals['total_credit'] += $periodCredit;
+                $summaryTotals['net_movement'] += $netMovement;
+                $summaryTotals['closing_balance'] += $closingBalance;
+            }
+
+            $reportData = [
+                'accounts' => $accountDetails,
+                'summary' => $summaryTotals,
+                'period_info' => [
+                    'range_type' => $rangeType,
+                    'period_name' => $periodName,
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                    'account_ids' => $accountIds
+                ]
+            ];
+
+            if ($export) {
+                $fileName = 'general_ledger_summary_' . Str::slug($periodName) . '_' . now()->format('Ymd_His');
+
+                if ($export === 'pdf') {
+                    $pdf = Pdf::loadView('reports.general_ledger_summary', $reportData);
+                    return $pdf->download($fileName . '.pdf');
+                } else {
+                    return Excel::download(
+                        new GeneralLedgerSummaryExport($reportData['data']),
+                        $fileName . '.xlsx'
+                    );
+                }
+            }
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return [
+                'error' => true,
+                'message' => $th->getMessage(),
+                'trace' => $th->getTraceAsString()
+            ];
+        }
+    }
+
+    public function trialBalanceReport($request)
+    {
+        try {
+            $export = $request->export ?? false;
+            $rangeType = $request->range_type ?? 'monthly';
+            $year = $request->year ?? now()->year;
+            $month = $request->month ?? null;
+            $quarter = $request->quarter ?? null;
+            $customStart = $request->custom_start ?? null;
+            $customEnd = $request->custom_end ?? null;
+            $accountIds = $request->account_ids ?? [];
+            $compareWithLastYear = $request->compare_with_last_year ?? false;
+
+            // Determine date range for current year
+            list($startDate, $endDate, $periodName) = $this->determineDateRange(
+                $rangeType,
+                $year,
+                $month,
+                $quarter,
+                $customStart,
+                $customEnd
+            );
+
+            // Determine date range for previous year if comparison is requested
+            $lastYearData = null;
+            if ($compareWithLastYear) {
+                $lastYear = $year - 1;
+                list($lastYearStartDate, $lastYearEndDate, $lastYearPeriodName) = $this->determineDateRange(
+                    $rangeType,
+                    $lastYear,
+                    $month,
+                    $quarter,
+                    $customStart,
+                    $customEnd
+                );
+            }
+
+            // Get all accounts with their types
+            $accounts = FinanceChartOfAccount::when(!empty($accountIds), function ($query) use ($accountIds) {
+                $query->whereIn('id', $accountIds);
+            })
+                ->with(['accountCategory.accountType'])
+                ->get();
+
+            // Initialize summary totals
+            $summaryTotals = [
+                'current_year' => [
+                    // 'opening_debit' => 0,
+                    // 'opening_credit' => 0,
+                    // 'movement_debit' => 0,
+                    // 'movement_credit' => 0,
+                    'closing_debit' => 0,
+                    'closing_credit' => 0
+                ],
+                'last_year' => $compareWithLastYear ? [
+                    // 'opening_debit' => 0,
+                    // 'opening_credit' => 0,
+                    // 'movement_debit' => 0,
+                    // 'movement_credit' => 0,
+                    'closing_debit' => 0,
+                    'closing_credit' => 0
+                ] : null
+            ];
+
+            $accountDetails = [];
+
+            foreach ($accounts as $account) {
+                $accountType = $account->accountCategory->accountType->slug ?? 'asset';
+
+                // Process current year data
+                $currentYearData = $this->processAccountPeriod(
+                    $account->id,
+                    $accountType,
+                    $startDate,
+                    $endDate
+                );
+
+                // Process last year data if comparison is requested
+                $lastYearAccountData = null;
+                if ($compareWithLastYear) {
+                    $lastYearAccountData = $this->processAccountPeriod(
+                        $account->id,
+                        $accountType,
+                        $lastYearStartDate,
+                        $lastYearEndDate
+                    );
+                }
+
+                // Add to account details
+                $accountDetails[] = [
+                    'account_id' => $account->id,
+                    'account_name' => $account->name,
+                    'account_number' => $account->account_number,
+                    'account_type' => $accountType,
+                    'current_year' => $currentYearData,
+                    'last_year' => $lastYearAccountData
+                ];
+
+                // Update summary totals for current year
+                $summaryTotals['current_year']['opening_debit'] += $currentYearData['opening_debit'];
+                $summaryTotals['current_year']['opening_credit'] += $currentYearData['opening_credit'];
+                $summaryTotals['current_year']['movement_debit'] += $currentYearData['movement_debit'];
+                $summaryTotals['current_year']['movement_credit'] += $currentYearData['movement_credit'];
+                $summaryTotals['current_year']['closing_debit'] += $currentYearData['closing_debit'];
+                $summaryTotals['current_year']['closing_credit'] += $currentYearData['closing_credit'];
+
+                // Update summary totals for last year if comparison is requested
+                if ($compareWithLastYear && $lastYearAccountData) {
+                    $summaryTotals['last_year']['opening_debit'] += $lastYearAccountData['opening_debit'];
+                    $summaryTotals['last_year']['opening_credit'] += $lastYearAccountData['opening_credit'];
+                    $summaryTotals['last_year']['movement_debit'] += $lastYearAccountData['movement_debit'];
+                    $summaryTotals['last_year']['movement_credit'] += $lastYearAccountData['movement_credit'];
+                    $summaryTotals['last_year']['closing_debit'] += $lastYearAccountData['closing_debit'];
+                    $summaryTotals['last_year']['closing_credit'] += $lastYearAccountData['closing_credit'];
+                }
+            }
+
+            $reportData = [
+                'accounts' => $accountDetails,
+                'summary' => $summaryTotals,
+                'period_info' => [
+                    'range_type' => $rangeType,
+                    'current_year' => [
+                        'period_name' => $periodName,
+                        'start_date' => $startDate->format('Y-m-d'),
+                        'end_date' => $endDate->format('Y-m-d'),
+                        'year' => $year
+                    ],
+                    'last_year' => $compareWithLastYear ? [
+                        'period_name' => $lastYearPeriodName,
+                        'start_date' => $lastYearStartDate->format('Y-m-d'),
+                        'end_date' => $lastYearEndDate->format('Y-m-d'),
+                        'year' => $lastYear
+                    ] : null,
+                    'account_ids' => $accountIds,
+                    'compare_with_last_year' => $compareWithLastYear
+                ]
+            ];
+
+            if ($export) {
+                $fileName = 'trial_balance_' . Str::slug($periodName) .
+                    ($compareWithLastYear ? '_vs_' . $lastYear : '') .
+                    '_' . now()->format('Ymd_His');
+
+                return Excel::download(
+                    new TrialBalanceExport($reportData),
+                    $fileName . '.xlsx'
+                );
+            }
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    private function processAccountPeriod($accountId, $accountType, $startDate, $endDate)
+    {
+        // Calculate opening balances (before start date)
+        $openingEntries = FinanceAccountEntry::where('account_id', $accountId)
+            ->whereHas('journalEntry', function ($query) {
+                $query->where('status', 'published')
+                    ->where('company_id', auth()->user()->current_company_id);
+            })
+            ->whereDate('date', '<', $startDate)
+            ->get();
+
+        $openingDebit = $openingEntries->sum('debit_amount');
+        $openingCredit = $openingEntries->sum('credit_amount');
+
+        // Format opening balances for trial balance
+        list($openingTbDebit, $openingTbCredit) = $this->formatTrialBalanceAmounts(
+            $accountType,
+            $openingDebit,
+            $openingCredit
+        );
+
+        // Get period transactions
+        $periodEntries = FinanceAccountEntry::where('account_id', $accountId)
+            ->whereHas('journalEntry', function ($query) {
+                $query->where('status', 'published')
+                    ->where('company_id', auth()->user()->current_company_id);
+            })
+            ->whereBetween('date', [$startDate, $endDate])
+            ->get();
+
+        $periodDebit = $periodEntries->sum('debit_amount');
+        $periodCredit = $periodEntries->sum('credit_amount');
+
+        // Format movement amounts for trial balance
+        list($movementTbDebit, $movementTbCredit) = $this->formatTrialBalanceAmounts(
+            $accountType,
+            $periodDebit,
+            $periodCredit
+        );
+
+        // Calculate closing balances
+        $closingDebit = $openingDebit + $periodDebit;
+        $closingCredit = $openingCredit + $periodCredit;
+
+        // Format closing balances for trial balance
+        list($closingTbDebit, $closingTbCredit) = $this->formatTrialBalanceAmounts(
+            $accountType,
+            $closingDebit,
+            $closingCredit
+        );
+
+        return [
+            'opening_debit' => $openingTbDebit,
+            'opening_credit' => $openingTbCredit,
+            'movement_debit' => $movementTbDebit,
+            'movement_credit' => $movementTbCredit,
+            'closing_debit' => $closingTbDebit,
+            'closing_credit' => $closingTbCredit
+        ];
+    }
+
+
+
+    // public function trialBalanceReport($request)
+    // {
+    //     try {
+    //         $export = $request->export ?? false;
+    //         $rangeType = $request->range_type ?? 'monthly';
+    //         $year = $request->year ?? now()->year;
+    //         $month = $request->month ?? null;
+    //         $quarter = $request->quarter ?? null;
+    //         $customStart = $request->custom_start ?? null;
+    //         $customEnd = $request->custom_end ?? null;
+    //         $accountIds = $request->account_ids ?? [];
+
+    //         // Determine date range
+    //         list($startDate, $endDate, $periodName) = $this->determineDateRange(
+    //             $rangeType,
+    //             $year,
+    //             $month,
+    //             $quarter,
+    //             $customStart,
+    //             $customEnd
+    //         );
+
+    //         // Get all accounts with their types
+    //         $accounts = FinanceChartOfAccount::when(!empty($accountIds), function ($query) use ($accountIds) {
+    //             $query->whereIn('id', $accountIds);
+    //         })
+    //             ->with(['accountCategory.accountType'])
+    //             ->get();
+
+    //         // Initialize summary totals
+    //         $summaryTotals = [
+    //             'opening_debit' => 0,
+    //             'opening_credit' => 0,
+    //             'movement_debit' => 0,
+    //             'movement_credit' => 0,
+    //             'closing_debit' => 0,
+    //             'closing_credit' => 0
+    //         ];
+
+    //         $accountDetails = [];
+
+    //         foreach ($accounts as $account) {
+    //             $accountType = $account->accountCategory->accountType->slug ?? 'asset';
+
+    //             // Calculate opening balances (before start date)
+    //             $openingEntries = FinanceAccountEntry::where('account_id', $account->id)
+    //                 ->whereHas('journalEntry', function ($query) {
+    //                     $query->where('status', 'published')
+    //                         ->where('company_id', auth()->user()->current_company_id);
+    //                 })
+    //                 ->whereDate('date', '<', $startDate)
+    //                 ->get();
+
+    //             $openingDebit = $openingEntries->sum('debit_amount');
+    //             $openingCredit = $openingEntries->sum('credit_amount');
+
+    //             // Format opening balances for trial balance
+    //             list($openingTbDebit, $openingTbCredit) = $this->formatTrialBalanceAmounts(
+    //                 $accountType,
+    //                 $openingDebit,
+    //                 $openingCredit
+    //             );
+
+    //             // Get period transactions
+    //             $periodEntries = FinanceAccountEntry::where('account_id', $account->id)
+    //                 ->whereHas('journalEntry', function ($query) {
+    //                     $query->where('status', 'published')
+    //                         ->where('company_id', auth()->user()->current_company_id);
+    //                 })
+    //                 ->whereBetween('date', [$startDate, $endDate])
+    //                 ->get();
+
+    //             $periodDebit = $periodEntries->sum('debit_amount');
+    //             $periodCredit = $periodEntries->sum('credit_amount');
+
+    //             // Format movement amounts for trial balance
+    //             list($movementTbDebit, $movementTbCredit) = $this->formatTrialBalanceAmounts(
+    //                 $accountType,
+    //                 $periodDebit,
+    //                 $periodCredit
+    //             );
+
+    //             // Calculate closing balances
+    //             $closingDebit = $openingDebit + $periodDebit;
+    //             $closingCredit = $openingCredit + $periodCredit;
+
+    //             // Format closing balances for trial balance
+    //             list($closingTbDebit, $closingTbCredit) = $this->formatTrialBalanceAmounts(
+    //                 $accountType,
+    //                 $closingDebit,
+    //                 $closingCredit
+    //             );
+
+    //             // Add to account details
+    //             $accountDetails[] = [
+    //                 'account_id' => $account->id,
+    //                 'account_name' => $account->name,
+    //                 'account_number' => $account->account_number,
+    //                 'account_type' => $accountType,
+    //                 'opening_debit' => $openingTbDebit,
+    //                 'opening_credit' => $openingTbCredit,
+    //                 'movement_debit' => $movementTbDebit,
+    //                 'movement_credit' => $movementTbCredit,
+    //                 'closing_debit' => $closingTbDebit,
+    //                 'closing_credit' => $closingTbCredit
+    //             ];
+
+    //             // Update summary totals
+    //             $summaryTotals['opening_debit'] += $openingTbDebit;
+    //             $summaryTotals['opening_credit'] += $openingTbCredit;
+    //             $summaryTotals['movement_debit'] += $movementTbDebit;
+    //             $summaryTotals['movement_credit'] += $movementTbCredit;
+    //             $summaryTotals['closing_debit'] += $closingTbDebit;
+    //             $summaryTotals['closing_credit'] += $closingTbCredit;
+    //         }
+
+    //         $reportData = [
+    //             'accounts' => $accountDetails,
+    //             'summary' => $summaryTotals,
+    //             'period_info' => [
+    //                 'range_type' => $rangeType,
+    //                 'period_name' => $periodName,
+    //                 'start_date' => $startDate->format('Y-m-d'),
+    //                 'end_date' => $endDate->format('Y-m-d'),
+    //                 'account_ids' => $accountIds
+    //             ]
+    //         ];
+
+    //         if ($export) {
+    //             $fileName = 'trial_balance_' . Str::slug($periodName) . '_' . now()->format('Ymd_His');
+
+    //             return Excel::download(
+    //                 new TrialBalanceExport($reportData['data']),
+    //                 $fileName . '.xlsx'
+    //             );
+    //         }
+
+    //         return $reportData;
+    //     } catch (\Throwable $th) {
+    //         return $th;
+    //     }
+    // }
+
+    private function formatTrialBalanceAmounts($accountType, $debitAmount, $creditAmount)
+    {
+        $typeMapping = [
+            "expense" => "debit",
+            "asset" => "debit",
+            "liability" => "credit",
+            "equity" => "credit",
+            "revenue" => "credit",
+            "income" => "credit",
+        ];
+
+        $entryType = $typeMapping[strtolower($accountType)] ?? "debit";
+
+        if ($entryType === "debit") {
+            $balance = $debitAmount - $creditAmount;
+            return $balance >= 0 ? [$balance, 0] : [0, abs($balance)];
+        } else {
+            $balance = $creditAmount - $debitAmount;
+            return $balance >= 0 ? [0, $balance] : [abs($balance), 0];
+        }
+    }
+
+    // Keep the existing determineDateRange method from previous implementations
+
+
+    private function calculateAccountBalance($accountType, $debitAmount, $creditAmount)
+    {
+        $typeMapping = [
+            "expense" => "debit",
+            "asset" => "debit",
+            "liability" => "credit",
+            "equity" => "credit",
+            "revenue" => "credit",
+            "income" => "credit",
+        ];
+
+        $entryType = $typeMapping[strtolower($accountType)] ?? "debit";
+
+        if ($entryType === "debit") {
+            $balance = $debitAmount - $creditAmount;
+        } else {
+            $balance = $creditAmount - $debitAmount;
+        }
+
+        return [$entryType, $balance];
+    }
+
+    private function calculateNetMovement($accountType, $debitAmount, $creditAmount)
+    {
+        $typeMapping = [
+            "expense" => "debit",
+            "asset" => "debit",
+            "liability" => "credit",
+            "equity" => "credit",
+            "revenue" => "credit",
+            "income" => "credit",
+        ];
+
+        $entryType = $typeMapping[strtolower($accountType)] ?? "debit";
+
+        if ($entryType === "debit") {
+            return $debitAmount - $creditAmount;
+        } else {
+            return $creditAmount - $debitAmount;
+        }
+    }
+
+    // Keep the existing determineDateRange method from previous implementations
+
 
     private function determineAccountBalance($accountType, $totalDebit, $totalCredit)
     {
