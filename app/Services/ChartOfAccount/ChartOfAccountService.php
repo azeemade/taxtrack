@@ -118,8 +118,7 @@ class ChartOfAccountService
     public function allSubCategoriesNotPaginated()
     {
         try {
-            return FinanceAccountSubCategory::
-                select("id", "name")->orderBy("name", "ASC")
+            return FinanceAccountSubCategory::select("id", "name")->orderBy("name", "ASC")
                 ->get();
         } catch (\Throwable $th) {
             throw $th;
@@ -171,6 +170,7 @@ class ChartOfAccountService
                 'opening_balance' => $request->opening_balance,
                 'balance_date' => $request->balance_date,
                 'status' => $request->status ?? "published",
+                'is_active' => $request->status == "published" ? "true" : "false",
                 'edited_by' => $user->id
             ]);
 
@@ -242,6 +242,9 @@ class ChartOfAccountService
                 'reference_code' => $request->reference_code ?? $record->reference_code,
                 'opening_balance' => $request->opening_balance ?? $record->opening_balance,
                 'balance_date' => $request->balance_date ?? $record->balance_date,
+                'is_active' =>  $request->filled('status')
+                    ? ($request->status == "published" ? "true" : "false")
+                    : $record->is_active,
                 'status' => $request->status ?? $record->status,
                 'edited_by' => $currentUser->id
             ]);
@@ -424,6 +427,95 @@ class ChartOfAccountService
         } catch (\Throwable $error) {
             DB::rollBack();
             throw $error;
+        }
+    }
+
+    public function allCashAndBankAccounts($request)
+    {
+        try {
+            $limit = $request->limit ?? 10;
+            $sortBy = $request->sort_by;
+            $filterBy = $request->filter_by;
+            $carbonDateFilter = $request->date_filter;
+            $export = $request->export;
+            $searchParams = $request->q;
+            (!is_null($request->start_date) && !is_null($request->end_date)) ? $dateSearchParams = true : $dateSearchParams = false;
+
+            $userCompanyId = auth()->user()->current_company_id;
+
+            $record = FinanceChartOfAccount::with([
+                'accountType:id,name,slug',
+                'accountCategory:id,name',
+                'subCategory:id,name',
+                'accountEntries' => function ($query) use ($request, $dateSearchParams) {
+                    if ($dateSearchParams) {
+                        $query->whereBetween('date', [$request->start_date, $request->end_date]);
+                    }
+                }
+            ])
+                ->whereHas('subCategory', function ($query) {
+                    $query->where('slug', 'cash-and-bank');
+                })
+                ->where('company_id', $userCompanyId)
+                ->when($searchParams, function ($query) use ($searchParams) {
+                    return $query->where('name', 'LIKE', '%' . $searchParams . '%')
+                        ->orWhere('account_number', $searchParams)
+                        ->orWhereHas('accountCategory', function ($query) use ($searchParams) {
+                            $query->where('name', 'LIKE', '%' . $searchParams . '%');
+                        })
+                        ->orWhereHas('subCategory', function ($query) use ($searchParams) {
+                            $query->where('name', 'LIKE', '%' . $searchParams . '%');
+                        });
+                })
+                ->when($filterBy, function ($query) use ($filterBy) {
+                    return $query->where('status', $filterBy);
+                })
+                ->when($sortBy, function ($query) use ($sortBy) {
+                    if ($sortBy === 'alphabetically') {
+                        return $query->orderBy('name', 'ASC');
+                    } elseif ($sortBy === 'date_descending') {
+                        return $query->orderBy('id', 'DESC');
+                    } elseif ($sortBy === 'date_ascending') {
+                        return $query->orderBy('id', 'ASC');
+                    }
+                })
+                ->when($dateSearchParams, function ($query) use ($request) {
+                    $startDate = Carbon::parse($request->start_date);
+                    $endDate = Carbon::parse($request->end_date);
+                    return $query->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate]);
+                })
+                ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
+                    return $query->where('created_at', '>=', $carbonDateFilter);
+                })
+                ->orderBy("account_type_id", "ASC")
+                ->orderBy('account_number', "ASC");
+
+            $record = $export ? $record->get() : $record->paginate($limit);
+
+            // Add balance information to each account
+            $record->transform(function ($account) use ($request, $dateSearchParams) {
+                $balanceInfo = FinanceAccountBalanceHelper::calculateCurrentBalance($account, $request->start_date, $request->end_date, $dateSearchParams);
+
+                $account->current_balance = $balanceInfo['current_balance'];
+                $account->balance_type = $balanceInfo['balance_type'];
+                $account->total_debit = $balanceInfo['total_debit'];
+                $account->total_credit = $balanceInfo['total_credit'];
+
+                return $account;
+            });
+
+            if ($export) {
+                $fileName = 'chart_of_accounts_' . now()->format('Ymd_His') . '.xlsx';
+
+                return Excel::download(
+                    new ChartOfAccountExport($record, $request->start_date, $request->end_date),
+                    $fileName
+                );
+            }
+
+            return $record;
+        } catch (\Throwable $th) {
+            throw $th;
         }
     }
 }

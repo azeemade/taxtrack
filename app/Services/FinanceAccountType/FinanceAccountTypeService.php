@@ -19,6 +19,24 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class FinanceAccountTypeService
 {
+    public function dateRangeCalculatorOne($request)
+    {
+        $endDate = is_numeric($request->end_date) && strlen($request->end_date) === 4
+            ? Carbon::create($request->end_date, 12, 31)->toDateString()
+            : Carbon::parse($request->end_date)->toDateString();
+
+        $startDate = Carbon::parse($endDate)->startOfYear()->toDateString();
+        $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
+        $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
+
+        return [
+            'currentYear' => Carbon::parse($endDate)->year,
+            'previousYear' => Carbon::parse($pYEndDate)->year,
+            'currentPeriod' => ['start' => $startDate, 'end' => $endDate],
+            'previousPeriod' => ['start' => $pYStartDate, 'end' => $pYEndDate],
+        ];
+    }
+
     public function getProfitAndLossReport($request)
     {
         try {
@@ -598,7 +616,7 @@ class FinanceAccountTypeService
                 $reportData['accounts'][] = [
                     'id' => $account->id,
                     'name' => $account->name,
-                    'code' => $account->code,
+                    'account_number' => $account->account_number,
                     'category' => $account->accountSubCategory->accountCategory->name,
                     'currentYear' => $cyBalance,
                     'previousYear' => $pyBalance,
@@ -1289,6 +1307,1051 @@ class FinanceAccountTypeService
         } catch (\Throwable $th) {
             return $th;
         }
+    }
+
+    public function getCashSummaryReport($request)
+    {
+        try {
+            $export = $request->export ?? false;
+            $rangeType = $request->range_type ?? 'monthly';
+            $year = $request->year ?? now()->year;
+            $month = $request->month ?? null;
+            $quarter = $request->quarter ?? null;
+            $customStart = $request->custom_start ?? null;
+            $customEnd = $request->custom_end ?? null;
+
+            // Determine date range based on selected type
+            switch ($rangeType) {
+                case 'yearly':
+                    $startDate = Carbon::create($year, 1, 1)->startOfYear();
+                    $endDate = Carbon::create($year, 12, 31)->endOfYear();
+                    $periodName = "Year {$year}";
+                    // Create all months in the year
+                    $periods = collect(range(1, 12))->map(function ($month) use ($year) {
+                        $date = Carbon::create($year, $month, 1);
+                        return [
+                            'name' => $date->format('F Y'),
+                            'start_date' => $date->copy()->startOfMonth()->toDateString(),
+                            'end_date' => $date->copy()->endOfMonth()->toDateString()
+                        ];
+                    });
+                    break;
+
+                case 'quarterly':
+                    $quarter = $quarter ?? ceil(now()->month / 3);
+                    $startMonth = ($quarter - 1) * 3 + 1;
+                    $startDate = Carbon::create($year, $startMonth, 1)->startOfMonth();
+                    $endDate = $startDate->copy()->addMonths(2)->endOfMonth();
+                    $periodName = "Q{$quarter} {$year}";
+                    // Create all months in the quarter
+                    $periods = collect(range(0, 2))->map(function ($offset) use ($startDate) {
+                        $date = $startDate->copy()->addMonths($offset);
+                        return [
+                            'name' => $date->format('F Y'),
+                            'start_date' => $date->copy()->startOfMonth()->toDateString(),
+                            'end_date' => $date->copy()->endOfMonth()->toDateString()
+                        ];
+                    });
+                    break;
+
+                case 'monthly':
+                    $month = $month ?? now()->month;
+                    $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                    $endDate = $startDate->copy()->endOfMonth();
+                    $periodName = $startDate->format('F Y');
+                    $periods = [[
+                        'name' => $periodName,
+                        'start_date' => $startDate->toDateString(),
+                        'end_date' => $endDate->toDateString()
+                    ]];
+                    break;
+
+                case 'custom_dates':
+                    $startDate = Carbon::parse($customStart)->startOfDay();
+                    $endDate = Carbon::parse($customEnd)->endOfDay();
+                    $periodName = $startDate->format('M d, Y') . ' to ' . $endDate->format('M d, Y');
+
+                    // Create all months in the custom range
+                    $periods = collect();
+                    $current = $startDate->copy()->startOfMonth();
+
+                    while ($current <= $endDate) {
+                        $periodStart = $current->copy()->max($startDate);
+                        $periodEnd = $current->copy()->endOfMonth()->min($endDate);
+
+                        $periods->push([
+                            'name' => $current->format('F Y'),
+                            'start_date' => $periodStart->toDateString(),
+                            'end_date' => $periodEnd->toDateString()
+                        ]);
+
+                        $current->addMonth();
+                    }
+                    break;
+
+                // Other range types (MTD, QTD, YTD, etc.) can be added similarly
+                default:
+                    // Default to current month
+                    $startDate = now()->startOfMonth();
+                    $endDate = now()->endOfMonth();
+                    $periodName = now()->format('F Y');
+                    $periods = [[
+                        'name' => $periodName,
+                        'start_date' => $startDate->toDateString(),
+                        'end_date' => $endDate->toDateString()
+                    ]];
+            }
+
+            // Get cash and bank accounts with their entries for the entire date range
+            $cashSubCategory = FinanceAccountSubCategory::where('slug', 'cash-and-bank')
+                ->with([
+                    'accounts' => function ($query) use ($startDate, $endDate) {
+                        $query->with(['accountEntries' => function ($query) use ($startDate, $endDate) {
+                            $query->whereHas('journalEntry', function ($query) {
+                                $query->where('status', 'published')
+                                    ->where('company_id', auth()->user()->current_company_id);
+                            })
+                                ->whereBetween('date', [$startDate, $endDate]);
+                        }]);
+                    }
+                ])
+                ->first();
+
+            // Initialize report data structure
+            $reportData = [
+                'range_type' => $rangeType,
+                'period_name' => $periodName,
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'months' => [],
+                'totals' => [
+                    'opening_balance' => 0,
+                    'total_inflows' => 0,
+                    'total_outflows' => 0,
+                    'net_change' => 0,
+                    'closing_balance' => 0,
+                ]
+            ];
+
+            if ($cashSubCategory) {
+                // Process each account to calculate opening balances (before the start date)
+                $accountOpeningBalances = [];
+                foreach ($cashSubCategory->accounts as $account) {
+                    $openingEntries = $account->accountEntries()
+                        ->whereHas('journalEntry', function ($query) {
+                            $query->where('status', 'published')
+                                ->where('company_id', auth()->user()->current_company_id);
+                        })
+                        ->whereDate('date', '<', $startDate)
+                        ->get();
+
+                    $accountOpeningBalances[$account->id] = [
+                        'name' => $account->name,
+                        'balance' => $openingEntries->sum('debit_amount') - $openingEntries->sum('credit_amount')
+                    ];
+                    $reportData['totals']['opening_balance'] += $accountOpeningBalances[$account->id]['balance'];
+                }
+
+                // Process each month in the period
+                foreach ($periods as $period) {
+                    $monthStart = Carbon::parse($period['start_date']);
+                    $monthEnd = Carbon::parse($period['end_date']);
+
+                    $monthData = [
+                        'name' => $period['name'],
+                        'start_date' => $period['start_date'],
+                        'end_date' => $period['end_date'],
+                        'accounts' => [],
+                        'totals' => [
+                            'opening_balance' => 0,
+                            'inflows' => 0,
+                            'outflows' => 0,
+                            'net_change' => 0,
+                            'closing_balance' => 0,
+                        ]
+                    ];
+
+                    // Process each account for this month
+                    foreach ($cashSubCategory->accounts as $account) {
+                        $accountId = $account->id;
+
+                        // Get entries for this account in this month
+                        $entries = $account->accountEntries()
+                            ->whereHas('journalEntry', function ($query) {
+                                $query->where('status', 'published')
+                                    ->where('company_id', auth()->user()->current_company_id);
+                            })
+                            ->whereBetween('date', [$monthStart, $monthEnd])
+                            ->get();
+
+                        $debit = $entries->sum('debit_amount');
+                        $credit = $entries->sum('credit_amount');
+
+                        // Calculate opening balance (for first month it's the initial opening balance)
+                        $openingBalance = $monthData['name'] == $periods[0]['name']
+                            ? $accountOpeningBalances[$accountId]['balance']
+                            : ($monthData['accounts'][$accountId]['closing_balance'] ?? 0);
+
+                        $netChange = $credit - $debit;
+                        $closingBalance = $openingBalance + $netChange;
+
+                        $accountData = [
+                            'id' => $accountId,
+                            'name' => $account->name,
+                            'opening_balance' => $openingBalance,
+                            'inflows' => $credit,
+                            'outflows' => $debit,
+                            'net_change' => $netChange,
+                            'closing_balance' => $closingBalance,
+                        ];
+
+                        $monthData['accounts'][] = $accountData;
+
+                        // Update month totals
+                        $monthData['totals']['opening_balance'] += $openingBalance;
+                        $monthData['totals']['inflows'] += $credit;
+                        $monthData['totals']['outflows'] += $debit;
+                        $monthData['totals']['net_change'] += $netChange;
+                        $monthData['totals']['closing_balance'] += $closingBalance;
+
+                        // Update report totals
+                        if ($monthData['name'] == $periods[0]['name']) {
+                            $reportData['totals']['opening_balance'] = $monthData['totals']['opening_balance'];
+                        }
+                        $reportData['totals']['total_inflows'] += $credit;
+                        $reportData['totals']['total_outflows'] += $debit;
+                    }
+
+                    $reportData['totals']['net_change'] =
+                        $reportData['totals']['total_inflows'] - $reportData['totals']['total_outflows'];
+                    $reportData['totals']['closing_balance'] =
+                        $reportData['totals']['opening_balance'] + $reportData['totals']['net_change'];
+
+                    $reportData['months'][] = $monthData;
+                }
+            }
+
+            if ($export) {
+                $fileName = 'cash_summary_' . str_replace(' ', '_', strtolower($periodName)) . '_' . now()->format('Ymd_His') . '.xlsx';
+                return Excel::download(
+                    new CashSummaryReportExport($reportData),
+                    $fileName
+                );
+            }
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return [
+                'error' => true,
+                'message' => $th->getMessage(),
+                'trace' => $th->getTrace()
+            ];
+        }
+    }
+
+    public function profitAndLossGroupbyCategory($request)
+    {
+        try {
+            $export = $request->export ?? false;
+            $rangeType = $request->range_type ?? 'monthly';
+            $year = $request->year ?? now()->year;
+            $month = $request->month ?? null;
+            $quarter = $request->quarter ?? null;
+            $customStart = $request->custom_start ?? null;
+            $customEnd = $request->custom_end ?? null;
+
+            // Determine date range based on selected type
+            list($startDate, $endDate, $periodName) = $this->determineDateRange($rangeType, $year, $month, $quarter, $customStart, $customEnd);
+
+            // Previous year dates for comparison
+            $pYStartDate = $startDate->copy()->subYear();
+            $pYEndDate = $endDate->copy()->subYear();
+
+            // Get all relevant accounts
+            $chartOfAccounts = FinanceChartOfAccount::whereHas('subCategory', function ($query) {
+                $query->whereIn('slug', [
+                    'sales',
+                    'cost-of-sales',
+                    'other-income',
+                    'occupancy-expenses',
+                    'selling-promotional-expense',
+                    'personnel-expenses',
+                    'administrative-expenses',
+                    'finance-cost',
+                    'income-tax-expense'
+                ]);
+            })
+                ->orWhere('slug', 'vat-payable')
+                ->with(['accountCategory.accountType', 'subCategory', 'accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
+                    $query->whereHas('journalEntry', function ($query) {
+                        $query->where('status', 'published')
+                            ->where('company_id',  auth()->user()->current_company_id);
+                    })
+                        ->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
+                        ->orWhereBetween(DB::raw('DATE(date)'), [$pYStartDate, $pYEndDate]);
+                }])
+                ->get();
+
+            // Initialize all totals
+            $totals = [
+                'current' => [
+                    'revenue' => ['debit' => 0, 'credit' => 0],
+                    'vat' => ['debit' => 0, 'credit' => 0],
+                    'cogs' => ['debit' => 0, 'credit' => 0],
+                    'other_income' => ['debit' => 0, 'credit' => 0],
+                    'occupancy' => ['debit' => 0, 'credit' => 0],
+                    'selling' => ['debit' => 0, 'credit' => 0],
+                    'personnel' => ['debit' => 0, 'credit' => 0],
+                    'admin' => ['debit' => 0, 'credit' => 0],
+                    'finance' => ['debit' => 0, 'credit' => 0],
+                    'tax' => ['debit' => 0, 'credit' => 0]
+                ],
+                'previous' => [
+                    'revenue' => ['debit' => 0, 'credit' => 0],
+                    'vat' => ['debit' => 0, 'credit' => 0],
+                    'cogs' => ['debit' => 0, 'credit' => 0],
+                    'other_income' => ['debit' => 0, 'credit' => 0],
+                    'occupancy' => ['debit' => 0, 'credit' => 0],
+                    'selling' => ['debit' => 0, 'credit' => 0],
+                    'personnel' => ['debit' => 0, 'credit' => 0],
+                    'admin' => ['debit' => 0, 'credit' => 0],
+                    'finance' => ['debit' => 0, 'credit' => 0],
+                    'tax' => ['debit' => 0, 'credit' => 0]
+                ]
+            ];
+
+            // Process all account entries
+            foreach ($chartOfAccounts as $account) {
+                foreach ($account->accountEntries as $entry) {
+                    $entryDate = Carbon::parse($entry->date);
+                    $isCurrentYear = $entryDate->between($startDate, $endDate);
+                    $isPreviousYear = $entryDate->between($pYStartDate, $pYEndDate);
+
+                    if ($account->subCategory->slug == 'sales') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'revenue', $entry);
+                    } elseif ($account->slug == 'vat-payable') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'vat', $entry);
+                    } elseif ($account->subCategory->slug == 'cost-of-sales') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'cogs', $entry);
+                    } elseif ($account->subCategory->slug == 'other-income') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'other_income', $entry);
+                    } elseif ($account->subCategory->slug == 'occupancy-expenses') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'occupancy', $entry);
+                    } elseif ($account->subCategory->slug == 'selling-promotional-expense') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'selling', $entry);
+                    } elseif ($account->subCategory->slug == 'personnel-expenses') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'personnel', $entry);
+                    } elseif ($account->subCategory->slug == 'administrative-expenses') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'admin', $entry);
+                    } elseif ($account->subCategory->slug == 'finance-cost') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'finance', $entry);
+                    } elseif ($account->subCategory->slug == 'income-tax-expense') {
+                        $this->addToTotals($totals, $isCurrentYear, $isPreviousYear, 'tax', $entry);
+                    }
+                }
+            }
+
+            // Calculate all metrics
+            $revenueCY = $this->calculateAmount('revenue', $totals['current']['revenue']);
+            $revenuePY = $this->calculateAmount('revenue', $totals['previous']['revenue']);
+
+            $vatCY = $this->calculateAmount('liability', $totals['current']['vat']);
+            $vatPY = $this->calculateAmount('liability', $totals['previous']['vat']);
+
+            $netSalesCY = $revenueCY; // Changed from $revenueCY - $vatCY
+            $netSalesPY = $revenuePY; // Changed from $revenuePY - $vatPY
+
+            $cogsCY = $this->calculateAmount('expense', $totals['current']['cogs']);
+            $cogsPY = $this->calculateAmount('expense', $totals['previous']['cogs']);
+
+            $grossProfitCY = $netSalesCY - $cogsCY;
+            $grossProfitPY = $netSalesPY - $cogsPY;
+
+            $otherIncomeCY = $this->calculateAmount('revenue', $totals['current']['other_income']);
+            $otherIncomePY = $this->calculateAmount('revenue', $totals['previous']['other_income']);
+
+            $occupancyCY = $this->calculateAmount('expense', $totals['current']['occupancy']);
+            $occupancyPY = $this->calculateAmount('expense', $totals['previous']['occupancy']);
+
+            $sellingCY = $this->calculateAmount('expense', $totals['current']['selling']);
+            $sellingPY = $this->calculateAmount('expense', $totals['previous']['selling']);
+
+            $personnelCY = $this->calculateAmount('expense', $totals['current']['personnel']);
+            $personnelPY = $this->calculateAmount('expense', $totals['previous']['personnel']);
+
+            $adminCY = $this->calculateAmount('expense', $totals['current']['admin']);
+            $adminPY = $this->calculateAmount('expense', $totals['previous']['admin']);
+
+            $operatingProfitCY = $grossProfitCY - ($occupancyCY + $sellingCY + $personnelCY + $adminCY);
+            $operatingProfitPY = $grossProfitPY - ($occupancyPY + $sellingPY + $personnelPY + $adminPY);
+
+            $financeCY = $this->calculateAmount('expense', $totals['current']['finance']);
+            $financePY = $this->calculateAmount('expense', $totals['previous']['finance']);
+
+            $profitBeforeTaxCY = $operatingProfitCY - $financeCY;
+            $profitBeforeTaxPY = $operatingProfitPY - $financePY;
+
+            $taxCY = $this->calculateAmount('expense', $totals['current']['tax']);
+            $taxPY = $this->calculateAmount('expense', $totals['previous']['tax']);
+
+            $profitAfterTaxCY = $profitBeforeTaxCY - $taxCY;
+            $profitAfterTaxPY = $profitBeforeTaxPY - $taxPY;
+
+            $otherComprehensiveIncomeCY = 0.00;
+            $otherComprehensiveIncomePY = 0.00;
+
+            $totalComprehensiveIncomeCY = $profitAfterTaxCY + $otherComprehensiveIncomeCY;
+            $totalComprehensiveIncomePY = $profitAfterTaxPY + $otherComprehensiveIncomePY;
+
+            // Prepare report data
+            $data = [
+                [
+                    'is_bold' => true,
+                    'key' => "sales",
+                    'name' => "Revenue",
+                    'totalCY' => $netSalesCY,
+                    'totalPY' => $netSalesPY,
+                ],
+                [
+                    'is_bold' => true,
+                    'key' => "cost-of-sales",
+                    'name' => "Cost of Sales",
+                    'totalCY' => $cogsCY,
+                    'totalPY' => $cogsPY,
+                ],
+                [
+                    'is_bold' => true,
+                    'key' => "",
+                    'name' => "Gross Profit",
+                    'totalCY' => $grossProfitCY,
+                    'totalPY' => $grossProfitPY,
+                ],
+                [
+                    'is_bold' => false,
+                    'key' => "other-income",
+                    'name' => "Other Income",
+                    'totalCY' => $otherIncomeCY,
+                    'totalPY' => $otherIncomePY,
+                ],
+                [
+                    'is_bold' => false,
+                    'key' => "occupancy-expenses",
+                    'name' => "Occupancy Expenses",
+                    'totalCY' => $occupancyCY,
+                    'totalPY' => $occupancyPY,
+                ],
+                [
+                    'is_bold' => false,
+                    'key' => "selling-promotional-expense",
+                    'name' => "Selling & Promotional Expense",
+                    'totalCY' => $sellingCY,
+                    'totalPY' => $sellingPY,
+                ],
+                [
+                    'is_bold' => false,
+                    'key' => "personnel-expense",
+                    'name' => "Personnel Expense",
+                    'totalCY' => $personnelCY,
+                    'totalPY' => $personnelPY,
+                ],
+                [
+                    'is_bold' => false,
+                    'key' => "administrative-expenses",
+                    'name' => "Administrative Expense",
+                    'totalCY' => $adminCY,
+                    'totalPY' => $adminPY,
+                ],
+                [
+                    'is_bold' => true,
+                    'key' => "",
+                    'name' => "Operating Profit",
+                    'totalCY' => $operatingProfitCY,
+                    'totalPY' => $operatingProfitPY,
+                ],
+                [
+                    'is_bold' => false,
+                    'key' => "finance-cost",
+                    'name' => "Finance Cost",
+                    'totalCY' => $financeCY,
+                    'totalPY' => $financePY,
+                ],
+                [
+                    'is_bold' => true,
+                    'key' => "",
+                    'name' => "Profit / (loss) before tax",
+                    'totalCY' => $profitBeforeTaxCY,
+                    'totalPY' => $profitBeforeTaxPY,
+                ],
+                [
+                    'is_bold' => true,
+                    'key' => "income-tax-expense",
+                    'name' => "Income Tax Expense",
+                    'totalCY' => $taxCY,
+                    'totalPY' => $taxPY,
+                ],
+                [
+                    'is_bold' => false,
+                    'key' => "",
+                    'name' => "Profit / (loss) after tax",
+                    'totalCY' => $profitAfterTaxCY,
+                    'totalPY' => $profitAfterTaxPY,
+                ],
+                [
+                    'key' => "",
+                    'name' => "Other Comprehensive Income",
+                    'totalCY' => $otherComprehensiveIncomeCY,
+                    'totalPY' => $otherComprehensiveIncomePY,
+                ],
+                [
+                    'is_bold' => true,
+                    'key' => "",
+                    'name' => "Total Comprehensive Income",
+                    'totalCY' => $totalComprehensiveIncomeCY,
+                    'totalPY' => $totalComprehensiveIncomePY,
+                ]
+            ];
+
+            $dateInfo = [
+                'startDate' => $startDate->format('d/M/Y'),
+                'endDate' => $endDate->format('d/M/Y'),
+                'startDatePY' => $pYStartDate->format('d/M/Y'),
+                'endDatePY' => $pYEndDate->format('d/M/Y'),
+                'today' => Carbon::now()->format('d/M/Y'),
+                'range_type' => $rangeType,
+                'period_name' => $periodName,
+                'drilldown_startDatePY' => $pYStartDate->format('Y-m-d'),
+                'drilldown_endDatePY' => $pYEndDate->format('Y-m-d'),
+            ];
+
+            $finalData = [
+                'data' => $data,
+                'date_info' => $dateInfo,
+            ];
+
+            if ($export) {
+                return Excel::download(
+                    new ProfitAndLossReportExportCategory($finalData),
+                    'profit_and_loss_' . $rangeType . '_' . $periodName . '.xlsx'
+                );
+            }
+
+            return $finalData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    public function accountTransactionReport($request)
+    {
+        try {
+            $export = $request->export ?? false;
+            $rangeType = $request->range_type ?? 'monthly';
+            $year = $request->year ?? now()->year;
+            $month = $request->month ?? null;
+            $quarter = $request->quarter ?? null;
+            $customStart = $request->custom_start ?? null;
+            $customEnd = $request->custom_end ?? null;
+            $accountIds = $request->account_ids ?? [];
+
+            // Determine date range
+            list($startDate, $endDate, $periodName) = $this->determineDateRange(
+                $rangeType,
+                $year,
+                $month,
+                $quarter,
+                $customStart,
+                $customEnd
+            );
+
+            // If no accounts selected, return empty response
+            // if (empty($accountIds)) {
+            //     return $this->emptyReportResponse($rangeType, $periodName, $startDate, $endDate, $accountIds);
+            // }
+
+            // Get account types for the selected accounts
+            $accounts = FinanceChartOfAccount::whereIn('id', $accountIds)
+                ->with(['accountCategory.accountType'])
+                ->get()
+                ->keyBy('id');
+
+            // Calculate opening balances with proper account type handling
+            $openingBalances = [];
+            foreach ($accountIds as $accountId) {
+                if (!isset($accounts[$accountId])) continue;
+
+                $accountType = $accounts[$accountId]->accountCategory->accountType->slug ?? 'asset';
+
+                $openingEntries = FinanceAccountEntry::where('account_id', $accountId)
+                    ->whereHas('journalEntry', function ($query) {
+                        $query->where('status', 'published')
+                            ->where('company_id', auth()->user()->current_company_id);
+                    })
+                    ->whereDate('date', '<', $startDate)
+                    ->get();
+
+                $totalDebit = $openingEntries->sum('debit_amount');
+                $totalCredit = $openingEntries->sum('credit_amount');
+
+                list($entryType, $debit, $credit) = $this->determineAccountBalance(
+                    $accountType,
+                    $totalDebit,
+                    $totalCredit
+                );
+
+                $openingBalances[$accountId] = ($entryType === 'debit') ? $debit : -$credit;
+            }
+
+            // Get transactions for selected accounts within date range
+            $transactions = FinanceAccountEntry::whereIn('account_id', $accountIds)
+                ->whereHas('journalEntry', function ($query) {
+                    $query->where('status', 'published')
+                        ->where('company_id', auth()->user()->current_company_id);
+                })
+                ->whereBetween('date', [$startDate, $endDate])
+                ->with(['account:id,name,account_number', 'journalEntry:id,status'])
+                ->orderBy('date')
+                ->orderBy('created_at')
+                ->get();
+
+            // Process transactions with running balances
+            $processedTransactions = [];
+            $runningBalances = $openingBalances;
+            $totalDebit = 0;
+            $totalCredit = 0;
+
+            foreach ($transactions as $transaction) {
+                $accountId = $transaction->account_id;
+                $accountType = $accounts[$accountId]->accountCategory->accountType->slug ?? 'asset';
+
+                // Determine if this transaction increases or decreases the balance
+                $balanceChange = $this->calculateBalanceChange(
+                    $accountType,
+                    $transaction->debit_amount,
+                    $transaction->credit_amount
+                );
+
+                // Update running balance
+                $runningBalances[$accountId] += $balanceChange;
+
+                $processedTransactions[] = [
+                    'date' => $transaction->date,
+                    'account_id' => $accountId,
+                    'account_name' => $transaction->account->name,
+                    'account_number' => $transaction->account->account_number,
+                    'account_type' => $accountType,
+                    'description' => $transaction->description,
+                    'reference' => $transaction->reference,
+                    'debit' => $transaction->debit_amount,
+                    'credit' => $transaction->credit_amount,
+                    'balance' => $runningBalances[$accountId],
+                    'gross' => $transaction->debit_amount + $transaction->credit_amount
+                ];
+
+                $totalDebit += $transaction->debit_amount;
+                $totalCredit += $transaction->credit_amount;
+            }
+
+            // Calculate summary
+            $netChange = $totalDebit - $totalCredit;
+            $totalOpeningBalance = array_sum($openingBalances);
+            $totalClosingBalance = $totalOpeningBalance + $netChange;
+
+            $reportData = [
+                'transactions' => $processedTransactions,
+                'summary' => [
+                    'total_debit' => $totalDebit,
+                    'total_credit' => $totalCredit,
+                    'net_change' => $netChange,
+                    'opening_balance' => $totalOpeningBalance,
+                    'closing_balance' => $totalClosingBalance
+                ],
+                'period_info' => [
+                    'range_type' => $rangeType,
+                    'period_name' => $periodName,
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                    'account_ids' => $accountIds
+                ]
+            ];
+
+            return $reportData;
+        } catch (\Throwable $th) {
+            return $th;
+        }
+    }
+
+    // public function accountTransactionReportOld($request)
+    // {
+    //     try {
+    //         $export = $request->export ?? false;
+    //         $rangeType = $request->range_type ?? 'monthly';
+    //         $year = $request->year ?? now()->year;
+    //         $month = $request->month ?? null;
+    //         $quarter = $request->quarter ?? null;
+    //         $customStart = $request->custom_start ?? null;
+    //         $customEnd = $request->custom_end ?? null;
+    //         $accountIds = $request->account_ids ?? [];
+
+    //         // Determine date range based on selected type
+    //         list($startDate, $endDate, $periodName) = $this->determineDateRange(
+    //             $rangeType,
+    //             $year,
+    //             $month,
+    //             $quarter,
+    //             $customStart,
+    //             $customEnd
+    //         );
+
+    //         // If no accounts selected, return empty response
+    //         if (empty($accountIds)) {
+    //             $reportData = [
+    //                 'data' => [
+    //                     'transactions' => [],
+    //                     'summary' => [
+    //                         'total_debit' => 0,
+    //                         'total_credit' => 0,
+    //                         'net_change' => 0,
+    //                         'opening_balance' => 0,
+    //                         'closing_balance' => 0
+    //                     ],
+    //                     'period_info' => [
+    //                         'range_type' => $rangeType,
+    //                         'period_name' => $periodName,
+    //                         'start_date' => $startDate->format('Y-m-d'),
+    //                         'end_date' => $endDate->format('Y-m-d'),
+    //                         'account_ids' => $accountIds
+    //                     ]
+    //                 ]
+    //             ];
+
+    //             if ($export) {
+    //                 $fileName = 'account_transactions' . '_' . Str::slug($reportData['period_info']['period_name']) . '_' . now()->format('Ymd_His');
+
+    //                 if ($export === 'pdf') {
+    //                     $pdf = Pdf::loadView('reports.account_transactions', $reportData);
+    //                     return $pdf->download($fileName . '.pdf');
+    //                 } elseif ($export === 'excel') {
+    //                     return Excel::download(
+    //                         new AccountTransactionsExport($reportData),
+    //                         $fileName . '.xlsx'
+    //                     );
+    //                 }
+    //             }
+    //         }
+
+    //         // Get all transactions for selected accounts within date range
+    //         $transactions = FinanceAccountEntry::whereIn('account_id', $accountIds)
+    //             ->whereHas('journalEntry', function ($query) {
+    //                 $query->where('status', 'published')
+    //                     ->where('company_id', auth()->user()->current_company_id);
+    //             })
+    //             ->whereBetween('date', [$startDate, $endDate])
+    //             ->with(['account:id,name,account_number', 'journalEntry:id,status'])
+    //             ->orderBy('date')
+    //             ->orderBy('created_at')
+    //             ->get();
+
+    //         // Calculate opening balances (before start date)
+    //         $openingBalances = [];
+    //         foreach ($accountIds as $accountId) {
+    //             $openingEntries = FinanceAccountEntry::where('account_id', $accountId)
+    //                 ->whereHas('journalEntry', function ($query) {
+    //                     $query->where('status', 'published')
+    //                         ->where('company_id', auth()->user()->current_company_id);
+    //                 })
+    //                 ->whereDate('date', '<', $startDate)
+    //                 ->get();
+    //         }
+
+    //         // Process transactions with running balances
+    //         $processedTransactions = [];
+    //         $runningBalances = $openingBalances;
+    //         $totalDebit = 0;
+    //         $totalCredit = 0;
+
+    //         foreach ($transactions as $transaction) {
+    //             $accountId = $transaction->account_id;
+
+    //             // Calculate running balance
+    //             $balanceChange = $transaction->debit_amount - $transaction->credit_amount;
+    //             $runningBalances[$accountId] += $balanceChange;
+
+    //             $processedTransactions[] = [
+    //                 'date' => $transaction->date,
+    //                 'account_id' => $accountId,
+    //                 'account_name' => $transaction->account->name,
+    //                 'account_number' => $transaction->account->account_number,
+    //                 'description' => $transaction->description,
+    //                 'reference' => $transaction->reference,
+    //                 'debit' => $transaction->debit_amount,
+    //                 'credit' => $transaction->credit_amount,
+    //                 'balance' => $runningBalances[$accountId],
+    //                 'gross' => $transaction->debit_amount + $transaction->credit_amount
+    //             ];
+
+    //             $totalDebit += $transaction->debit_amount;
+    //             $totalCredit += $transaction->credit_amount;
+    //         }
+
+    //         // Calculate summary
+    //         $netChange = $totalDebit - $totalCredit;
+    //         $totalOpeningBalance = array_sum($openingBalances);
+    //         $totalClosingBalance = $totalOpeningBalance + $netChange;
+
+    //         $reportData = [
+    //             'transactions' => $processedTransactions,
+    //             'summary' => [
+    //                 'total_debit' => $totalDebit,
+    //                 'total_credit' => $totalCredit,
+    //                 'net_change' => $netChange,
+    //                 'opening_balance' => $totalOpeningBalance,
+    //                 'closing_balance' => $totalClosingBalance
+    //             ],
+    //             'period_info' => [
+    //                 'range_type' => $rangeType,
+    //                 'period_name' => $periodName,
+    //                 'start_date' => $startDate->format('Y-m-d'),
+    //                 'end_date' => $endDate->format('Y-m-d'),
+    //                 'account_ids' => $accountIds
+    //             ]
+    //         ];
+
+
+    //         if ($export) {
+    //             $fileName = 'account_transactions' . '_' . Str::slug($reportData['period_info']['period_name']) . '_' . now()->format('Ymd_His');
+    //             return Excel::download(
+    //                 new AccountTransactionsExport($reportData),
+    //                 $fileName . '.xlsx'
+    //             );
+    //         }
+    //         return $reportData;
+    //     } catch (\Throwable $th) {
+    //         return $th;
+    //     }
+    // }
+
+    private function determineAccountBalance($accountType, $totalDebit, $totalCredit)
+    {
+        $typeMapping = [
+            "expense" => "debit",
+            "asset" => "debit",
+            "liability" => "credit",
+            "equity" => "credit",
+            "revenue" => "credit",
+            "income" => "credit",
+        ];
+
+        $entryType = $typeMapping[strtolower($accountType)] ?? "debit";
+
+        if ($entryType === "debit") {
+            if ($totalDebit > $totalCredit) {
+                $totalDebit -= $totalCredit;
+                $totalCredit = 0.00;
+            } elseif ($totalCredit > $totalDebit) {
+                $totalCredit -= $totalDebit;
+                $totalDebit = 0.00;
+            }
+        } else {
+            if ($totalCredit > $totalDebit) {
+                $totalCredit -= $totalDebit;
+                $totalDebit = 0.00;
+            } elseif ($totalDebit > $totalCredit) {
+                $totalDebit -= $totalCredit;
+                $totalCredit = 0.00;
+            }
+        }
+
+        return [$entryType, $totalDebit, $totalCredit];
+    }
+
+    private function calculateBalanceChange($accountType, $debitAmount, $creditAmount)
+    {
+        $typeMapping = [
+            "expense" => "debit",
+            "asset" => "debit",
+            "liability" => "credit",
+            "equity" => "credit",
+            "revenue" => "credit",
+            "income" => "credit",
+        ];
+
+        $entryType = $typeMapping[strtolower($accountType)] ?? "debit";
+
+        if ($entryType === "debit") {
+            return $debitAmount - $creditAmount;
+        } else {
+            return $creditAmount - $debitAmount;
+        }
+    }
+
+    private function emptyReportResponse($rangeType, $periodName, $startDate, $endDate, $accountIds)
+    {
+        return [
+            'data' => [
+                'transactions' => [],
+                'summary' => [
+                    'total_debit' => 0,
+                    'total_credit' => 0,
+                    'net_change' => 0,
+                    'opening_balance' => 0,
+                    'closing_balance' => 0
+                ],
+                'period_info' => [
+                    'range_type' => $rangeType,
+                    'period_name' => $periodName,
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                    'account_ids' => $accountIds
+                ]
+            ]
+        ];
+    }
+
+
+
+    private function determineDateRange($rangeType, $year, $month, $quarter, $customStart, $customEnd)
+    {
+        switch ($rangeType) {
+            case 'yearly':
+                $startDate = Carbon::create($year, 1, 1)->startOfYear();
+                $endDate = Carbon::create($year, 12, 31)->endOfYear();
+                $periodName = "Year {$year}";
+                break;
+
+            case 'quarterly':
+                $quarter = $quarter ?? ceil(now()->month / 3);
+                $startMonth = ($quarter - 1) * 3 + 1;
+                $startDate = Carbon::create($year, $startMonth, 1)->startOfMonth();
+                $endDate = $startDate->copy()->addMonths(2)->endOfMonth();
+                $periodName = "Q{$quarter} {$year}";
+                break;
+
+            case 'monthly':
+                $month = $month ?? now()->month;
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = $startDate->copy()->endOfMonth();
+                $periodName = $startDate->format('F Y');
+                break;
+
+            case 'month_to_date':
+                $startDate = Carbon::create($year, now()->month, 1)->startOfMonth();
+                $endDate = now()->endOfDay();
+                $periodName = "MTD " . $startDate->format('F Y');
+                break;
+
+            case 'quarter_to_date':
+                $currentQuarter = ceil(now()->month / 3);
+                $startMonth = ($currentQuarter - 1) * 3 + 1;
+                $startDate = Carbon::create($year, $startMonth, 1)->startOfMonth();
+                $endDate = now()->endOfDay();
+                $periodName = "QTD Q{$currentQuarter} {$year}";
+                break;
+
+            case 'year_to_date':
+                $startDate = Carbon::create($year, 1, 1)->startOfYear();
+                $endDate = now()->endOfDay();
+                $periodName = "YTD {$year}";
+                break;
+
+            case 'life_to_date':
+                $startDate = Carbon::create(2000, 1, 1)->startOfYear(); // Adjust as needed
+                $endDate = now()->endOfDay();
+                $periodName = 'Life to Date';
+                break;
+
+            case 'last_month':
+                $startDate = now()->subMonth()->startOfMonth();
+                $endDate = $startDate->copy()->endOfMonth();
+                $periodName = "Last Month: " . $startDate->format('F Y');
+                break;
+
+            case 'last_quarter':
+                $currentMonth = now()->month;
+                $lastQuarter = ceil($currentMonth / 3) - 1;
+                if ($lastQuarter < 1) {
+                    $lastQuarter = 4;
+                    $year--;
+                }
+                $startMonth = ($lastQuarter - 1) * 3 + 1;
+                $startDate = Carbon::create($year, $startMonth, 1)->startOfMonth();
+                $endDate = $startDate->copy()->addMonths(2)->endOfMonth();
+                $periodName = "Last Quarter: Q{$lastQuarter} {$year}";
+                break;
+
+            case 'last_year':
+                $startDate = Carbon::create($year - 1, 1, 1)->startOfYear();
+                $endDate = $startDate->copy()->endOfYear();
+                $periodName = "Last Year: " . ($year - 1);
+                break;
+
+            case 'custom_dates':
+                $startDate = Carbon::parse($customStart)->startOfDay();
+                $endDate = Carbon::parse($customEnd)->endOfDay();
+                $periodName = $startDate->format('M d, Y') . ' to ' . $endDate->format('M d, Y');
+                break;
+
+            default:
+                $startDate = now()->startOfMonth();
+                $endDate = now()->endOfMonth();
+                $periodName = now()->format('F Y');
+        }
+
+        return [$startDate, $endDate, $periodName];
+    }
+
+    private function addToTotals(&$totals, $isCurrentYear, $isPreviousYear, $type, $entry)
+    {
+        if ($isCurrentYear) {
+            $totals['current'][$type]['debit'] += $entry->debit_amount;
+            $totals['current'][$type]['credit'] += $entry->credit_amount;
+        } elseif ($isPreviousYear) {
+            $totals['previous'][$type]['debit'] += $entry->debit_amount;
+            $totals['previous'][$type]['credit'] += $entry->credit_amount;
+        }
+    }
+
+    private function calculateAmount($accountType, $amounts)
+    {
+        list($entryType, $debit, $credit) = $this->determineCreditOrDebitAccountType(
+            $accountType,
+            $amounts['debit'],
+            $amounts['credit']
+        );
+        return max($debit, $credit);
+    }
+
+    private function determineCreditOrDebitAccountType($accountType, $closingDebit, $closingCredit)
+    {
+        $typeMapping = [
+            "expense" => "debit",
+            "asset" => "debit",
+            "liability" => "credit",
+            "equity" => "credit",
+            "revenue" => "credit",
+            "income" => "credit",
+        ];
+
+        $entryType = $typeMapping[$accountType] ?? "unknown";
+
+        if ($entryType === "debit") {
+            if ($closingDebit > $closingCredit) {
+                $closingDebit -= $closingCredit;
+                $closingCredit = 0.00;
+            } elseif ($closingCredit > $closingDebit) {
+                $closingCredit -= $closingDebit;
+                $closingDebit = 0.00;
+            }
+        } else {
+            if ($closingCredit > $closingDebit) {
+                $closingCredit -= $closingDebit;
+                $closingDebit = 0.00;
+            } elseif ($closingDebit > $closingCredit) {
+                $closingDebit -= $closingCredit;
+                $closingCredit = 0.00;
+            }
+        }
+
+        return [$entryType, $closingDebit, $closingCredit];
     }
 
     /**

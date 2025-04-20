@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\v1\Company\Report\FinancialStatement;
+namespace App\Http\Controllers\v1\Company\Report\TaxAndBalance;
 
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
@@ -13,7 +13,7 @@ use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Services\FinanceAccountType\FinanceAccountTypeService;
 use Maatwebsite\Excel\Facades\Excel;
 
-class FinancialStatementController extends Controller
+class TaxBalancesController extends Controller
 {
     protected FinanceAccountTypeService $financeAccountTypeService;
 
@@ -22,7 +22,7 @@ class FinancialStatementController extends Controller
         $this->financeAccountTypeService = $financeAccountTypeService;
     }
 
-    public function getBalanceSheetReport(Request $request)
+    public function salesTaxReport(Request $request)
     {
         try {
             $records = $this->financeAccountTypeService->getBalanceSheetReport($request);
@@ -38,26 +38,10 @@ class FinancialStatementController extends Controller
         }
     }
 
-    public function getBalanceSheetMajorRunAtDate(Request $request)
+    public function journalReport(Request $request)
     {
         try {
-            $records = $this->financeAccountTypeService->getBalanceSheetMajorRunAtDate($request);
-
-            if ($request->export) {
-                return $records;
-            }
-            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
-        } catch (BadRequestException $e) {
-            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
-        }
-    }
-    
-    public function profitAndLossGroupbyCategory(Request $request)
-    {
-        try {
-            $records = $this->financeAccountTypeService->profitAndLossGroupbyCategory($request);
+            $records = $this->financeAccountTypeService->getBalanceSheetReport($request);
 
             if ($request->export) {
                 return $records;
@@ -70,11 +54,10 @@ class FinancialStatementController extends Controller
         }
     }
 
-
-    public function getCashBalancesReport(Request $request)
+    public function foreignCurrencyGainAndLosses(Request $request)
     {
         try {
-            $records = $this->financeAccountTypeService->getCashBalancesReport($request);
+            $records = $this->financeAccountTypeService->getBalanceSheetReport($request);
 
             if ($request->export) {
                 return $records;
@@ -87,5 +70,35 @@ class FinancialStatementController extends Controller
         }
     }
 
+    public function generalLedgerDetails(Request $request)
+    {
+        try {
+            $records = $this->financeAccountTypeService->getBalanceSheetReport($request);
 
+            if ($request->export) {
+                return $records;
+            }
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function generalLedgerSummary(Request $request)
+    {
+        try {
+            $records = $this->financeAccountTypeService->getBalanceSheetReport($request);
+
+            if ($request->export) {
+                return $records;
+            }
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 }
