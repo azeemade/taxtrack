@@ -6,7 +6,7 @@ use App\Http\Controllers\v1\Company\Report\FinancialPerformance\BusinessSnapshot
 use App\Http\Controllers\v1\Company\Report\CashSummary\CashSummaryController;
 use App\Http\Controllers\v1\Company\Report\FinancialStatement\FinancialStatementController;
 use App\Http\Controllers\v1\Company\Report\Reconciliation\ReconciliationController;
-use App\Http\Controllers\v1\Company\Report\TaxAndBalance\TaxBalancesController;
+use App\Http\Controllers\v1\Company\Report\TaxAndBalances\TaxBalancesController;
 use App\Http\Controllers\v1\Company\Report\Transaction\AccountTransactionController;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
@@ -343,7 +343,6 @@ Route::group([
                     });
 
                     Route::group(['prefix' => 'reconciliation'], function () {
-                        Route::post('/', [CashSummaryController::class, 'index']);
                         Route::post('/account-summary', [ReconciliationController::class, 'accountSummary']);
                         Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'bankReconciliationSummary']);
                         Route::post('/bank-summary', [CashSummaryController::class, 'index']);
