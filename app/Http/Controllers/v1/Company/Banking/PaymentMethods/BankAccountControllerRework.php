@@ -43,7 +43,7 @@ class BankAccountControllerRework extends Controller
     {
         try {
             DB::beginTransaction();
-            $record = $this->bankAccountService->updateOrCreate($request->validated());
+            $record = $this->chartOfAccountService->createAccount($request->validated());
             DB::commit();
             return JsonResponser::send(false, 'Bank created successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -77,7 +77,7 @@ class BankAccountControllerRework extends Controller
     {
         try {
             DB::beginTransaction();
-            $record = $this->bankAccountService->updateOrCreate([...$request->validated(), "id" => $id]);
+            $record = $this->chartOfAccountService->updateAccount($request, $id);
             DB::commit();
             return JsonResponser::send(false, 'Bank updated successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
