@@ -70,6 +70,68 @@ class GeneralHelper
         return $uniqueId;
     }
 
+    public static function getModelUniqueRandomId2($data)
+    {
+        try {
+            // Validate required parameters
+            if (empty($data['modelNamespace']) || empty($data['modelField'])) {
+                return ['error' => true, 'message' => 'Model namespace and field must be specified'];
+            }
+
+            $modelClass = $data['modelNamespace'];
+            $modelField = $data['modelField'];
+
+            if (!class_exists($modelClass)) {
+                return ['error' => true, 'message' => "Model class {$modelClass} not found"];
+            }
+
+            $maxAttempts = 100; // Maximum attempts to generate unique ID
+            $attempt = 0;
+
+            while ($attempt < $maxAttempts) {
+                // Generate the ID using the helper method
+                $uniqueId = self::generateUniqueRandomId2($data);
+
+                // Check if ID exists using safe query construction
+                $exists = $modelClass::where($modelField, $uniqueId)->exists();
+
+                if (!$exists) {
+                    return $uniqueId;
+                }
+
+                $attempt++;
+            }
+            return ['error' => true, 'message' => "Failed to generate unique ID after {$maxAttempts} attempts"];
+        } catch (\Exception $e) {
+            return [
+                'error' => true,
+                'message' => 'ID Generation Error: ' . $e->getMessage(),
+                'data' => []
+            ];
+        }
+    }
+
+    public static function generateUniqueRandomId2($config)
+    {
+        $prefix = $config['prefix'] ?? '';
+        $length = $config['idLength'] ?? 7;
+        $type = $config['idType'] ?? 'numalpha';
+
+        $characters = match ($type) {
+            'num' => '0123456789',
+            default => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ' // numalpha
+        };
+
+        $randomString = '';
+        $maxIndex = strlen($characters) - 1;
+
+        for ($i = 0; $i < $length; $i++) {
+            $randomString .= $characters[random_int(0, $maxIndex)];
+        }
+
+        return $prefix . $randomString;
+    }
+
     public static function generateUniqueRandomId($data)
     {
         $prefix = $data['prefix'] ?? "";

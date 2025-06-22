@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\v1\Company\Accounting\ChartOfAccount\ChartOfAccountController;
 use App\Http\Controllers\v1\Company\Accounting\JournalOfEntry\JournalOfEntryController;
+use App\Http\Controllers\v1\Company\Banking\PaymentMethods\BankAccountControllerRework;
+use App\Http\Controllers\v1\Company\Banking\Transactions\TransactionsController;
 use App\Http\Controllers\v1\Company\Report\BudgetVariance\BudgetVarianceController;
 use App\Http\Controllers\v1\Company\Report\FinancialPerformance\BusinessPerformanceController;
 use App\Http\Controllers\v1\Company\Report\FinancialPerformance\BusinessSnapshotController;
@@ -263,7 +265,53 @@ Route::group([
                     });
                 });
 
-                
+
+                Route::group(['prefix' => 'banking-rw', "namespace" => "Banking"], function () {
+                    Route::prefix('cards')->group(function () {
+                        //TODO
+                        // Route::post('/', [BankAccountControllerRework::class, 'index']);
+                        // Route::post('/store', [BankAccountControllerRework::class, 'createAccount']);
+                        // Route::get('/{id}', [BankAccountControllerRework::class, 'show']);
+                        // Route::put('/update/{id}', [BankAccountControllerRework::class, 'updateAccount']);
+                        // Route::delete('/delete/{id}', [BankAccountControllerRework::class, 'delete']);
+                        // Route::put('/toggle/{id}', [BankAccountControllerRework::class, 'toggleStatus']);
+                        // Route::get('/sublist/all-accounts/notpaginated', [BankAccountControllerRework::class, 'allChartOfAccountNotPaginated']);
+                        // Route::get('/sublist/subcategories/notpaginated', [BankAccountControllerRework::class, 'allSubCategoriesNotPaginated']);
+                        // Route::get('/sublist/account/{accountType}', [BankAccountControllerRework::class, 'getAccountsByType']);
+                        // Route::get('/sublist/account_by_subcategory_id/{id}', [BankAccountControllerRework::class, 'accountBySubCategoryID']);
+                        // Route::get('/sublist/account_by_subcategory/{accountSubCategory}', [BankAccountControllerRework::class, 'accountSubCategoryName']);
+                        // Route::get('/download/template', [BankAccountControllerRework::class, 'getDownload']);
+                        // Route::post('/import', [BankAccountControllerRework::class, 'importAccount']);
+                    });
+
+                    Route::prefix('bank-accounts')->group(function () {
+                        Route::post('/', [BankAccountControllerRework::class, 'index']);
+                        Route::post('/card-view', [BankAccountControllerRework::class, 'indexCardView']);
+                        Route::post('/store', [BankAccountControllerRework::class, 'store']);
+                        Route::get('/{id}', [BankAccountControllerRework::class, 'show']);
+                        Route::put('/update/{id}', [BankAccountControllerRework::class, 'update']);
+                        Route::delete('/delete/{id}', [BankAccountControllerRework::class, 'delete']);
+                        Route::put('/toggle/{id}', [BankAccountControllerRework::class, 'toggleStatus']);
+                    });
+
+                    Route::prefix('transactions')->group(function () {
+                        // Route::get('/stats', [TransactionsController::class, 'dashboardStats']);
+                        // Route::get('/groups_not_paginated', [TransactionsController::class, 'allFinanceTransactionGroupsNotPaginated']);
+                        // Route::post('/all_groups', [TransactionsController::class, 'allFinanceTransactionGroups']);
+                        // Route::post('/all', [TransactionsController::class, 'allFinanceTransactions']);
+                        Route::post('/overview', [TransactionsController::class, 'transactionOverview']);
+                        Route::post('/list', [TransactionsController::class, 'transactionList']);
+                        Route::post('/create', [TransactionsController::class, 'createFinanceTransaction']);
+                        // Route::post('/create_payment', [TransactionsController::class, 'createPaymentFinanceTransaction']);
+                        // Route::post('/create_receipt', [TransactionsController::class, 'createReceiptFinanceTransaction']);
+                        // Route::get('/show/{id}', [TransactionsController::class, 'viewFinanceTransactionGroup']);
+                        // Route::put('/update/{id}', [TransactionsController::class, 'updateFinanceTransactionGroup']);
+                        // Route::delete('/delete/{id}', [TransactionsController::class, 'deleteFinanceTransactionGroup']);
+                        // Route::delete('/single/delete/{id}', [TransactionsController::class, 'deleteSingleFinanceTransaction']);
+                    });
+                });
+
+
                 Route::group(['prefix' => 'accounting', "namespace" => "Accounting"], function () {
                     Route::prefix('chart-of-accounts')->group(function () {
                         Route::post('/', [ChartOfAccountController::class, 'index']);
