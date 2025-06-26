@@ -267,25 +267,9 @@ Route::group([
 
 
                 Route::group(['prefix' => 'banking-rw', "namespace" => "Banking"], function () {
-                    Route::prefix('cards')->group(function () {
-                        //TODO
-                        // Route::post('/', [BankAccountControllerRework::class, 'index']);
-                        // Route::post('/store', [BankAccountControllerRework::class, 'createAccount']);
-                        // Route::get('/{id}', [BankAccountControllerRework::class, 'show']);
-                        // Route::put('/update/{id}', [BankAccountControllerRework::class, 'updateAccount']);
-                        // Route::delete('/delete/{id}', [BankAccountControllerRework::class, 'delete']);
-                        // Route::put('/toggle/{id}', [BankAccountControllerRework::class, 'toggleStatus']);
-                        // Route::get('/sublist/all-accounts/notpaginated', [BankAccountControllerRework::class, 'allChartOfAccountNotPaginated']);
-                        // Route::get('/sublist/subcategories/notpaginated', [BankAccountControllerRework::class, 'allSubCategoriesNotPaginated']);
-                        // Route::get('/sublist/account/{accountType}', [BankAccountControllerRework::class, 'getAccountsByType']);
-                        // Route::get('/sublist/account_by_subcategory_id/{id}', [BankAccountControllerRework::class, 'accountBySubCategoryID']);
-                        // Route::get('/sublist/account_by_subcategory/{accountSubCategory}', [BankAccountControllerRework::class, 'accountSubCategoryName']);
-                        // Route::get('/download/template', [BankAccountControllerRework::class, 'getDownload']);
-                        // Route::post('/import', [BankAccountControllerRework::class, 'importAccount']);
-                    });
-
                     Route::prefix('bank-accounts')->group(function () {
                         Route::post('/', [BankAccountControllerRework::class, 'index']);
+                        Route::get('/stats', [BankAccountControllerRework::class, 'stats']);
                         Route::post('/card-view', [BankAccountControllerRework::class, 'indexCardView']);
                         Route::post('/store', [BankAccountControllerRework::class, 'store']);
                         Route::get('/{id}', [BankAccountControllerRework::class, 'show']);
@@ -352,6 +336,7 @@ Route::group([
                         });
                     Route::put('budgets/{id}/toggle-status', 'BudgetController@toggleStatus');
                     Route::get('budgets/compute/periods', 'BudgetController@computePeriods');
+                    Route::get('budgets/create/template', 'BudgetController@getBudgetTemplate');
                 });
 
                 Route::group(['prefix' => 'report', "namespace" => "Report"], function () {
@@ -382,8 +367,8 @@ Route::group([
                             Route::post('/', [CashSummaryController::class, 'index']);
                         });
 
-                        Route::group(['prefix' => 'budget-summary', "namespace" => "BudgetVariance"], function () {
-                            Route::post('/', [BudgetVarianceController::class, 'index']);
+                        Route::group(['prefix' => 'budget-variance', "namespace" => "BudgetVariance"], function () {
+                            Route::get('/', [BudgetVarianceController::class, 'index']);
                         });
                     });
 

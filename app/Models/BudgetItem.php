@@ -46,4 +46,9 @@ class BudgetItem extends Model
     {
         return $this->periods()->sum('amount');
     }
+
+    public function account()
+    {
+        return $this->belongsTo(FinanceChartOfAccount::class, 'account_id');
+    }
 }

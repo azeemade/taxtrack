@@ -6,7 +6,7 @@ use App\Models\FinanceChartOfAccount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class CreateBudgetRequest extends FormRequest
+class UpdateBudgetRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

@@ -11,20 +11,47 @@ use App\Http\Requests\Company\Banking\Banks\CreateBankConnectionRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\ChartOfAccount\ChartOfAccountService;
+use App\Services\FinanceAccountEntry\FinanceAccountEntryService;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class BankAccountControllerRework extends Controller
 {
     protected ChartOfAccountService $chartOfAccountService;
+    protected FinanceAccountEntryService $financeAccountEntryService;
 
-    public function __construct(ChartOfAccountService $chartOfAccountService)
+    public function __construct(ChartOfAccountService $chartOfAccountService, FinanceAccountEntryService $financeAccountEntryService)
     {
         $this->chartOfAccountService = $chartOfAccountService;
+        $this->financeAccountEntryService = $financeAccountEntryService;
     }
+
     /**
      * Display a listing of the resource.
      */
+
+     public function stats(SharedFilterRequest $request)
+    {
+        try {
+            $bankStatementBalance = 0;
+            $systemBalance = $this->financeAccountEntryService->getSystemTotalBalanceAndFlow($request->start_date, $request->end_date);
+
+            $data = [
+                'bank_statement_balance' => $bankStatementBalance,
+                'system_balance' => $systemBalance['total_system_balance'],
+                'total_inflow' => $systemBalance['total_inflow'],
+                'total_outflow' => $systemBalance['total_outflow'],
+            ];
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $data, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+
     public function index(SharedFilterRequest $request)
     {
         try {

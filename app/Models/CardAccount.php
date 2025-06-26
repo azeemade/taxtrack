@@ -58,7 +58,7 @@ class CardAccount extends Model
 
     public function bank()
     {
-        return $this->belongsTo(Bank::class, 'issuing_bank_id');
+        return $this->belongsTo(FinanceChartOfAccount::class, 'issuing_bank_id');
     }
 
     public function paymentMethods()
