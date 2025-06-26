@@ -144,17 +144,25 @@ class ChartOfAccountService
                 throw new BadRequestException("Name already exists for the account type.", Response::HTTP_CONFLICT);
             }
 
-            // Generate Account Number
-            $latestAccount = FinanceChartOfAccount::where('account_sub_category_id', $getSubCategoryInfo->id)->latest()->first();
-            $latestId = $latestAccount ? intval(substr($latestAccount->account_number, -4)) : 0;
+            if (!is_null($request->account_number)) {
+                $existingAccount = FinanceChartOfAccount::where('account_number', $request->account_number)->exists();
+                if ($existingAccount) {
+                    throw new BadRequestException("Account number already exists for another account.", Response::HTTP_CONFLICT);
+                }
+                $accountNumber = $request->account_number;
+            } else {
+                // Generate Account Number
+                $latestAccount = FinanceChartOfAccount::where('account_sub_category_id', $getSubCategoryInfo->id)->latest()->first();
+                $latestId = $latestAccount ? intval(substr($latestAccount->account_number, -4)) : 0;
 
-            do {
-                $latestId++;
-                $newId = $getSubCategoryInfo->ref_code . str_pad($latestId, 4, '0', STR_PAD_LEFT);
-                $existingAccount = FinanceChartOfAccount::where('account_number', $newId)->exists();
-            } while ($existingAccount);
+                do {
+                    $latestId++;
+                    $newId = $getSubCategoryInfo->ref_code . str_pad($latestId, 4, '0', STR_PAD_LEFT);
+                    $existingAccount = FinanceChartOfAccount::where('account_number', $newId)->exists();
+                } while ($existingAccount);
 
-            $accountNumber = $newId;
+                $accountNumber = $newId;
+            }
 
             // Create Account
             $coa = FinanceChartOfAccount::create([
@@ -166,6 +174,82 @@ class ChartOfAccountService
                 'slug' => Str::slug($request->name),
                 'account_number' => $accountNumber,
                 'description' => $request->description ?? $request->name,
+                'holder_name' => $request->holder_name,
+                'account_type' => $request->account_type,
+                'currency' => $request->currency, //eg Euro
+                'reference_code' => $request->name,
+                'opening_balance' => $request->opening_balance,
+                'balance_date' => $request->balance_date,
+                'status' => $request->status ?? "published",
+                'is_active' => $request->status == "published" ? "true" : "false",
+                'edited_by' => $user->id
+            ]);
+
+            if (!$coa) {
+                throw new BadRequestException("Unable to create account.", Response::HTTP_CONFLICT);
+            }
+
+            DB::commit();
+            return $coa;
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
+    }
+
+
+    public function createCashAndBankAccount($request)
+    {
+        DB::beginTransaction();
+        try {
+            $user = auth()->user();
+            $getSubCategoryInfo = FinanceAccountSubCategory::where('name', 'Cash and Bank')->first();
+            if (!$getSubCategoryInfo) {
+                throw new BadRequestException("Account sub-category not found!", Response::HTTP_NOT_FOUND);
+            }
+
+            $existingAccount = FinanceChartOfAccount::where("account_sub_category_id", $getSubCategoryInfo->id)
+                ->where("name", $request->name)
+                ->exists();
+
+            if ($existingAccount) {
+                throw new BadRequestException("Name already exists for the account type.", Response::HTTP_CONFLICT);
+            }
+
+            if (!is_null($request->account_number)) {
+                $existingAccount = FinanceChartOfAccount::where('account_number', $request->account_number)->exists();
+                if ($existingAccount) {
+                    throw new BadRequestException("Account number already exists for another account.", Response::HTTP_CONFLICT);
+                }
+                $accountNumber = $request->account_number;
+            } else {
+                // Generate Account Number
+                $latestAccount = FinanceChartOfAccount::where('account_sub_category_id', $getSubCategoryInfo->id)->latest()->first();
+                $latestId = $latestAccount ? intval(substr($latestAccount->account_number, -4)) : 0;
+
+                do {
+                    $latestId++;
+                    $newId = $getSubCategoryInfo->ref_code . str_pad($latestId, 4, '0', STR_PAD_LEFT);
+                    $existingAccount = FinanceChartOfAccount::where('account_number', $newId)->exists();
+                } while ($existingAccount);
+
+                $accountNumber = $newId;
+            }
+
+            // Create Account
+            $coa = FinanceChartOfAccount::create([
+                'account_type_id' => $getSubCategoryInfo->account_type_id,
+                'account_category_id' => $getSubCategoryInfo->account_category_id,
+                'account_sub_category_id' => $getSubCategoryInfo->id,
+                'company_id' => auth()->user()->current_company_id,
+                'name' => $request->name,
+                'slug' => Str::slug($request->name),
+                'account_number' => $accountNumber,
+                'description' => $request->description ?? $request->name,
+                'holder_name' => $request->holder_name,
+                'bank_id' => $request->bank_id,
+                'account_type' => $request->account_type,
+                'currency' => $request->currency, //eg Euro
                 'reference_code' => $request->name,
                 'opening_balance' => $request->opening_balance,
                 'balance_date' => $request->balance_date,
@@ -239,6 +323,68 @@ class ChartOfAccountService
                 'name' => $request->name ?? $record->name,
                 'slug' => Str::slug($request->name) ?? Str::slug($record->name),
                 'description' => $request->description ?? $record->description,
+                'reference_code' => $request->reference_code ?? $record->reference_code,
+                'opening_balance' => $request->opening_balance ?? $record->opening_balance,
+                'balance_date' => $request->balance_date ?? $record->balance_date,
+                'is_active' =>  $request->filled('status')
+                    ? ($request->status == "published" ? "true" : "false")
+                    : $record->is_active,
+                'status' => $request->status ?? $record->status,
+                'edited_by' => $currentUser->id
+            ]);
+
+            DB::commit();
+
+            return $record; // Return updated record
+
+        } catch (\Throwable $th) {
+            DB::rollback(); // Rollback changes if any error occurs
+            throw $th; // Re-throw the exception to be caught by the controller
+        }
+    }
+
+
+    public function updateCashAndBankAccount($request, $id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $currentUser = auth()->user();
+
+            $record = FinanceChartOfAccount::find($id);
+            if (!$record) {
+                throw new BadRequestException("Record not found!", Response::HTTP_NOT_FOUND);
+            }
+
+            // Check if name already exists for the given sub-category
+            $nameExists = FinanceChartOfAccount::where("account_sub_category_id", $record->account_sub_category_id)
+                ->where("name", $request->name)
+                ->where('id', '!=', $id)
+                ->exists();
+
+            if ($nameExists) {
+                throw new BadRequestException("Name already exists for the account type.", Response::HTTP_CONFLICT);
+            }
+
+            $accountNumber = $record->account_number;
+            if (!is_null($request->account_number)) {
+                $existingAccount = FinanceChartOfAccount::where('account_number', $request->account_number)->where('id', '!=', $id)->exists();
+                if ($existingAccount) {
+                    throw new BadRequestException("Account number already exists for another account.", Response::HTTP_CONFLICT);
+                }
+                $accountNumber = $request->account_number;
+            }
+
+            $record->update([
+                'name' => $request->name ?? $record->name,
+                'slug' => Str::slug($request->name) ?? Str::slug($record->name),
+                'description' => $request->description ?? $record->description,
+                'reference_code' => $request->reference_code ?? $record->reference_code,
+                'account_number' => $accountNumber,
+                'holder_name' => $request->holder_name ?? $record->holder_name,
+                'bank_id' => $request->bank_id ?? $record->bank_id,
+                'account_type' => $request->account_type ?? $record->account_type,
+                'currency' => $request->currency ?? $record->currency, //eg Euro
                 'reference_code' => $request->reference_code ?? $record->reference_code,
                 'opening_balance' => $request->opening_balance ?? $record->opening_balance,
                 'balance_date' => $request->balance_date ?? $record->balance_date,
@@ -446,7 +592,7 @@ class ChartOfAccountService
             $record = FinanceChartOfAccount::with([
                 'accountType:id,name,slug',
                 'accountCategory:id,name',
-                'subCategory:id,name',
+                'subCategory:id,name,slug',
                 'accountEntries' => function ($query) use ($request, $dateSearchParams) {
                     if ($dateSearchParams) {
                         $query->whereBetween('date', [$request->start_date, $request->end_date]);
@@ -514,6 +660,29 @@ class ChartOfAccountService
             }
 
             return $record;
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function indexCardView($request)
+    {
+        try {
+            $limit = $request->limit ?? 10;
+            $dateSearchParams = (!is_null($request->start_date) && !is_null($request->end_date));
+
+            $userCompanyId = auth()->user()->current_company_id;
+
+            $records = FinanceChartOfAccount::select("id", "name", "account_number")
+                ->whereHas('subCategory', function ($query) {
+                    $query->where('slug', 'cash-and-bank');
+                })
+                ->where('company_id', $userCompanyId)
+                ->orderBy("account_type_id", "ASC")
+                ->orderBy('account_number', "ASC")
+                ->limit($limit)
+                ->get();
+            return $records;
         } catch (\Throwable $th) {
             throw $th;
         }

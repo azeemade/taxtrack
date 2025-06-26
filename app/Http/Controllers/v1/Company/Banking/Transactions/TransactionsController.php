@@ -4,9 +4,12 @@ namespace App\Http\Controllers\v1\Company\Banking\Transactions;
 
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Company\Banking\Transaction\CreateTransactionRequest;
 use App\Http\Requests\Company\Banking\Transaction\UpdatePaymentMethodTransactionRequest;
 use App\Responser\JsonResponser;
 use App\Services\Transaction\TransactionService;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -17,6 +20,43 @@ class TransactionsController extends Controller
         TransactionService $transactionService
     ) {
         $this->transactionService = $transactionService;
+    }
+
+
+    public function transactionOverview(Request $request)
+    {
+        try {
+            $data = $this->transactionService->getTransactionOverview($request);
+            return JsonResponser::send(false, 'Transaction overview fetched!', $data);
+        } catch (Exception $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_BAD_REQUEST);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Error: ' . $th->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function transactionList(Request $request)
+    {
+        try {
+            $data = $this->transactionService->getTransactionList($request);
+            return JsonResponser::send(false, 'Transaction list fetched!', $data);
+        } catch (Exception $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_BAD_REQUEST);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Error: ' . $th->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function createFinanceTransaction(CreateTransactionRequest $request)
+    {
+        try {
+            $record = $this->transactionService->createFinanceTransaction($request);
+            return JsonResponser::send(false, 'Transaction created successfully!', $record, Response::HTTP_CREATED);
+        } catch (Exception $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_BAD_REQUEST);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error: ' . $th->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
     }
 
     /**

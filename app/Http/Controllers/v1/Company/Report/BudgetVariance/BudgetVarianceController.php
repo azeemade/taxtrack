@@ -10,32 +10,34 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use App\Http\Requests\Shared\SharedFilterRequest;
+use App\Services\Budget\BudgetService;
 use App\Services\FinanceAccountType\FinanceAccountTypeService;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
 class BudgetVarianceController extends Controller
 {
-    protected FinanceAccountTypeService $financeAccountTypeService;
+    protected BudgetService $budgetService;
 
-    public function __construct(FinanceAccountTypeService $financeAccountTypeService)
+    public function __construct(BudgetService $budgetService)
     {
-        $this->financeAccountTypeService = $financeAccountTypeService;
+        $this->budgetService = $budgetService;
     }
 
-    public function index(Request $request)
+    public function index(SharedFilterRequest $request)
     {
         try {
-            $records = $this->financeAccountTypeService->getProfitAndLossReport($request);
-
-            if ($request->export) {
-                return $records;
-            }
-            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
-        } catch (BadRequestException $e) {
-            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            $data = $this->budgetService->getBudgetVarianceReport(
+                $request->budget_id,
+                $request->start_date,
+                $request->end_date
+            );
+            return JsonResponser::send(false, 'Budget variance report generated successfully', $data, 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return JsonResponser::send(true, 'Budget not found', null, 404);
+        } catch (\Throwable $e) {
+            logger($e);
+            return JsonResponser::send(true, $e->getMessage(), null, $e->getCode() ?: 500, $e);
         }
     }
 }
