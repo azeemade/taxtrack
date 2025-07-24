@@ -401,25 +401,7 @@ class TransactionService
         DB::beginTransaction();
         try {
             $user = auth()->user();
-
-            // Validate request parameters
-            // $validated = $request->validate([
-            //     'payment_type' => 'required|string|in:payment,receipt',
-            //     'status' => 'nullable|string|in:draft,pending,published,unpublished',
-            //     'bank_account_id' => 'required|exists:finance_accounts,id',
-            //     'financeTransactions' => 'required|array|min:1',
-            //     'financeTransactions.*.transaction_date' => 'required|date_format:Y-m-d',
-            //     'financeTransactions.*.account_id' => 'required|exists:finance_accounts,id',
-            //     'financeTransactions.*.transactionID' => 'required|string|max:255',
-            //     'financeTransactions.*.referenceID' => 'nullable|string|max:255',
-            //     'financeTransactions.*.description' => 'nullable|string|max:255',
-            //     'financeTransactions.*.type' => 'required|string|in:Debit,Credit',
-            //     'financeTransactions.*.amount' => 'required|numeric|min:0',
-            //     'financeTransactions.*.mode_of_payment' => 'required|string|in:Bank Transfer,Cash,Credit/Debit Card,Cheque',
-            //     'financeTransactions.*.bank_fee' => 'nullable|numeric|min:0',
-            //     'financeTransactions.*.exchange_rate' => 'nullable|numeric|min:0',
-            // ]);
-
+            
             // Find the transaction group
             $transactionGroup = FinanceAccountTransactionGroup::where('id', $transactionGroupId)
                 ->where('company_id', $user->current_company_id)
