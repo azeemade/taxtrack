@@ -6,12 +6,15 @@ use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Banking\Transaction\CreateTransactionRequest;
 use App\Http\Requests\Company\Banking\Transaction\UpdatePaymentMethodTransactionRequest;
+use App\Http\Requests\Company\Banking\Transaction\UpdateransactionRequest;
+use App\Http\Requests\Company\Banking\Transaction\UpdateTransactionRequest;
 use App\Responser\JsonResponser;
 use App\Services\Transaction\TransactionService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TransactionsController extends Controller
 {
@@ -35,6 +38,27 @@ class TransactionsController extends Controller
         }
     }
 
+    public function allFinanceTransactionGroups(Request $request)
+    {
+        try {
+            $data = $this->transactionService->allFinanceTransactionGroups($request);
+
+            // If exporting, return the Excel download response directly
+            if ($request->export) {
+                return $data;
+            }
+
+            // Otherwise, return JSON response
+            return JsonResponser::send(false, 'Transaction group fetched!', $data);
+        } catch (ValidationException $e) {
+            return JsonResponser::send(true, 'Validation Error', $e->errors(), Response::HTTP_BAD_REQUEST);
+        } catch (Exception $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_BAD_REQUEST);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Error: ' . $th->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     public function transactionList(Request $request)
     {
         try {
@@ -47,17 +71,49 @@ class TransactionsController extends Controller
         }
     }
 
+    public function viewFinanceTransactionGroup($id)
+    {
+        try {
+            $data = $this->transactionService->viewFinanceTransactionGroup($id);
+            return JsonResponser::send(false, 'Transaction group fetched!', $data);
+        } catch (Exception $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_BAD_REQUEST);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Error: ' . $th->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     public function createFinanceTransaction(CreateTransactionRequest $request)
     {
         try {
             $record = $this->transactionService->createFinanceTransaction($request);
             return JsonResponser::send(false, 'Transaction created successfully!', $record, Response::HTTP_CREATED);
+        } catch (ValidationException $e) {
+            return JsonResponser::send(true, 'Validation Error', $e->errors(), Response::HTTP_BAD_REQUEST);
         } catch (Exception $e) {
             return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_BAD_REQUEST);
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error: ' . $th->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function updateFinanceTransaction(UpdateTransactionRequest $request, $transactionGroupId)
+    {
+        try {
+            $record = $this->transactionService->updateFinanceTransaction($request, $transactionGroupId);
+            return JsonResponser::send(false, 'Transaction updated successfully!', $record, Response::HTTP_OK);
+        } catch (ValidationException $e) {
+            return JsonResponser::send(true, 'Validation Error', $e->errors(), Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_BAD_REQUEST);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error: ' . $th->getMessage(), [], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+
+
 
     /**
      * Update the specified resource in storage.

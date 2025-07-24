@@ -281,14 +281,15 @@ Route::group([
                     Route::prefix('transactions')->group(function () {
                         // Route::get('/stats', [TransactionsController::class, 'dashboardStats']);
                         // Route::get('/groups_not_paginated', [TransactionsController::class, 'allFinanceTransactionGroupsNotPaginated']);
-                        // Route::post('/all_groups', [TransactionsController::class, 'allFinanceTransactionGroups']);
+                        Route::post('/all_groups', [TransactionsController::class, 'allFinanceTransactionGroups']);
                         // Route::post('/all', [TransactionsController::class, 'allFinanceTransactions']);
                         Route::post('/overview', [TransactionsController::class, 'transactionOverview']);
                         Route::post('/list', [TransactionsController::class, 'transactionList']);
                         Route::post('/create', [TransactionsController::class, 'createFinanceTransaction']);
+                        Route::post('/update/{id}', [TransactionsController::class, 'updateFinanceTransaction']);
+                        Route::get('/show/{id}', [TransactionsController::class, 'viewFinanceTransactionGroup']);
                         // Route::post('/create_payment', [TransactionsController::class, 'createPaymentFinanceTransaction']);
                         // Route::post('/create_receipt', [TransactionsController::class, 'createReceiptFinanceTransaction']);
-                        // Route::get('/show/{id}', [TransactionsController::class, 'viewFinanceTransactionGroup']);
                         // Route::put('/update/{id}', [TransactionsController::class, 'updateFinanceTransactionGroup']);
                         // Route::delete('/delete/{id}', [TransactionsController::class, 'deleteFinanceTransactionGroup']);
                         // Route::delete('/single/delete/{id}', [TransactionsController::class, 'deleteSingleFinanceTransaction']);

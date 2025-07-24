@@ -364,6 +364,183 @@ class BudgetService
         return $templateData;
     }
 
+    // public function getBudget($budgetId)
+    // {
+    //     // Fetch budget with items and periods, scoped to company
+    //     $budget = Budget::with(['budgetItems.account', 'budgetItems.periods'])
+    //         ->where('id', $budgetId)
+    //         ->where('company_id', auth()->user()->current_company_id)
+    //         ->firstOrFail();
+
+    //     // Initialize response data
+    //     $budgetData = [
+    //         'budget' => [
+    //             'id' => $budget->id,
+    //             'name' => $budget->name,
+    //             'status' => $budget->status,
+    //             'start_date' => $budget->start_date,
+    //             'cycle' => $budget->cycle,
+    //             'duration' => $budget->duration,
+    //             'description' => $budget->description,
+    //             'budgetID' => $budget->budgetID,
+    //             'company_id' => $budget->company_id,
+    //             'created_by' => $budget->created_by,
+    //             'created_at' => $budget->created_at,
+    //             'updated_at' => $budget->updated_at,
+    //         ],
+    //         'categories' => [],
+    //     ];
+
+    //     // Helper function to fetch accounts and budgets
+    //     $fetchAccountsWithBudgets = function ($query) use ($budget) {
+    //         $accounts = $query->select('id', 'name', 'account_number')
+    //             ->where('company_id', auth()->user()->current_company_id)
+    //             ->get();
+
+    //         return $accounts->map(function ($account) use ($budget) {
+    //             // Find budget item for this account
+    //             $budgetItem = $budget->budgetItems->firstWhere('account_id', $account->id);
+    //             $monthlyBudgets = array_fill(1, 12, 0.00); // Jan to Dec
+    //             $total = 0.00;
+
+    //             if ($budgetItem && $budgetItem->periods) {
+    //                 foreach ($budgetItem->periods as $period) {
+    //                     $monthIndex = Carbon::parse("{$period->month} 1, {$period->year}")->month;
+    //                     $monthlyBudgets[$monthIndex] = (float) $period->amount;
+    //                     $total += (float) $period->amount;
+    //                 }
+    //             }
+
+    //             return [
+    //                 'account_id' => $account->id,
+    //                 'account_name' => $account->name,
+    //                 'account_number' => $account->account_number,
+    //                 'monthly_budgets' => $monthlyBudgets,
+    //                 'total' => $total,
+    //             ];
+    //         });
+    //     };
+
+    //     // 1. Sales: Accounts where subCategory slug is 'sales'
+    //     $salesAccounts = $fetchAccountsWithBudgets(FinanceChartOfAccount::whereHas('subCategory', function ($query) {
+    //         $query->where('slug', 'sales');
+    //     }));
+    //     $budgetData['categories']['Sales'] = [
+    //         'category_name' => 'Sales',
+    //         'with_accounts' => true,
+    //         'accounts' => $salesAccounts,
+    //         'total_monthly_budgets' => array_reduce($salesAccounts->toArray(), function ($carry, $account) {
+    //             return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
+    //         }, array_fill(1, 12, 0.00)),
+    //         'total' => $salesAccounts->sum('total'),
+    //     ];
+
+    //     // 2. Cost of Sales: Accounts where subCategory slug is 'cost-of-sales'
+    //     $cosAccounts = $fetchAccountsWithBudgets(FinanceChartOfAccount::whereHas('subCategory', function ($query) {
+    //         $query->where('slug', 'cost-of-sales');
+    //     }));
+    //     $budgetData['categories']['CostOfSales'] = [
+    //         'category_name' => 'Cost of Sales',
+    //         'with_accounts' => true,
+    //         'accounts' => $cosAccounts,
+    //         'total_monthly_budgets' => array_reduce($cosAccounts->toArray(), function ($carry, $account) {
+    //             return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
+    //         }, array_fill(1, 12, 0.00)),
+    //         'total' => $cosAccounts->sum('total'),
+    //     ];
+
+    //     // 3. Gross Profit: Sales - Cost of Sales
+    //     $grossProfitMonthly = array_map(
+    //         fn($sales, $cos) => $sales - $cos,
+    //         $budgetData['categories']['Sales']['total_monthly_budgets'],
+    //         $budgetData['categories']['CostOfSales']['total_monthly_budgets']
+    //     );
+    //     $budgetData['categories']['GrossProfit'] = [
+    //         'category_name' => 'Gross Profit',
+    //         'with_accounts' => false,
+    //         'accounts' => [],
+    //         'total_monthly_budgets' => $grossProfitMonthly,
+    //         'total' => array_sum($grossProfitMonthly),
+    //     ];
+
+    //     // 4. Other Income: Accounts where accountType slug is 'income' and subCategory slug is not 'sales'
+    //     $otherIncomeAccounts = $fetchAccountsWithBudgets(FinanceChartOfAccount::whereHas('accountType', function ($query) {
+    //         $query->where('slug', 'income');
+    //     })->whereHas('subCategory', function ($query) {
+    //         $query->where('slug', '!=', 'sales');
+    //     }));
+    //     $budgetData['categories']['OtherIncome'] = [
+    //         'category_name' => 'Other Income',
+    //         'with_accounts' => true,
+    //         'accounts' => $otherIncomeAccounts,
+    //         'total_monthly_budgets' => array_reduce($otherIncomeAccounts->toArray(), function ($carry, $account) {
+    //             return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
+    //         }, array_fill(1, 12, 0.00)),
+    //         'total' => $otherIncomeAccounts->sum('total'),
+    //     ];
+
+    //     // 5. Expenses: Accounts where accountCategory slug is 'operating-expenses', excluding cost-of-sales and income-tax-payable
+    //     $expenseAccounts = $fetchAccountsWithBudgets(FinanceChartOfAccount::whereHas('accountCategory', function ($query) {
+    //         $query->where('slug', 'operating-expenses');
+    //     })->whereDoesntHave('subCategory', function ($query) {
+    //         $query->whereIn('slug', ['cost-of-sales', 'income-tax-payable']);
+    //     }));
+    //     $budgetData['categories']['Expenses'] = [
+    //         'category_name' => 'Expenses',
+    //         'with_accounts' => true,
+    //         'accounts' => $expenseAccounts,
+    //         'total_monthly_budgets' => array_reduce($expenseAccounts->toArray(), function ($carry, $account) {
+    //             return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
+    //         }, array_fill(1, 12, 0.00)),
+    //         'total' => $expenseAccounts->sum('total'),
+    //     ];
+
+    //     // 6. Income Tax: Accounts where subCategory slug is 'income-tax-payable'
+    //     $incomeTaxAccounts = $fetchAccountsWithBudgets(FinanceChartOfAccount::whereHas('subCategory', function ($query) {
+    //         $query->where('slug', 'income-tax-payable');
+    //     }));
+    //     $budgetData['categories']['IncomeTax'] = [
+    //         'category_name' => 'Income Tax',
+    //         'with_accounts' => true,
+    //         'accounts' => $incomeTaxAccounts,
+    //         'total_monthly_budgets' => array_reduce($incomeTaxAccounts->toArray(), function ($carry, $account) {
+    //             return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
+    //         }, array_fill(1, 12, 0.00)),
+    //         'total' => $incomeTaxAccounts->sum('total'),
+    //     ];
+
+    //     // 7. Net Profit Before Tax: Gross Profit + Other Income - Expenses
+    //     $netProfitBeforeTaxMonthly = array_map(
+    //         fn($gp, $oi, $exp) => $gp + $oi - $exp,
+    //         $budgetData['categories']['GrossProfit']['total_monthly_budgets'],
+    //         $budgetData['categories']['OtherIncome']['total_monthly_budgets'],
+    //         $budgetData['categories']['Expenses']['total_monthly_budgets']
+    //     );
+    //     $budgetData['categories']['NetProfitBeforeTax'] = [
+    //         'category_name' => 'Net Profit Before Tax',
+    //         'with_accounts' => false,
+    //         'accounts' => [],
+    //         'total_monthly_budgets' => $netProfitBeforeTaxMonthly,
+    //         'total' => array_sum($netProfitBeforeTaxMonthly),
+    //     ];
+
+    //     // 8. Net Profit After Tax: Net Profit Before Tax - Income Tax
+    //     $netProfitAfterTaxMonthly = array_map(
+    //         fn($npbt, $tax) => $npbt - $tax,
+    //         $budgetData['categories']['NetProfitBeforeTax']['total_monthly_budgets'],
+    //         $budgetData['categories']['IncomeTax']['total_monthly_budgets']
+    //     );
+    //     $budgetData['categories']['NetProfitAfterTax'] = [
+    //         'category_name' => 'Net Profit After Tax',
+    //         'with_accounts' => false,
+    //         'accounts' => [],
+    //         'total_monthly_budgets' => $netProfitAfterTaxMonthly,
+    //         'total' => array_sum($netProfitAfterTaxMonthly),
+    //     ];
+
+    //     return $budgetData;
+    // }
+
     public function getBudget($budgetId)
     {
         // Fetch budget with items and periods, scoped to company
@@ -400,25 +577,55 @@ class BudgetService
             return $accounts->map(function ($account) use ($budget) {
                 // Find budget item for this account
                 $budgetItem = $budget->budgetItems->firstWhere('account_id', $account->id);
-                $monthlyBudgets = array_fill(1, 12, 0.00); // Jan to Dec
-                $total = 0.00;
+                $periods = [];
+                $total = 0.0;
 
                 if ($budgetItem && $budgetItem->periods) {
-                    foreach ($budgetItem->periods as $period) {
-                        $monthIndex = Carbon::parse("{$period->month} 1, {$period->year}")->month;
-                        $monthlyBudgets[$monthIndex] = (float) $period->amount;
-                        $total += (float) $period->amount;
-                    }
+                    $periods = $budgetItem->periods->map(function ($period) use (&$total) {
+                        $amount = (float) $period->amount;
+                        $total += $amount;
+                        return [
+                            'id' => $period->id,
+                            'month' => strtolower(Carbon::parse("{$period->month} 1, {$period->year}")->format('F')),
+                            'year' => (string) $period->year,
+                            'amount' => number_format($amount, 2, '.', ''),
+                            'budget_item_id' => $period->budget_item_id,
+                        ];
+                    })->toArray();
                 }
 
                 return [
                     'account_id' => $account->id,
                     'account_name' => $account->name,
                     'account_number' => $account->account_number,
-                    'monthly_budgets' => $monthlyBudgets,
+                    'periods' => $periods,
                     'total' => $total,
                 ];
             });
+        };
+
+        // Helper function to aggregate periods for category totals
+        $aggregateCategoryPeriods = function ($accounts) {
+            $periodsMap = [];
+            foreach ($accounts as $account) {
+                foreach ($account['periods'] as $period) {
+                    $key = "{$period['month']}-{$period['year']}";
+                    if (!isset($periodsMap[$key])) {
+                        $periodsMap[$key] = [
+                            'id' => $period['id'],
+                            'month' => $period['month'],
+                            'year' => $period['year'],
+                            'amount' => 0.0,
+                            'budget_item_id' => $period['budget_item_id'],
+                        ];
+                    }
+                    $periodsMap[$key]['amount'] += (float) $period['amount'];
+                }
+            }
+            return array_values(array_map(function ($period) {
+                $period['amount'] = number_format($period['amount'], 2, '.', '');
+                return $period;
+            }, $periodsMap));
         };
 
         // 1. Sales: Accounts where subCategory slug is 'sales'
@@ -429,9 +636,7 @@ class BudgetService
             'category_name' => 'Sales',
             'with_accounts' => true,
             'accounts' => $salesAccounts,
-            'total_monthly_budgets' => array_reduce($salesAccounts->toArray(), function ($carry, $account) {
-                return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
-            }, array_fill(1, 12, 0.00)),
+            'total_monthly_budgets' => $aggregateCategoryPeriods($salesAccounts),
             'total' => $salesAccounts->sum('total'),
         ];
 
@@ -443,24 +648,53 @@ class BudgetService
             'category_name' => 'Cost of Sales',
             'with_accounts' => true,
             'accounts' => $cosAccounts,
-            'total_monthly_budgets' => array_reduce($cosAccounts->toArray(), function ($carry, $account) {
-                return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
-            }, array_fill(1, 12, 0.00)),
+            'total_monthly_budgets' => $aggregateCategoryPeriods($cosAccounts),
             'total' => $cosAccounts->sum('total'),
         ];
 
         // 3. Gross Profit: Sales - Cost of Sales
-        $grossProfitMonthly = array_map(
-            fn($sales, $cos) => $sales - $cos,
-            $budgetData['categories']['Sales']['total_monthly_budgets'],
-            $budgetData['categories']['CostOfSales']['total_monthly_budgets']
-        );
+        $grossProfitPeriods = [];
+        $salesPeriods = $budgetData['categories']['Sales']['total_monthly_budgets'];
+        $cosPeriods = $budgetData['categories']['CostOfSales']['total_monthly_budgets'];
+        $periodsMap = [];
+
+        // Initialize periods map with all unique month-year combinations
+        foreach (array_merge($salesPeriods, $cosPeriods) as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            if (!isset($periodsMap[$key])) {
+                $periodsMap[$key] = [
+                    'month' => $period['month'],
+                    'year' => $period['year'],
+                    'amount' => 0.0,
+                ];
+            }
+        }
+
+        // Calculate Gross Profit for each period
+        foreach ($salesPeriods as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            $periodsMap[$key]['amount'] = ((float) $periodsMap[$key]['amount']) + ((float) $period['amount']);
+        }
+        foreach ($cosPeriods as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            $periodsMap[$key]['amount'] = ((float) $periodsMap[$key]['amount']) - ((float) $period['amount']);
+        }
+
+        $grossProfitPeriods = array_values(array_map(function ($period, $index) {
+            return [
+                // 'id' => $index + 1, // Synthetic ID
+                'month' => $period['month'],
+                'year' => $period['year'],
+                'amount' => number_format($period['amount'], 2, '.', ''),
+            ];
+        }, $periodsMap, array_keys($periodsMap)));
+
         $budgetData['categories']['GrossProfit'] = [
             'category_name' => 'Gross Profit',
             'with_accounts' => false,
             'accounts' => [],
-            'total_monthly_budgets' => $grossProfitMonthly,
-            'total' => array_sum($grossProfitMonthly),
+            'total_monthly_budgets' => $grossProfitPeriods,
+            'total' => array_sum(array_map(fn($p) => (float) $p['amount'], $grossProfitPeriods)),
         ];
 
         // 4. Other Income: Accounts where accountType slug is 'income' and subCategory slug is not 'sales'
@@ -473,9 +707,7 @@ class BudgetService
             'category_name' => 'Other Income',
             'with_accounts' => true,
             'accounts' => $otherIncomeAccounts,
-            'total_monthly_budgets' => array_reduce($otherIncomeAccounts->toArray(), function ($carry, $account) {
-                return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
-            }, array_fill(1, 12, 0.00)),
+            'total_monthly_budgets' => $aggregateCategoryPeriods($otherIncomeAccounts),
             'total' => $otherIncomeAccounts->sum('total'),
         ];
 
@@ -489,9 +721,7 @@ class BudgetService
             'category_name' => 'Expenses',
             'with_accounts' => true,
             'accounts' => $expenseAccounts,
-            'total_monthly_budgets' => array_reduce($expenseAccounts->toArray(), function ($carry, $account) {
-                return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
-            }, array_fill(1, 12, 0.00)),
+            'total_monthly_budgets' => $aggregateCategoryPeriods($expenseAccounts),
             'total' => $expenseAccounts->sum('total'),
         ];
 
@@ -503,44 +733,102 @@ class BudgetService
             'category_name' => 'Income Tax',
             'with_accounts' => true,
             'accounts' => $incomeTaxAccounts,
-            'total_monthly_budgets' => array_reduce($incomeTaxAccounts->toArray(), function ($carry, $account) {
-                return array_map(fn($sum, $amount) => $sum + $amount, $carry, $account['monthly_budgets']);
-            }, array_fill(1, 12, 0.00)),
+            'total_monthly_budgets' => $aggregateCategoryPeriods($incomeTaxAccounts),
             'total' => $incomeTaxAccounts->sum('total'),
         ];
 
         // 7. Net Profit Before Tax: Gross Profit + Other Income - Expenses
-        $netProfitBeforeTaxMonthly = array_map(
-            fn($gp, $oi, $exp) => $gp + $oi - $exp,
-            $budgetData['categories']['GrossProfit']['total_monthly_budgets'],
-            $budgetData['categories']['OtherIncome']['total_monthly_budgets'],
-            $budgetData['categories']['Expenses']['total_monthly_budgets']
-        );
+        $netProfitBeforeTaxPeriods = [];
+        $grossProfitPeriods = $budgetData['categories']['GrossProfit']['total_monthly_budgets'];
+        $otherIncomePeriods = $budgetData['categories']['OtherIncome']['total_monthly_budgets'];
+        $expensePeriods = $budgetData['categories']['Expenses']['total_monthly_budgets'];
+        $periodsMap = [];
+
+        foreach (array_merge($grossProfitPeriods, $otherIncomePeriods, $expensePeriods) as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            if (!isset($periodsMap[$key])) {
+                $periodsMap[$key] = [
+                    'month' => $period['month'],
+                    'year' => $period['year'],
+                    'amount' => 0.0,
+                ];
+            }
+        }
+
+        foreach ($grossProfitPeriods as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            $periodsMap[$key]['amount'] = ((float) $periodsMap[$key]['amount']) + ((float) $period['amount']);
+        }
+        foreach ($otherIncomePeriods as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            $periodsMap[$key]['amount'] = ((float) $periodsMap[$key]['amount']) + ((float) $period['amount']);
+        }
+        foreach ($expensePeriods as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            $periodsMap[$key]['amount'] = ((float) $periodsMap[$key]['amount']) - ((float) $period['amount']);
+        }
+
+        $netProfitBeforeTaxPeriods = array_values(array_map(function ($period, $index) {
+            return [
+                // 'id' => $index + 1, // Synthetic ID
+                'month' => $period['month'],
+                'year' => $period['year'],
+                'amount' => number_format($period['amount'], 2, '.', ''),
+            ];
+        }, $periodsMap, array_keys($periodsMap)));
+
         $budgetData['categories']['NetProfitBeforeTax'] = [
             'category_name' => 'Net Profit Before Tax',
             'with_accounts' => false,
             'accounts' => [],
-            'total_monthly_budgets' => $netProfitBeforeTaxMonthly,
-            'total' => array_sum($netProfitBeforeTaxMonthly),
+            'total_monthly_budgets' => $netProfitBeforeTaxPeriods,
+            'total' => array_sum(array_map(fn($p) => (float) $p['amount'], $netProfitBeforeTaxPeriods)),
         ];
 
         // 8. Net Profit After Tax: Net Profit Before Tax - Income Tax
-        $netProfitAfterTaxMonthly = array_map(
-            fn($npbt, $tax) => $npbt - $tax,
-            $budgetData['categories']['NetProfitBeforeTax']['total_monthly_budgets'],
-            $budgetData['categories']['IncomeTax']['total_monthly_budgets']
-        );
+        $netProfitAfterTaxPeriods = [];
+        $incomeTaxPeriods = $budgetData['categories']['IncomeTax']['total_monthly_budgets'];
+        $periodsMap = [];
+
+        foreach (array_merge($netProfitBeforeTaxPeriods, $incomeTaxPeriods) as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            if (!isset($periodsMap[$key])) {
+                $periodsMap[$key] = [
+                    'month' => $period['month'],
+                    'year' => $period['year'],
+                    'amount' => 0.0,
+                ];
+            }
+        }
+
+        foreach ($netProfitBeforeTaxPeriods as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            $periodsMap[$key]['amount'] = ((float) $periodsMap[$key]['amount']) + ((float) $period['amount']);
+        }
+        foreach ($incomeTaxPeriods as $period) {
+            $key = "{$period['month']}-{$period['year']}";
+            $periodsMap[$key]['amount'] = ((float) $periodsMap[$key]['amount']) - ((float) $period['amount']);
+        }
+
+        $netProfitAfterTaxPeriods = array_values(array_map(function ($period, $index) {
+            return [
+                // 'id' => $index + 1, // Synthetic ID
+                'month' => $period['month'],
+                'year' => $period['year'],
+                'amount' => number_format($period['amount'], 2, '.', ''),
+            ];
+        }, $periodsMap, array_keys($periodsMap)));
+
         $budgetData['categories']['NetProfitAfterTax'] = [
             'category_name' => 'Net Profit After Tax',
             'with_accounts' => false,
             'accounts' => [],
-            'total_monthly_budgets' => $netProfitAfterTaxMonthly,
-            'total' => array_sum($netProfitAfterTaxMonthly),
+            'total_monthly_budgets' => $netProfitAfterTaxPeriods,
+            'total' => array_sum(array_map(fn($p) => (float) $p['amount'], $netProfitAfterTaxPeriods)),
         ];
 
         return $budgetData;
     }
-
 
     public function update($budgetId, $request)
     {

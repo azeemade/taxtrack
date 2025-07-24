@@ -579,6 +579,7 @@ class ChartOfAccountService
     public function allCashAndBankAccounts($request)
     {
         try {
+            $paginate = $request->paginate ?? true;
             $limit = $request->limit ?? 10;
             $sortBy = $request->sort_by;
             $filterBy = $request->filter_by;
@@ -636,10 +637,22 @@ class ChartOfAccountService
                 ->orderBy("account_type_id", "ASC")
                 ->orderBy('account_number', "ASC");
 
-            $record = $export ? $record->get() : $record->paginate($limit);
+            // Handle export case first
+            if ($export) {
+                $records = $record->get();
+
+                $fileName = 'chart_of_accounts_' . now()->format('Ymd_His') . '.xlsx';
+                return Excel::download(
+                    new ChartOfAccountExport($records, $request->start_date, $request->end_date),
+                    $fileName
+                );
+            }
+
+            // Then handle regular response
+            $records = $paginate ? $record->paginate($limit) : $record->get();
 
             // Add balance information to each account
-            $record->transform(function ($account) use ($request, $dateSearchParams) {
+            $records->transform(function ($account) use ($request, $dateSearchParams) {
                 $balanceInfo = FinanceAccountBalanceHelper::calculateCurrentBalance($account, $request->start_date, $request->end_date, $dateSearchParams);
 
                 $account->current_balance = $balanceInfo['current_balance'];
@@ -650,16 +663,7 @@ class ChartOfAccountService
                 return $account;
             });
 
-            if ($export) {
-                $fileName = 'chart_of_accounts_' . now()->format('Ymd_His') . '.xlsx';
-
-                return Excel::download(
-                    new ChartOfAccountExport($record, $request->start_date, $request->end_date),
-                    $fileName
-                );
-            }
-
-            return $record;
+            return $records;
         } catch (\Throwable $th) {
             throw $th;
         }

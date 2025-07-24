@@ -5,7 +5,10 @@ namespace App\Models;
 use App\Traits\Company\CompanyActionTraits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Nnjeim\World\Models\City;
+use Nnjeim\World\Models\Country;
 use Nnjeim\World\Models\Currency;
+use Nnjeim\World\Models\State;
 
 class Company extends Model
 {
@@ -16,6 +19,12 @@ class Company extends Model
         'physical_address_information' => 'array',
         'social_media' => 'array',
     ];
+
+    // protected $appends = [
+    //     'physical_city',
+    //     'physical_state',
+    //     'physical_country'
+    // ];
 
     public function staff()
     {
@@ -47,4 +56,46 @@ class Company extends Model
     {
         return $this->hasOne(Subscriber::class, 'company_id');
     }
+
+
+    // Relationships for physical address
+    // public function physicalCity()
+    // {
+    //     if (!isset($this->physical_address_information['city_id'])) {
+    //         return null;
+    //     }
+    //     return $this->belongsTo(City::class, 'physical_address_information->city_id');
+    // }
+
+    // public function physicalState()
+    // {
+    //     if (!isset($this->physical_address_information['state_id'])) {
+    //         return null;
+    //     }
+    //     return $this->belongsTo(State::class, 'physical_address_information->state_id');
+    // }
+
+    // public function physicalCountry()
+    // {
+    //     if (!isset($this->physical_address_information['country_id'])) {
+    //         return null;
+    //     }
+    //     return $this->belongsTo(Country::class, 'physical_address_information->country_id');
+    // }
+
+    // // Accessors for physical address names
+    // public function getPhysicalCityAttribute()
+    // {
+    //     return $this->physicalCity ? $this->physicalCity->name : null;
+    // }
+
+    // public function getPhysicalStateAttribute()
+    // {
+    //     return $this->physicalState ? $this->physicalState->name : null;
+    // }
+
+    // public function getPhysicalCountryAttribute()
+    // {
+    //     return $this->physicalCountry ? $this->physicalCountry->name : null;
+    // }
 }
