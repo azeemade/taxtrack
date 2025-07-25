@@ -58,7 +58,10 @@ class CardController extends Controller
     {
         try {
             DB::beginTransaction();
-            $record = $this->cardService->updateOrCreate($request->validated());
+
+            $data = $request->validated();
+            $record = $this->cardService->updateOrCreate($data);
+
             DB::commit();
             return JsonResponser::send(false, 'Card created successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -66,7 +69,7 @@ class CardController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -113,7 +116,12 @@ class CardController extends Controller
             DB::beginTransaction();
             $record = $this->cardService->toggleStatus($id);
             DB::commit();
-            return JsonResponser::send(false, 'Card deleted successfully', $record, Response::HTTP_OK);
+
+            $message = $record->is_active
+                ? 'Card activated successfully'
+                : 'Card deactivated successfully';
+
+            return JsonResponser::send(false, $message, $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());

@@ -49,6 +49,7 @@ class PaymentRecordService
 
         return $record;
     }
+    
     public function view(int $id)
     {
         $record = PaymentRecord::select(

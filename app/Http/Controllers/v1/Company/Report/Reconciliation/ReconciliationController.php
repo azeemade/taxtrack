@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\v1\Company\Report\FinancialStatement;
+namespace App\Http\Controllers\v1\Company\Report\Reconciliation;
 
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
@@ -13,8 +13,9 @@ use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Services\FinanceAccountType\FinanceAccountTypeService;
 use Maatwebsite\Excel\Facades\Excel;
 
-class FinancialStatementController extends Controller
+class ReconciliationController extends Controller
 {
+
     protected FinanceAccountTypeService $financeAccountTypeService;
 
     public function __construct(FinanceAccountTypeService $financeAccountTypeService)
@@ -22,10 +23,10 @@ class FinancialStatementController extends Controller
         $this->financeAccountTypeService = $financeAccountTypeService;
     }
 
-    public function getBalanceSheetReport(Request $request)
+    public function accountSummary(Request $request)
     {
         try {
-            $records = $this->financeAccountTypeService->getBalanceSheetReport($request);
+            $records = $this->financeAccountTypeService->accountSummary($request);
 
             if ($request->export) {
                 return $records;
@@ -38,26 +39,10 @@ class FinancialStatementController extends Controller
         }
     }
 
-    public function getBalanceSheetMajorRunAtDate(Request $request)
+    public function bankReconciliationSummary(Request $request)
     {
         try {
-            $records = $this->financeAccountTypeService->getBalanceSheetMajorRunAtDate($request);
-
-            if ($request->export) {
-                return $records;
-            }
-            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
-        } catch (BadRequestException $e) {
-            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
-        } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
-        }
-    }
-    
-    public function profitAndLossGroupbyCategory(Request $request)
-    {
-        try {
-            $records = $this->financeAccountTypeService->profitAndLossGroupbyCategory($request);
+            $records = $this->financeAccountTypeService->bankReconciliationSummary($request);
 
             if ($request->export) {
                 return $records;
@@ -70,11 +55,10 @@ class FinancialStatementController extends Controller
         }
     }
 
-
-    public function getCashBalancesReport(Request $request)
+    public function trialBalance(Request $request)
     {
         try {
-            $records = $this->financeAccountTypeService->getCashBalancesReport($request);
+            $records = $this->financeAccountTypeService->trialBalanceReport($request);
 
             if ($request->export) {
                 return $records;
@@ -86,6 +70,4 @@ class FinancialStatementController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
-
-
 }

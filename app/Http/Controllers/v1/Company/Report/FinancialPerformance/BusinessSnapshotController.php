@@ -177,6 +177,8 @@ class BusinessSnapshotController extends Controller
                 'balanceSheetSummary' => [],
             ];
 
+            $dataRange = $this->financeAccountTypeService->dateRangeCalculatorOne($request);
+            
 
             $getProfitAndLossReport = $this->financeAccountTypeService->getProfitAndLossReport($request);
             if (isset($getProfitAndLossReport['netProfitCurrent']) && isset($getProfitAndLossReport['netProfitPrevious'])) {

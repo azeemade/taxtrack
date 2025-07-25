@@ -1,8 +1,17 @@
 <?php
 
+use App\Http\Controllers\v1\Company\Accounting\ChartOfAccount\ChartOfAccountController;
+use App\Http\Controllers\v1\Company\Accounting\JournalOfEntry\JournalOfEntryController;
+use App\Http\Controllers\v1\Company\Banking\PaymentMethods\BankAccountControllerRework;
+use App\Http\Controllers\v1\Company\Banking\Transactions\TransactionsController;
+use App\Http\Controllers\v1\Company\Report\BudgetVariance\BudgetVarianceController;
 use App\Http\Controllers\v1\Company\Report\FinancialPerformance\BusinessPerformanceController;
 use App\Http\Controllers\v1\Company\Report\FinancialPerformance\BusinessSnapshotController;
+use App\Http\Controllers\v1\Company\Report\CashSummary\CashSummaryController;
 use App\Http\Controllers\v1\Company\Report\FinancialStatement\FinancialStatementController;
+use App\Http\Controllers\v1\Company\Report\Reconciliation\ReconciliationController;
+use App\Http\Controllers\v1\Company\Report\TaxAndBalances\TaxBalancesController;
+use App\Http\Controllers\v1\Company\Report\Transaction\AccountTransactionController;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -246,6 +255,7 @@ Route::group([
                             Route::post('/connection/complete', 'BankAccountController@completeConnection');
                         });
                     });
+
                     //transactions
                     Route::group([
                         "namespace" => "Transactions",
@@ -255,30 +265,61 @@ Route::group([
                     });
                 });
 
-                Route::group(['prefix' => 'accounting', "namespace" => "Accounting"], function () {
-                    Route::group(['prefix' => 'chart-of-accounts', "namespace" => "ChartOfAccount"], function () {
-                        Route::post('/', 'ChartOfAccountController@index');
-                        Route::post('/store', 'ChartOfAccountController@createAccount');
-                        Route::get('/{id}', 'ChartOfAccountController@show');
-                        Route::put('/update/{id}', 'ChartOfAccountController@updateAccount');
-                        Route::delete('/delete/{id}', 'ChartOfAccountController@delete');
-                        Route::put('/toggle/{id}', 'ChartOfAccountController@toggleStatus');
-                        Route::get('/sublist/all-accounts/notpaginated', 'ChartOfAccountController@allChartOfAccountNotPaginated');
-                        Route::get('/sublist/subcategories/notpaginated', 'ChartOfAccountController@allSubCategoriesNotPaginated');
-                        Route::get('/sublist/account/{accountType}', 'ChartOfAccountController@getAccountsByType');
-                        Route::get('/sublist/account_by_subcategory_id/{id}', 'ChartOfAccountController@accountBySubCategoryID');
-                        Route::get('/sublist/account_by_subcategory/{accountSubCategory}', 'ChartOfAccountController@accountSubCategoryName');
-                        Route::get('/download/template', 'ChartOfAccountController@getDownload');
-                        Route::post('/import', 'ChartOfAccountController@importAccount');
+
+                Route::group(['prefix' => 'banking-rw', "namespace" => "Banking"], function () {
+                    Route::prefix('bank-accounts')->group(function () {
+                        Route::post('/', [BankAccountControllerRework::class, 'index']);
+                        Route::get('/stats', [BankAccountControllerRework::class, 'stats']);
+                        Route::post('/card-view', [BankAccountControllerRework::class, 'indexCardView']);
+                        Route::post('/store', [BankAccountControllerRework::class, 'store']);
+                        Route::get('/{id}', [BankAccountControllerRework::class, 'show']);
+                        Route::put('/update/{id}', [BankAccountControllerRework::class, 'update']);
+                        Route::delete('/delete/{id}', [BankAccountControllerRework::class, 'delete']);
+                        Route::put('/toggle/{id}', [BankAccountControllerRework::class, 'toggleStatus']);
                     });
 
+                    Route::prefix('transactions')->group(function () {
+                        // Route::get('/stats', [TransactionsController::class, 'dashboardStats']);
+                        // Route::get('/groups_not_paginated', [TransactionsController::class, 'allFinanceTransactionGroupsNotPaginated']);
+                        Route::post('/all_groups', [TransactionsController::class, 'allFinanceTransactionGroups']);
+                        // Route::post('/all', [TransactionsController::class, 'allFinanceTransactions']);
+                        Route::post('/overview', [TransactionsController::class, 'transactionOverview']);
+                        Route::post('/list', [TransactionsController::class, 'transactionList']);
+                        Route::post('/create', [TransactionsController::class, 'createFinanceTransaction']);
+                        Route::post('/update/{id}', [TransactionsController::class, 'updateFinanceTransaction']);
+                        Route::get('/show/{id}', [TransactionsController::class, 'viewFinanceTransactionGroup']);
+                        // Route::post('/create_payment', [TransactionsController::class, 'createPaymentFinanceTransaction']);
+                        // Route::post('/create_receipt', [TransactionsController::class, 'createReceiptFinanceTransaction']);
+                        // Route::put('/update/{id}', [TransactionsController::class, 'updateFinanceTransactionGroup']);
+                        // Route::delete('/delete/{id}', [TransactionsController::class, 'deleteFinanceTransactionGroup']);
+                        // Route::delete('/single/delete/{id}', [TransactionsController::class, 'deleteSingleFinanceTransaction']);
+                    });
+                });
 
-                    Route::group(['prefix' => 'journal-entry', "namespace" => "JournalOfEntry"], function () {
-                        Route::post('/', 'JournalOfEntryController@index');
-                        Route::post('/store', 'JournalOfEntryController@createJournalEntry');
-                        Route::get('/{id}', 'JournalOfEntryController@show');
-                        Route::put('/update/{id}', 'JournalOfEntryController@updateJournalEntry');
-                        Route::delete('/delete/{id}', 'JournalOfEntryController@delete');
+
+                Route::group(['prefix' => 'accounting', "namespace" => "Accounting"], function () {
+                    Route::prefix('chart-of-accounts')->group(function () {
+                        Route::post('/', [ChartOfAccountController::class, 'index']);
+                        Route::post('/store', [ChartOfAccountController::class, 'createAccount']);
+                        Route::get('/{id}', [ChartOfAccountController::class, 'show']);
+                        Route::put('/update/{id}', [ChartOfAccountController::class, 'updateAccount']);
+                        Route::delete('/delete/{id}', [ChartOfAccountController::class, 'delete']);
+                        Route::put('/toggle/{id}', [ChartOfAccountController::class, 'toggleStatus']);
+                        Route::get('/sublist/all-accounts/notpaginated', [ChartOfAccountController::class, 'allChartOfAccountNotPaginated']);
+                        Route::get('/sublist/subcategories/notpaginated', [ChartOfAccountController::class, 'allSubCategoriesNotPaginated']);
+                        Route::get('/sublist/account/{accountType}', [ChartOfAccountController::class, 'getAccountsByType']);
+                        Route::get('/sublist/account_by_subcategory_id/{id}', [ChartOfAccountController::class, 'accountBySubCategoryID']);
+                        Route::get('/sublist/account_by_subcategory/{accountSubCategory}', [ChartOfAccountController::class, 'accountSubCategoryName']);
+                        Route::get('/download/template', [ChartOfAccountController::class, 'getDownload']);
+                        Route::post('/import', [ChartOfAccountController::class, 'importAccount']);
+                    });
+
+                    Route::prefix('journal-entry')->group(function () {
+                        Route::post('/', [JournalOfEntryController::class, 'index']);
+                        Route::post('/store', [JournalOfEntryController::class, 'createJournalEntry']);
+                        Route::get('/{id}', [JournalOfEntryController::class, 'show']);
+                        Route::put('/update/{id}', [JournalOfEntryController::class, 'updateJournalEntry']);
+                        Route::delete('/delete/{id}', [JournalOfEntryController::class, 'delete']);
                     });
                 });
 
@@ -296,10 +337,11 @@ Route::group([
                         });
                     Route::put('budgets/{id}/toggle-status', 'BudgetController@toggleStatus');
                     Route::get('budgets/compute/periods', 'BudgetController@computePeriods');
+                    Route::get('budgets/create/template', 'BudgetController@getBudgetTemplate');
                 });
 
                 Route::group(['prefix' => 'report', "namespace" => "Report"], function () {
-                    Route::group(['prefix' => 'financial-performance', "namespace" => "FinancialPerformance"], function () {
+                    Route::group(['prefix' => 'financial-performance'], function () {
                         Route::group(['prefix' => 'business-snapshot'], function () {
                             Route::post('/profit-or-loss', [BusinessSnapshotController::class, 'getProfitAndLossReport']);
                             Route::post('/income', [BusinessSnapshotController::class, 'getIncomeReport']);
@@ -321,13 +363,41 @@ Route::group([
                             Route::post('/working-capital-to-asset', [BusinessPerformanceController::class, 'getWorkingCapitalToTotalAssets']);
                             Route::post('/business-performance-summary', [BusinessPerformanceController::class, 'getBusinessSnapshotSummary']);
                         });
+
+                        Route::group(['prefix' => 'cash-summary', "namespace" => "CashSummary"], function () {
+                            Route::post('/', [CashSummaryController::class, 'index']);
+                        });
+
+                        Route::group(['prefix' => 'budget-variance', "namespace" => "BudgetVariance"], function () {
+                            Route::get('/', [BudgetVarianceController::class, 'index']);
+                        });
                     });
 
-                    Route::group(['prefix' => 'financial-statement', "namespace" => "FinancialStatement"], function () {
+                    Route::group(['prefix' => 'financial-statement'], function () {
                         Route::post('/balance-sheet', [FinancialStatementController::class, 'getBalanceSheetReport']);
                         Route::post('/balance-sheet-run-at-date', [FinancialStatementController::class, 'getBalanceSheetMajorRunAtDate']);
-                        Route::post('/cash-balance', [FinancialStatementController::class, 'getCashBalancesReport']);
+                        Route::post('/profit-or-loss', [FinancialStatementController::class, 'profitAndLossGroupbyCategory']);
                     });
+
+                    Route::group(['prefix' => 'reconciliation'], function () {
+                        Route::post('/account-summary', [ReconciliationController::class, 'accountSummary']);
+                        Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'bankReconciliationSummary']);
+                        Route::post('/bank-summary', [CashSummaryController::class, 'index']);
+                        Route::post('/trial-balance', [ReconciliationController::class, 'trialBalance']);
+                    });
+
+                    Route::group(['prefix' => 'tax-and-balances'], function () {
+                        Route::post('/sales-tax-report', [TaxBalancesController::class, 'salesTaxReport']);
+                        Route::post('/journal-report', [TaxBalancesController::class, 'journalReport']);
+                        Route::post('/foreign-currency-gain-and-losses', [TaxBalancesController::class, 'foreignCurrencyGainAndLosses']);
+                        Route::post('/general-ledger-details', [TaxBalancesController::class, 'generalLedgerDetails']);
+                        Route::post('/general-ledger-summary', [TaxBalancesController::class, 'generalLedgerSummary']);
+                    });
+
+                    Route::group(['prefix' => 'transaction'], function () {
+                        Route::post('/account-transactions', [AccountTransactionController::class, 'index']);
+                    });
+
                     Route::group(['prefix' => 'payables-receivables'], function () {
                         Route::get('/aged-payable-details', 'PayablesAndReceivablesController@agedPayableDetails');
                         Route::get('/aged-payable-summary', 'PayablesAndReceivablesController@agedPayableSummary');
