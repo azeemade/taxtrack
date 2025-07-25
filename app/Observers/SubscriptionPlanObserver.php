@@ -56,6 +56,11 @@ class SubscriptionPlanObserver
      */
     public function updated(SubscriptionPlan $model): void
     {
+        // Prevent running on creation
+        if ($model->wasRecentlyCreated) {
+            return;
+        }
+
         $stripe = $this->stripe;
 
         if (!$model->is_free) {
@@ -66,23 +71,50 @@ class SubscriptionPlanObserver
                     'description' => $model->short_description,
                     'active' => $model->is_active,
                     'metadata' => [
-                        'default_seat_count' => $model->default_seat || SubscriptionConstant::DEFAULT_SEAT_COUNT,
+                        'default_seat_count' => $model->default_seat ?? SubscriptionConstant::DEFAULT_SEAT_COUNT,
                     ],
                 ]
             );
 
-
             if ($model->wasChanged('monthly_fee')) {
-                $this->updatePrice($model->provider_price_ids['monthly'] ?? 0.00, $model->monthly_fee, $stripe);
+                $this->updatePrice(
+                    $model->provider_product_id,
+                    $model->provider_price_ids['monthly'],
+                    $model->monthly_fee,
+                    'month',
+                    'base',
+                    $stripe
+                );
             }
 
             if ($model->wasChanged('yearly_fee')) {
-                $this->updatePrice($model->provider_price_ids['annually'] ?? 0.00, $model->yearly_fee, $stripe);
+                $this->updatePrice(
+                    $model->provider_product_id,
+                    $model->provider_price_ids['annually'],
+                    $model->yearly_fee,
+                    'year',
+                    'base',
+                    $stripe
+                );
             }
 
             if ($model->wasChanged('seat_amount')) {
-                $this->updatePrice($model->provider_seat_amount_ids->monthly, floatval($model->seat_amount ?? 0.00), $stripe);
-                $this->updatePrice($model->provider_seat_amount_ids->annually, floatval($model->seat_amount ?? 0.00), $stripe);
+                $this->updatePrice(
+                    $model->provider_product_id,
+                    $model->provider_seat_amount_ids['monthly'],
+                    floatval($model->seat_amount ?? 0.00),
+                    'month',
+                    'per_user',
+                    $stripe
+                );
+                $this->updatePrice(
+                    $model->provider_product_id,
+                    $model->provider_seat_amount_ids['annually'],
+                    floatval($model->seat_amount ?? 0.00),
+                    'year',
+                    'per_user',
+                    $stripe
+                );
             }
         }
     }
@@ -134,14 +166,21 @@ class SubscriptionPlanObserver
     }
 
     protected function updatePrice(
+        string $product_id,
         string $price_id,
         float $amount,
+        string $interval,
+        string $type,
         \App\Services\ThirdPartyApi\Stripe\Stripe $stripe,
     ) {
-        return $stripe->updatePrice($price_id, [
-            'currency' => SubscriptionConstant::CURRENCY_USD,
-            'unit_amount' => $amount * 100,
-        ]);
+        $this->deactivatePrice($price_id, $stripe);
+        return $this->createPrice(
+            $product_id,
+            $amount,
+            $interval,
+            $type,
+            $stripe
+        );
     }
 
     protected function deactivatePrice(

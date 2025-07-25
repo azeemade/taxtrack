@@ -326,6 +326,7 @@ class CompanySubscriptionService
             'company_id' => $company->id,
             'user_id' => $currentUser->id,
             'name' => $company->name,
+            'email' => $currentUser->email,
         ]);
 
         $plan = $this->getPlan([
@@ -344,6 +345,8 @@ class CompanySubscriptionService
         );
 
         $subscription = SubscriptionHistory::create([
+            'receipt_no' => "RCP-" . date('YmdHis'),
+            'customer_refer_no' => "RCP-" . date('YmdHis'),
             'billed_per' => $request['duration'] === SubscriptionPlanDurationEnums::MONTHLY->value ? 'month' : 'year',
             'additional_charge' => $request['additional_charge'] ?? 0.00,
             'tax' => $request['tax'] ?? 0.00,
@@ -409,25 +412,26 @@ class CompanySubscriptionService
         ]);
 
 
-        // if ($amountPaid['credit_note_balance'] > 0) {
-        //     $this->stripe->payInvoice($subscription->latest_invoice->id, [
-        //         'paid_out_of_band' => true,
-        //     ]);
-        // }
+        if ($amountPaid['credit_note_balance'] > 0) {
+            $this->stripe->payInvoice($providerSubscription->latest_invoice->id, [
+                'paid_out_of_band' => true,
+            ]);
+        }
 
-        // if ($amountPaid['total'] > 0) {
-        //     $this->stripe->confirmPaymentIntent($subscription->latest_invoice->payment_intent->id, [
-        //         'payment_method' => $request['provider_payment_method_id'],
-        //     ]);
-        // }
+        if ($amountPaid['total'] > 0) {
+            $this->stripe->confirmPaymentIntent($providerSubscription->latest_invoice->payment_intent->id, [
+                'payment_method' => $request['provider_payment_method_id'],
+            ]);
+        }
     }
 
     protected function createNewSubscription($customer_id, $subscriptionItems)
     {
         return $this->stripe->createSubscription([
-            'customer' => $subscriber->provider_customer_id,
+            'customer' => $customer_id,
             'items' => $subscriptionItems,
             'payment_behavior' => 'default_incomplete',
+            'expand' => ['latest_invoice.payment_intent'],
             'payment_settings' => [
                 'payment_method_types' => ['card'],
                 'save_default_payment_method' => 'on_subscription',
@@ -513,7 +517,7 @@ class CompanySubscriptionService
 
     protected function handleSubscriber($data)
     {
-        return Subscriber::firstOrCreate(
+        $subscriber = Subscriber::firstOrCreate(
             [
                 'company_id' => $data['company_id'],
             ],
@@ -525,6 +529,18 @@ class CompanySubscriptionService
                 'current_subscription_plan_id' => $data['subscription_plan_id'] ?? null,
             ]
         );
+
+        if (!$subscriber->provider_customer_id) {
+            $customer = $this->stripe->createCustomer([
+                'name' => $data['name'],
+                'email' => $data['email'] ?? null,
+                'metadata' => [
+                    'company_id' => $data['company_id'],
+                ],
+            ]);
+            $subscriber->update(['provider_customer_id' => $customer->id]);
+        }
+        return $subscriber;
     }
 
     protected function findSubscriber($companyId)
@@ -542,15 +558,15 @@ class CompanySubscriptionService
         if ($is_free || $duration === SubscriptionPlanDurationEnums::MONTHLY->value) {
             $dependencies['plan_amount'] = $plan->monthly_fee;
             $dependencies['end_date'] = Carbon::now()->addMonth();
-            $dependencies['seat_amount'] = $plan->seat_amount->monthly ?? 0;
-            $dependencies['provider_price_id'] = $plan->provider_price_ids->monthly ?? null;
-            $dependencies['provider_seat_price_id'] = $plan->provider_seat_amount_ids->monthly ?? null;
+            $dependencies['seat_amount'] = $plan->seat_amount['monthly'] ?? 0;
+            $dependencies['provider_price_id'] = $plan->provider_price_ids['monthly'] ?? null;
+            $dependencies['provider_seat_price_id'] = $plan->provider_seat_amount_ids['monthly'] ?? null;
         } else {
             $dependencies['plan_amount'] = $plan->yearly_fee;
             $dependencies['end_date'] = Carbon::now()->addYear();
-            $dependencies['seat_amount'] = $plan->seat_amount->monthly ?? 0;
-            $dependencies['provider_price_id'] = $plan->provider_price_ids->yearly;
-            $dependencies['provider_seat_amount_id'] = $plan->provider_seat_amount_ids->yearly;
+            $dependencies['seat_amount'] = $plan->seat_amount['annually'] ?? 0;
+            $dependencies['provider_price_id'] = $plan->provider_price_ids['annually'];
+            $dependencies['provider_seat_amount_id'] = $plan->provider_seat_amount_ids['annually'];
         }
         return $dependencies;
     }
@@ -588,7 +604,8 @@ class CompanySubscriptionService
         return $this->stripe->updateSubscription(
             $latestSubscription['id'],
             [
-                'items' => $subscriptionItem
+                'items' => $subscriptionItem,
+                'expand' => ['latest_invoice.payment_intent'],
             ]
         );
     }
