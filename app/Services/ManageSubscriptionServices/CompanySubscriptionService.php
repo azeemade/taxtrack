@@ -27,7 +27,7 @@ class CompanySubscriptionService
         $this->stripe = new Stripe();
     }
 
-    public function subscriptionHistory($request, ?int $subscriber_id)
+    public function subscriptionHistory($request, ?int $subscriber_id = null)
     {
         $records = SubscriptionHistory::query()
             ->select('id', 'subscribed_at', 'subscription_plan_id', 'billed_per', 'status', 'amount_paid', 'plan_amount', 'subscribed_at', 'end_date', 'receipt_no')
@@ -104,7 +104,7 @@ class CompanySubscriptionService
         return $record;
     }
 
-    public function refundRequests($request, ?int $subscriber_id)
+    public function refundRequests($request, ?int $subscriber_id = null)
     {
         $records = SubscriptionRefund::query()
             ->select('id', 'request_date', 'refund_type', 'amount_refunded', 'reason', 'status', 'subscription_plan_id')
@@ -194,7 +194,7 @@ class CompanySubscriptionService
         return $refund;
     }
 
-    public function cancellationRequests($request, ?int $subscriber_id)
+    public function cancellationRequests($request, ?int $subscriber_id = null)
     {
         $records = SubscriptionCancellation::query()
             ->select('id', 'request_date', 'effective_from', 'reason', 'status', 'subscription_plan_id')
