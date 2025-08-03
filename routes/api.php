@@ -120,6 +120,13 @@ Route::group([
                         Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
                         Route::delete('/delete{id}', 'CustomerController@delete');
                         Route::get('{id}/generate-statement', 'CustomerController@generateCustomerStatement');
+                        Route::group([
+                            "prefix" => "analytics"
+                        ], function () {
+                            Route::get('/payment-duration', 'CustomerAnalyticsController@paymentDuration');
+                            Route::get('/payment-consistency', 'CustomerAnalyticsController@paymentConsistency');
+                            Route::get('/outstanding-balance', 'CustomerAnalyticsController@outstandingBalance');
+                        });
                     });
 
                     //credit notes
