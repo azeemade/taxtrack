@@ -98,7 +98,7 @@ class CustomerAnalyticsController extends Controller
                     ->get()
                     ->each(function (Invoice $invoice) use (&$records, $day, $days, $key) {
                         $firstInvoicePayment = $invoice->paymentRecords->sortBy('paid_on')->first();
-                        $diff = Carbon::parse($invoice->due_date)->diffInDays(Carbon::parse($firstInvoicePayment->paid_on) ?? now());
+                        $diff = Carbon::parse($invoice->due_date)->diffInDays(Carbon::parse($firstInvoicePayment->paid_on ?? now()));
                         $index = array_search($day, $days);
                         $isFirst = $index === 0;
                         $isLast = $index === count($days) - 1;
