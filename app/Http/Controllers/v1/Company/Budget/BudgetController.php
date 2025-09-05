@@ -95,12 +95,10 @@ class BudgetController extends Controller
             $budgetData = $this->budgetService->getBudget($budgetId);
             return JsonResponser::send(false, 'Budget fetched successfully', $budgetData, 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return JsonResponser::send(true, 'Budget not found', null, $e->getCode());
+            return JsonResponser::send(true, 'Budget not found', null, 494);
         } catch (BadRequestException $e) {
-            DB::rollBack();
-            return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());
+            return JsonResponser::send(true, $e->getMessage(), null, 422);
         } catch (\Throwable $th) {
-            DB::rollBack();
             return JsonResponser::send(true, $th, null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
