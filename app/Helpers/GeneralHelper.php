@@ -213,4 +213,102 @@ class GeneralHelper
 
         return $carbonDateFilter;
     }
+
+
+    public static function parseDateFilter($dateInput, $periodType)
+    {
+        $carbonDate = Carbon::parse($dateInput);
+
+        // Possible period_type values: specific_date, this_month, last_month, this_quarter, last_quarter, 
+        //     this_year_to_current_date, this_quarter_to_current_date, this_month_to_current_date, 
+        //     quarter_end, year_end, financial_year_end, default
+
+        switch ($periodType) {
+            case 'specific_date':
+                return [
+                    'start_date' => $carbonDate->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'custom_range':
+                if (!isset($dateInput['start_date']) || !isset($dateInput['end_date'])) {
+                    throw new \Exception('Start date and end date are required for custom_range period type.');
+                }
+                return [
+                    'start_date' => Carbon::parse($dateInput['start_date'])->toDateString(),
+                    'end_date' => Carbon::parse($dateInput['end_date'])->toDateString()
+                ];
+
+            case 'this_month':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->copy()->endOfMonth()->toDateString()
+                ];
+
+            case 'last_month':
+                return [
+                    'start_date' => $carbonDate->copy()->subMonth()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->copy()->subMonth()->endOfMonth()->toDateString()
+                ];
+
+            case 'this_quarter':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->copy()->endOfQuarter()->toDateString()
+                ];
+
+            case 'last_quarter':
+                return [
+                    'start_date' => $carbonDate->copy()->subQuarter()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->copy()->subQuarter()->endOfQuarter()->toDateString()
+                ];
+
+            case 'this_year_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'this_quarter_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'this_month_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'quarter_end':
+                return [
+                    'start_date' => $carbonDate->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->endOfQuarter()->toDateString()
+                ];
+
+            case 'year_end':
+                return [
+                    'start_date' => $carbonDate->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->endOfYear()->toDateString()
+                ];
+
+            case 'financial_year_end':
+                // Assuming financial year ends March 31 (adjust as needed)
+                $financialYearEnd = $carbonDate->month < 4
+                    ? Carbon::create($carbonDate->year - 1, 3, 31)
+                    : Carbon::create($carbonDate->year, 3, 31);
+
+                return [
+                    'start_date' => $financialYearEnd->copy()->subYear()->addDay()->toDateString(),
+                    'end_date' => $financialYearEnd->toDateString()
+                ];
+
+            default:
+                return [
+                    'start_date' => $carbonDate->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->endOfYear()->toDateString()
+                ];
+        }
+    }
 }

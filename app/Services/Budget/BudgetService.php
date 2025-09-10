@@ -958,9 +958,18 @@ class BudgetService
 
         // Valid months for validation, mapping to zero-based indices
         $validMonths = [
-            'january' => 0, 'february' => 1, 'march' => 2, 'april' => 3,
-            'may' => 4, 'june' => 5, 'july' => 6, 'august' => 7,
-            'september' => 8, 'october' => 9, 'november' => 10, 'december' => 11
+            'january' => 0,
+            'february' => 1,
+            'march' => 2,
+            'april' => 3,
+            'may' => 4,
+            'june' => 5,
+            'july' => 6,
+            'august' => 7,
+            'september' => 8,
+            'october' => 9,
+            'november' => 10,
+            'december' => 11
         ];
 
         // Default monthly budget structure
@@ -1313,5 +1322,135 @@ class BudgetService
         }
 
         return array_values($result); // Ensure sequential array
+    }
+
+
+    public function accountSummary($budgetId, $accountId, $request)
+    {
+        $primaryPeriod = GeneralHelper::parseDateFilter($request->date_input, $request->period_type);
+
+        $startDate = $primaryPeriod['start_date'];
+        $endDate = $primaryPeriod['end_date'];
+        
+        // Validate date range
+        try {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
+        } catch (\Exception $e) {
+            throw new BadRequestException('Invalid date format.', 400);
+        }
+        if ($start->gt($end)) {
+            throw new BadRequestException('Start date must be before end date.', 400);
+        }
+
+        // Fetch budget with items and periods, scoped to company
+        $budget = Budget::with(['budgetItems.account', 'budgetItems.periods'])
+            ->where('id', $budgetId)
+            ->where('company_id', auth()->user()->current_company_id)
+            ->firstOrFail();
+
+        // Fetch the specific account, scoped to company
+        $account = FinanceChartOfAccount::where('id', $accountId)
+            ->where('company_id', auth()->user()->current_company_id)
+            ->firstOrFail();
+
+        // Find the budget item for this account
+        $budgetItem = $budget->budgetItems->firstWhere('account_id', $account->id);
+
+        // Initialize totals
+        $totalActual = 0.0;
+        $totalBudgeted = 0.0;
+
+        // Generate periods dynamically based on the date range
+        $periods = [];
+        $current = $start->copy()->startOfMonth();
+        while ($current->lte($end)) {
+            $monthStart = $current->copy();
+            $monthEnd = $current->copy()->endOfMonth();
+
+            // Adjust for partial months at start/end of range
+            if ($monthStart->lt($start)) {
+                $monthStart = $start;
+            }
+            if ($monthEnd->gt($end)) {
+                $monthEnd = $end;
+            }
+
+            // Get actual amount for this specific month
+            try {
+                $balance = $this->financeAccountEntryService->getAccountBalanceWithFlow(
+                    $account->id,
+                    $monthStart->toDateString(),
+                    $monthEnd->toDateString()
+                );
+                $actual = $balance['total_inflow'] ?? 0.00;
+            } catch (\Exception $e) {
+                \Log::error("Failed to get account balance for account {$account->id} in month {$current->format('Y-m')}: {$e->getMessage()}");
+                $actual = 0.00;
+            }
+            $totalActual += $actual;
+
+            // Get budgeted amount for this month
+            $monthName = strtolower($current->format('F'));
+            $year = $current->year;
+            $budgetPeriod = $budgetItem ? $budgetItem->periods->first(function ($p) use ($monthName, $year) {
+                return strtolower($p->month) === $monthName && (int) $p->year === $year;
+            }) : null;
+            $budgeted = $budgetPeriod ? (float) $budgetPeriod->amount : 0.00;
+            $totalBudgeted += $budgeted;
+
+            // Calculate variance and percentage
+            $variance = $actual - $budgeted;
+            $variancePercentage = $budgeted != 0 ? ($variance / $budgeted) * 100 : 0.00;
+
+            $periods[] = [
+                'month' => $monthName,
+                'year' => (string) $year,
+                'actual' => number_format($actual, 2, '.', ''),
+                'budgeted' => number_format($budgeted, 2, '.', ''),
+                'variance' => number_format($variance, 2, '.', ''),
+                'variance_percentage' => number_format($variancePercentage, 2, '.', ''),
+            ];
+
+            $current->addMonth();
+        }
+
+        // Calculate total variance and percentage
+        $totalVariance = $totalActual - $totalBudgeted;
+        $totalVariancePercentage = $totalBudgeted != 0 ? ($totalVariance / $totalBudgeted) * 100 : 0.00;
+
+        $total = [
+            'actual' => number_format($totalActual, 2, '.', ''),
+            'budgeted' => number_format($totalBudgeted, 2, '.', ''),
+            'variance' => number_format($totalVariance, 2, '.', ''),
+            'variance_percentage' => number_format($totalVariancePercentage, 2, '.', ''),
+        ];
+
+        // Initialize response data
+        $budgetData = [
+            'budget' => [
+                'id' => $budget->id,
+                'name' => $budget->name,
+                'status' => $budget->status,
+                'start_date' => $budget->start_date,
+                'cycle' => $budget->cycle,
+                'duration' => $budget->duration,
+                'description' => $budget->description,
+                'budgetID' => $budget->budgetID,
+                'company_id' => $budget->company_id,
+                'created_by' => $budget->created_by,
+                'created_at' => $budget->created_at,
+                'updated_at' => $budget->updated_at,
+            ],
+            'account' => [
+                'account_id' => $account->id,
+                'account_name' => $account->name,
+                'account_number' => $account->account_number,
+                'periods' => $periods,
+                'total' => $total,
+            ],
+        ];
+
+        return $budgetData;
     }
 }

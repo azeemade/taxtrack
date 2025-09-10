@@ -10,7 +10,7 @@ class FinanceAccountEntry extends Model
 {
     use HasFactory, SoftDeletes;
     protected $guarded = ['id'];
-    
+
     public function journalEntry()
     {
         return $this->belongsTo(FinanceJournalEntry::class, 'journal_entry_id');
@@ -24,5 +24,17 @@ class FinanceAccountEntry extends Model
     public function editedBy()
     {
         return $this->belongsTo(User::class, 'edited_by');
+    }
+
+    public function reconciliationMatches()
+    {
+        return $this->hasMany(ReconciliationMatch::class, 'finance_account_entry_id');
+    }
+
+    public function matchedBankStatements()
+    {
+        return $this->belongsToMany(FinanceBankStatement::class, 'reconciliation_matches', 'finance_account_entry_id', 'finance_bank_statement_id')
+            ->withPivot('matched_amount')
+            ->withTimestamps();
     }
 }

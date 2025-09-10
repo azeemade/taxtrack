@@ -3074,6 +3074,48 @@ class FinanceAccountTypeService
                     'end_date' => $carbonDate->toDateString()
                 ];
 
+            case 'this_month':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->copy()->endOfMonth()->toDateString()
+                ];
+
+            case 'last_month':
+                return [
+                    'start_date' => $carbonDate->copy()->subMonth()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->copy()->subMonth()->endOfMonth()->toDateString()
+                ];
+
+            case 'this_quarter':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->copy()->endOfQuarter()->toDateString()
+                ];
+
+            case 'last_quarter':
+                return [
+                    'start_date' => $carbonDate->copy()->subQuarter()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->copy()->subQuarter()->endOfQuarter()->toDateString()
+                ];
+
+            case 'this_year_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'this_quarter_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'this_month_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
             case 'quarter_end':
                 return [
                     'start_date' => $carbonDate->startOfQuarter()->toDateString(),
@@ -3104,6 +3146,7 @@ class FinanceAccountTypeService
                 ];
         }
     }
+
 
     /**
      * Parse the comparison date based on user selection

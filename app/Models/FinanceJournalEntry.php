@@ -30,4 +30,14 @@ class FinanceJournalEntry extends Model
     {
         return $this->belongsTo(User::class, 'edited_by');
     }
+
+    public function parent()
+    {
+        return $this->belongsTo(FinanceJournalEntry::class, 'parent_journal_entry_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(FinanceJournalEntry::class, 'parent_journal_entry_id');
+    }
 }
