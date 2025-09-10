@@ -14,6 +14,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Imports\Accounting\ChartOfAccount\ChartOfAccountImport;
+use App\Models\Bank;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ChartOfAccountService
@@ -236,21 +237,28 @@ class ChartOfAccountService
                 $accountNumber = $newId;
             }
 
+            $bank = Bank::where('id', $request->bank_id)->first();
+            if (!$bank) {
+                throw new BadRequestException("Bank does not exist.", Response::HTTP_CONFLICT);
+            }
+
+
+
             // Create Account
             $coa = FinanceChartOfAccount::create([
                 'account_type_id' => $getSubCategoryInfo->account_type_id,
                 'account_category_id' => $getSubCategoryInfo->account_category_id,
                 'account_sub_category_id' => $getSubCategoryInfo->id,
                 'company_id' => auth()->user()->current_company_id,
-                'name' => $request->name,
-                'slug' => Str::slug($request->name),
+                'name' => $bank->name,
+                'slug' => Str::slug($bank->name),
                 'account_number' => $accountNumber,
-                'description' => $request->description ?? $request->name,
+                'description' => $request->description ?? $bank->name,
                 'holder_name' => $request->holder_name,
                 'bank_id' => $request->bank_id,
                 'account_type' => $request->account_type,
                 'currency' => $request->currency, //eg Euro
-                'reference_code' => $request->name,
+                'reference_code' => $bank->name,
                 'opening_balance' => $request->opening_balance,
                 'balance_date' => $request->balance_date,
                 'status' => $request->status ?? "published",
@@ -273,7 +281,7 @@ class ChartOfAccountService
     public function show($id)
     {
         try {
-            $record = FinanceChartOfAccount::where('company_id',  auth()->user()->current_company_id)
+            $record = FinanceChartOfAccount::where('company_id', auth()->user()->current_company_id)
                 ->with("accountType:id,name", "subCategory:id,name")
                 ->where('id', $id)
                 ->first();
@@ -282,7 +290,17 @@ class ChartOfAccountService
                 throw new BadRequestException("Record not found!", Response::HTTP_NOT_FOUND);
             }
 
-            return $record;
+            $response = $record->toArray();
+
+            if (!is_null($record->bank_id)) {
+                $bank = Bank::where('id', $record->bank_id)->first();
+                if (!$bank) {
+                    throw new BadRequestException("Bank does not exist.", Response::HTTP_CONFLICT);
+                }
+                $response['bank'] = $bank;
+            }
+
+            return $response;
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -307,7 +325,7 @@ class ChartOfAccountService
 
             // Check if name already exists for the given sub-category
             $nameExists = FinanceChartOfAccount::where("account_sub_category_id", $getSubCategoryInfo->id)
-                ->where("name", $request->name)
+                // ->where("name", $request->name)
                 ->where('id', '!=', $id)
                 ->exists();
 
@@ -315,13 +333,18 @@ class ChartOfAccountService
                 throw new BadRequestException("Name already exists for the account type.", Response::HTTP_CONFLICT);
             }
 
+            $bank = Bank::where('id', $request->bank_id)->first();
+            if (!$bank) {
+                throw new BadRequestException("Bank does not exist.", Response::HTTP_CONFLICT);
+            }
+
             $record->update([
                 'account_type_id' =>  $getSubCategoryInfo->account_type_id,
                 'account_category_id' =>  $getSubCategoryInfo->account_category_id,
                 'account_sub_category_id' =>  $getSubCategoryInfo->id,
                 'company_id' => auth()->user()->current_company_id,
-                'name' => $request->name ?? $record->name,
-                'slug' => Str::slug($request->name) ?? Str::slug($record->name),
+                'name' => $bank->name ?? $record->name,
+                'slug' => Str::slug($bank->name) ?? Str::slug($record->name),
                 'description' => $request->description ?? $record->description,
                 'reference_code' => $request->reference_code ?? $record->reference_code,
                 'opening_balance' => $request->opening_balance ?? $record->opening_balance,

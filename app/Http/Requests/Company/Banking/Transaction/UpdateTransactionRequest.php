@@ -39,7 +39,7 @@ class UpdateTransactionRequest extends FormRequest
             'financeTransactions.*.transactionID' => 'required|string|max:255',
             'financeTransactions.*.referenceID' => 'nullable|string|max:255',
             'financeTransactions.*.description' => 'nullable|string|max:255',
-            'financeTransactions.*.type' => 'required|string|in:Debit,Credit',
+            'financeTransactions.*.type' => ['required', 'string', Rule::in(['Income', 'Expense'])], //'Credit', 'Debit'
             'financeTransactions.*.amount' => 'required|numeric|min:0',
             'financeTransactions.*.mode_of_payment' => 'required|string|in:Bank Transfer,Cash,Credit/Debit Card,Cheque',
             'financeTransactions.*.bank_fee' => 'nullable|numeric|min:0',

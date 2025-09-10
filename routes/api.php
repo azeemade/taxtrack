@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\v1\Company\Accounting\ChartOfAccount\ChartOfAccountController;
 use App\Http\Controllers\v1\Company\Accounting\JournalOfEntry\JournalOfEntryController;
+use App\Http\Controllers\v1\Company\Banking\AccountReconciliation\AccountReconciliationController;
 use App\Http\Controllers\v1\Company\Banking\PaymentMethods\BankAccountControllerRework;
 use App\Http\Controllers\v1\Company\Banking\Transactions\TransactionsController;
 use App\Http\Controllers\v1\Company\Report\BudgetVariance\BudgetVarianceController;
@@ -301,6 +302,25 @@ Route::group([
                         // Route::delete('/delete/{id}', [TransactionsController::class, 'deleteFinanceTransactionGroup']);
                         // Route::delete('/single/delete/{id}', [TransactionsController::class, 'deleteSingleFinanceTransaction']);
                     });
+
+                    Route::prefix('reconciliation')->group(function () {
+                        Route::post('/upload-bankstatement', [ReconciliationController::class, 'uploadBankStatement']);
+                        Route::get('/all_statements', [ReconciliationController::class, 'allBankStatements']);
+                        Route::get('/all_account_transactions', [ReconciliationController::class, 'allAccountTransactions']);
+
+                        Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'getBankReconciliationSummary']);
+                        Route::post('/bank-reconciliation-lines', [ReconciliationController::class, 'getBankReconciliationLines']);
+                        Route::post('/reconcile-lines', [ReconciliationController::class, 'reconcileLine']);
+
+
+
+                        // Route::get('/all_reconciliation', [AccountReconciliationController::class, 'allAccountReconciliation']);
+                        // Route::get('/stats', [AccountReconciliationController::class, 'dashboardStats']);
+                        // Route::get('/export-banktemplate', [AccountReconciliationController::class, 'getDownload']);
+                        // Route::post('/reconcile', [AccountReconciliationController::class, 'reconcileBankStatement']);
+                        // Route::get('/show/{id}', [AccountReconciliationController::class, 'singleReconcilaition']);
+                        // Route::get('/download-reconciliation-report/{id}', [AccountReconciliationController::class, 'downloadReconciliationReport']);
+                    });
                 });
 
 
@@ -388,7 +408,7 @@ Route::group([
 
                     Route::group(['prefix' => 'reconciliation'], function () {
                         Route::post('/account-summary', [ReconciliationController::class, 'accountSummary']);
-                        Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'bankReconciliationSummary']);
+                        
                         Route::post('/bank-summary', [CashSummaryController::class, 'index']);
                         Route::post('/trial-balance', [ReconciliationController::class, 'trialBalance']);
                     });

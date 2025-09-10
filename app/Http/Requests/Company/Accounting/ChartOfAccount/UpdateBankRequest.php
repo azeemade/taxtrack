@@ -16,7 +16,7 @@ class UpdateBankRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required|string|max:255',
+            // 'name' => 'required|string|max:255',
             'bank_id' => 'required|exists:banks,id',
             'description' => 'nullable|string|max:500',
             'holder_name' => 'nullable|string|max:500',

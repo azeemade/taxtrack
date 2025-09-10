@@ -71,7 +71,7 @@ class TransactionService
         ]);
 
         $query = FinanceAccountTransactionGroup::query()
-            ->with(['financeAccountTransactions', 'editedBy:id,name'])
+            ->with(['editedBy:id,name'])
             ->where('company_id', auth()->user()->current_company_id)
             ->whereHas('financeAccountTransactions', function ($query) use ($request) {
                 $query->where('transactionID', 'LIKE', '%' . $request->q . '%')
@@ -102,50 +102,48 @@ class TransactionService
             })
             ->orderBy('created_at', 'DESC');
 
+        // Add subquery to fetch distinct bank names
+        $query->addSelect([
+            'finance_account_transaction_groups.*',
+            \DB::raw(
+                "
+            (
+                SELECT GROUP_CONCAT(DISTINCT finance_chart_of_accounts.name SEPARATOR ', ')
+                FROM finance_account_transactions
+                JOIN finance_chart_of_accounts ON finance_account_transactions.account_id = finance_chart_of_accounts.id
+                WHERE finance_account_transactions.trans_group_id = finance_account_transaction_groups.id
+            ) as banks_involved"
+            ),
+        ]);
+
         $records = $request->export ? $query->get() : $query->paginate(10);
 
         // Transform the records
         $records->transform(function ($transactionGroup) {
-            // Calculate totals
-            $inflowAmount = $transactionGroup->financeAccountTransactions
-                ->where('type', 'Income')
-                ->sum('amount');
+            // Since we removed financeAccountTransactions, we can't calculate inflow/outflow here
+            // If these fields are still needed, you'll need to fetch them via a separate query or store them in the database
+            $transactionGroup->inflow_amount = 0; // Placeholder, adjust as needed
+            $transactionGroup->outflow_amount = 0; // Placeholder, adjust as needed
+            $transactionGroup->total_value = 0; // Placeholder, adjust as needed
 
-            $outflowAmount = $transactionGroup->financeAccountTransactions
-                ->where('type', 'Expense')
-                ->sum('amount');
+            // Use the banks_involved from the subquery
+            $transactionGroup->banks = $transactionGroup->banks_involved ?: 'N/A';
 
-            $transactionGroup->inflow_amount = $inflowAmount ?? 0;
-            $transactionGroup->outflow_amount = $outflowAmount ?? 0;
-            $transactionGroup->total_value = $inflowAmount - $outflowAmount;
-
-            // Find main bank account
-            $mainBankTransaction = $transactionGroup->financeAccountTransactions->first(function ($transaction) {
-                return $transaction->mainBank === true || $transaction->mainBank === 'true';
-            });
-
-            $transactionGroup->bank = $mainBankTransaction && $transactionGroup->account
-                ? $mainBankTransaction->account->name
-                : 'N/A';
+            // Find main bank account (optional, if still needed)
+            $transactionGroup->bank = $transactionGroup->banks_involved ? explode(', ', $transactionGroup->banks_involved)[0] : 'N/A';
 
             return $transactionGroup;
         });
 
         if ($request->export) {
             $exportData = $records->map(function ($record) {
-                $banks = $record->financeAccountTransactions
-                    ->pluck('account.name')
-                    ->unique()
-                    ->filter()
-                    ->values();
-
                 return [
                     'Transaction ID' => $record->name,
                     'Date' => $record->created_at->format('Y-m-d'),
                     'Total Value' => $record->total_value,
                     'Inflow Amount' => $record->inflow_amount,
                     'Outflow Amount' => $record->outflow_amount,
-                    'Banks Involved' => $banks->implode(', '),
+                    'Banks Involved' => $record->banks_involved ?: 'N/A',
                     'Payment Type' => $record->payment_type,
                     'Status' => $record->status,
                 ];
@@ -156,6 +154,106 @@ class TransactionService
 
         return $records;
     }
+
+    // public function allFinanceTransactionGroups($request)
+    // {
+    //     // Validate request parameters
+    //     $validated = $request->validate([
+    //         'q' => 'nullable|string|max:255',
+    //         'start_date' => 'nullable|date_format:Y-m-d',
+    //         'end_date' => 'nullable|date_format:Y-m-d|after_or_equal:start_date',
+    //         'type' => 'nullable|string',
+    //         'sort_by' => 'nullable|in:alphabetically,date_ascending,date_descending',
+    //         'status' => 'nullable|string',
+    //         'export' => 'nullable|boolean',
+    //     ]);
+
+    //     $query = FinanceAccountTransactionGroup::query()
+    //         ->with(['financeAccountTransactions', 'editedBy:id,name']) //
+    //         ->where('company_id', auth()->user()->current_company_id)
+    //         ->whereHas('financeAccountTransactions', function ($query) use ($request) {
+    //             $query->where('transactionID', 'LIKE', '%' . $request->q . '%')
+    //                 ->orWhereHas('account', function ($query) use ($request) {
+    //                     $query->where('name', 'LIKE', '%' . $request->q . '%');
+    //                 });
+    //         })
+    //         ->when($request->start_date && $request->end_date, function ($q) use ($request) {
+    //             $q->whereBetween('created_at', [
+    //                 \Carbon\Carbon::parse($request->start_date)->startOfDay(),
+    //                 \Carbon\Carbon::parse($request->end_date)->endOfDay(),
+    //             ]);
+    //         })
+    //         ->when($request->type, function ($query) use ($request) {
+    //             $query->where('payment_type', $request->type);
+    //         })
+    //         ->when($request->sort_by, function ($query) use ($request) {
+    //             if ($request->sort_by === 'alphabetically') {
+    //                 return $query->orderBy('name', 'asc');
+    //             } elseif ($request->sort_by === 'date_ascending') {
+    //                 return $query->orderBy('created_at', 'asc');
+    //             } elseif ($request->sort_by === 'date_descending') {
+    //                 return $query->orderBy('created_at', 'desc');
+    //             }
+    //         })
+    //         ->when($request->status, function ($query) use ($request) {
+    //             $query->where('status', $request->status);
+    //         })
+    //         ->orderBy('created_at', 'DESC');
+
+    //     $records = $request->export ? $query->get() : $query->paginate(10);
+
+    //     // Transform the records
+    //     $records->transform(function ($transactionGroup) {
+    //         // Calculate totals
+    //         $inflowAmount = $transactionGroup->financeAccountTransactions
+    //             ->where('type', 'Income')
+    //             ->sum('amount');
+
+    //         $outflowAmount = $transactionGroup->financeAccountTransactions
+    //             ->where('type', 'Expense')
+    //             ->sum('amount');
+
+    //         $transactionGroup->inflow_amount = $inflowAmount ?? 0;
+    //         $transactionGroup->outflow_amount = $outflowAmount ?? 0;
+    //         $transactionGroup->total_value = $inflowAmount - $outflowAmount;
+
+    //         // Find main bank account
+    //         $mainBankTransaction = $transactionGroup->financeAccountTransactions->first(function ($transaction) {
+    //             return $transaction->mainBank === true || $transaction->mainBank === 'true';
+    //         });
+
+    //         $transactionGroup->bank = $mainBankTransaction && $transactionGroup->account
+    //             ? $mainBankTransaction->account->name
+    //             : 'N/A';
+
+    //         return $transactionGroup;
+    //     });
+
+    //     if ($request->export) {
+    //         $exportData = $records->map(function ($record) {
+    //             $banks = $record->financeAccountTransactions
+    //                 ->pluck('account.name')
+    //                 ->unique()
+    //                 ->filter()
+    //                 ->values();
+
+    //             return [
+    //                 'Transaction ID' => $record->name,
+    //                 'Date' => $record->created_at->format('Y-m-d'),
+    //                 'Total Value' => $record->total_value,
+    //                 'Inflow Amount' => $record->inflow_amount,
+    //                 'Outflow Amount' => $record->outflow_amount,
+    //                 'Banks Involved' => $banks->implode(', '),
+    //                 'Payment Type' => $record->payment_type,
+    //                 'Status' => $record->status,
+    //             ];
+    //         });
+
+    //         return Excel::download(new FinanceTransactionGroupExport($exportData), 'transactions.xlsx');
+    //     }
+
+    //     return $records;
+    // }
 
     public function getTransactionList($request)
     {
@@ -322,8 +420,10 @@ class TransactionService
             foreach ($request->financeTransactions as $key => $financeTransaction) {
                 $amount = $financeTransaction['amount'];
                 $date = $financeTransaction['transaction_date'];
-                $fromAccount = $financeTransaction['type'] == "Debit" ? $financeTransaction['account_id'] : $mainBank;
-                $toAccount = $financeTransaction['type'] == "Credit" ? $financeTransaction['account_id'] : $mainBank;
+                // $fromAccount = $financeTransaction['type'] == "Debit" ? $financeTransaction['account_id'] : $mainBank;
+                // $toAccount = $financeTransaction['type'] == "Credit" ? $financeTransaction['account_id'] : $mainBank;
+                $fromAccount = $financeTransaction['type'] == "Expense" ? $financeTransaction['account_id'] : $mainBank;
+                $toAccount = $financeTransaction['type'] == "Income" ? $financeTransaction['account_id'] : $mainBank;
 
 
                 $createTransactions = FinanceAccountTransaction::create([
@@ -334,8 +434,10 @@ class TransactionService
                     'transactionID' => $financeTransaction['transactionID'],
                     'referenceID' => $financeTransaction['referenceID'],
                     'description' => $financeTransaction['description'],
-                    'type' => $financeTransaction['type'] == "Credit" ? "Expense" : "Income", //expense, income //AccountingDebitAndCredit
-                    'category' => $financeTransaction['type'] == "Credit" ? "Other" : "Deposit", //AccountingDebitAndCredit
+                    'type' => $financeTransaction['type'] == "Income" ? "Expense" : "Income", //expense, income //AccountingDebitAndCredit
+                    'category' => $financeTransaction['type'] == "Income" ? "Other" : "Deposit", //AccountingDebitAndCredit
+                    // 'type' => $financeTransaction['type'] == "Credit" ? "Expense" : "Income", //expense, income //AccountingDebitAndCredit
+                    // 'category' => $financeTransaction['type'] == "Credit" ? "Other" : "Deposit", //AccountingDebitAndCredit
                     'amount' => $financeTransaction['amount'],
                     'mode_of_payment' => $financeTransaction['mode_of_payment'], //Bank Transfer, Cash, Credit/Debit Card, Cheque
                     'mainBank' => "false",
@@ -356,15 +458,16 @@ class TransactionService
                     'referenceID' => $financeTransaction['referenceID'],
                     'description' => $financeTransaction['description'],
                     //type and category opposite of first transaction
-                    'type' => $financeTransaction['type'] == "Credit"  ? "Income" : "Expense", //expense, income //AccountingDebitAndCredit
-                    'category' => $financeTransaction['type'] == "Credit" ? "Deposit" : "Other", //AccountingDebitAndCredit
+                    'type' => $financeTransaction['type'] == "Income"  ? "Income" : "Expense", //expense, income //AccountingDebitAndCredit
+                    'category' => $financeTransaction['type'] == "Income" ? "Deposit" : "Other", //AccountingDebitAndCredit
+                    // 'type' => $financeTransaction['type'] == "Credit"  ? "Income" : "Expense", //expense, income //AccountingDebitAndCredit
+                    // 'category' => $financeTransaction['type'] == "Credit" ? "Deposit" : "Other", //AccountingDebitAndCredit
                     'amount' => $financeTransaction['amount'],
                     'mode_of_payment' => $financeTransaction['mode_of_payment'], //Bank Transfer, Cash, Credit/Debit Card, Cheque
                     'mainBank' => "true",
                     'edited_by' => $user->id,
 
                     'payment_type' => $request->payment_type,
-
                     'bank_fee' => $financeTransaction['bank_fee'],
                     'exchange_rate' => $financeTransaction['exchange_rate'],
                 ]);
@@ -401,7 +504,7 @@ class TransactionService
         DB::beginTransaction();
         try {
             $user = auth()->user();
-            
+
             // Find the transaction group
             $transactionGroup = FinanceAccountTransactionGroup::where('id', $transactionGroupId)
                 ->where('company_id', $user->current_company_id)
@@ -530,9 +633,74 @@ class TransactionService
 
     public function viewFinanceTransactionGroup($id)
     {
-        $financeTransactionGroup =  FinanceAccountTransactionGroup::query()
-            ->with(['financeAccountTransactions', 'editedBy'])->find($id);
+        $financeTransactionGroup = FinanceAccountTransactionGroup::query()
+            ->with([
+                'financeAccountTransactions.account', // Eager load the account relationship
+                'editedBy:id,name'
+            ])
+            ->find($id);
 
-        return $financeTransactionGroup;
+        if (!$financeTransactionGroup) {
+            return null;
+        }
+
+        // Transform the financeAccountTransactions to include account_id and account_name, excluding mainBank = true
+        $financeTransactionGroup->financeAccountTransactions->transform(function ($transaction) {
+            if ($transaction->mainBank === 'true') {
+                return null; // Skip transactions where mainBank is true
+            }
+            return [
+                'id' => $transaction->id,
+                'account_id' => $transaction->account_id,
+                'account_name' => $transaction->account ? $transaction->account->name : 'N/A',
+                'trans_group_id' => $transaction->trans_group_id,
+                'journal_entry_id' => $transaction->journal_entry_id,
+                'transaction_date' => $transaction->transaction_date,
+                'transactionID' => $transaction->transactionID,
+                'referenceID' => $transaction->referenceID,
+                'mainBank' => $transaction->mainBank,
+                'type' => $transaction->type,
+                'payment_type' => $transaction->payment_type,
+                'category' => $transaction->category,
+                'amount' => $transaction->amount,
+                'description' => $transaction->description,
+                'mode_of_payment' => $transaction->mode_of_payment,
+                'exchange_rate' => $transaction->exchange_rate,
+                'bank_fee' => $transaction->bank_fee,
+                'created_at' => $transaction->created_at,
+                'updated_at' => $transaction->updated_at,
+                // 'deleted_at' => $transaction->deleted_at,
+            ];
+        })->filter(); // Remove null entries from the collection
+
+        // Find the main bank transaction
+        $mainBankTransaction = $financeTransactionGroup->financeAccountTransactions->firstWhere('mainBank', 'true');
+
+        // Create the main_bank object
+        $mainBank = $mainBankTransaction && isset($mainBankTransaction['account_id'])
+            ? [
+                'id' => $mainBankTransaction['account_id'],
+                'name' => $mainBankTransaction['account_name'] ?? 'N/A'
+            ]
+            : null;
+
+        // Prepare the response array
+        return [
+            'main_bank' => $mainBank,
+            'id' => $financeTransactionGroup->id,
+            'edited_by' => $financeTransactionGroup->editedBy ? [
+                'id' => $financeTransactionGroup->editedBy->id,
+                'name' => $financeTransactionGroup->editedBy->name
+            ] : null,
+            'name' => $financeTransactionGroup->name,
+            'payment_type' => $financeTransactionGroup->payment_type,
+            'status' => $financeTransactionGroup->status,
+            'created_at' => $financeTransactionGroup->created_at,
+            'updated_at' => $financeTransactionGroup->updated_at,
+            // 'deleted_at' => $financeTransactionGroup->deleted_at,
+            'company_id' => $financeTransactionGroup->company_id,
+            'journal_entry_id' => $financeTransactionGroup->journal_entry_id,
+            'finance_account_transactions' => $financeTransactionGroup->financeAccountTransactions->toArray(),
+        ];
     }
 }
