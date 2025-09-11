@@ -54,6 +54,10 @@ class AuthController extends Controller
 
             $user['companies'] = $user->getCurrentSubscriptionDetails();
 
+            if ($user->current_company_id) {
+                $user['company']['current_currency'] = $user->company->currentCurrency();
+            }
+
             $data = [
                 'user' => $user,
                 'token' => $token,
