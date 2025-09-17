@@ -3,13 +3,19 @@
 namespace App\Services\AccountReconciliation;
 
 use App\Exceptions\BadRequestException;
+use App\Exports\Banking\ReconciliationSummaryExport;
 use App\Helpers\GeneralHelper;
 use App\Models\FinanceAccountEntry;
 use App\Models\FinanceBankStatement;
 use App\Models\FinanceChartOfAccount;
 use App\Models\FinanceJournalEntry;
 use App\Models\ReconciliationMatch;
+use App\Models\ReconciliationRecord;
+use App\Models\ReconciliationRun;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -625,6 +631,619 @@ class AccountReconciliationService
             'unreconciled_statement_lines_net' => $unreconciledNet,
             'calculated_statement_balance' => $calculatedStatementBalance,
             'imported_statement_balance' => $importedBalance,
+        ];
+    }
+
+
+
+
+    /**
+     * Strict comparator:
+     *  - Match ONLY when (bank.transaction_date == app.date) AND (bank.referenceID == app.reference)
+     *  - Then compare amounts: withdrawals ↔ credit_amount, lodgments ↔ debit_amount
+     *  - Returns raw lines for saving/preview
+     */
+    private function computeLinesForWindowStrict(int $companyId, int $accountId, string $startDate, string $endDate): array
+    {
+        $EPS = 0.01;
+
+        $bankLines = \App\Models\FinanceBankStatement::query()
+            ->where('company_id', $companyId)
+            ->where('account_id', $accountId)
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->orderBy('transaction_date')
+            ->get();
+
+        $appLines = \App\Models\FinanceAccountEntry::query()
+            ->where('account_id', $accountId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->whereHas('journalEntry', fn($q) => $q->where('status', 'published')->where('company_id', $companyId))
+            ->orderBy('date')
+            ->get();
+
+        $makeKey = static fn(?string $date, ?string $ref) => ($date ?? '') . '|' . ($ref ?? '');
+        $appsByKey = [];
+        foreach ($appLines as $app) {
+            $key = $makeKey(\Illuminate\Support\Carbon::parse($app->date)->toDateString(), (string) $app->reference);
+            $appsByKey[$key] = $appsByKey[$key] ?? [];
+            $appsByKey[$key][] = $app;
+        }
+
+        $results = [];
+
+        foreach ($bankLines as $bank) {
+            $date = \Illuminate\Support\Carbon::parse($bank->transaction_date)->toDateString();
+            $ref  = (string) ($bank->referenceID ?? '');
+            $key  = $makeKey($date, $ref);
+
+            $bWithdrawals = (float) ($bank->withdrawals ?? 0.0);
+            $bLodgments   = (float) ($bank->lodgments   ?? 0.0);
+
+            if (!empty($ref) && !empty($appsByKey[$key])) {
+                /** @var \App\Models\FinanceAccountEntry $app */
+                $app = array_shift($appsByKey[$key]);
+
+                $aCredit = (float) ($app->credit_amount ?? 0.0);
+                $aDebit  = (float) ($app->debit_amount  ?? 0.0);
+
+                $withdrawalsMatch = abs($bWithdrawals - $aCredit) <= $EPS;
+                $lodgmentsMatch   = abs($bLodgments   - $aDebit)  <= $EPS;
+
+                $isClean = $withdrawalsMatch && $lodgmentsMatch;
+
+                $results[] = [
+                    'bank_id'        => $bank->id,
+                    'app_id'         => $app->id,
+                    'date'           => $date,
+                    'bank_reference' => $ref,
+                    'app_reference'  => (string) $app->reference,
+                    'bank_debit'     => $bWithdrawals, // bank debit = withdrawals
+                    'bank_credit'    => $bLodgments,   // bank credit = lodgments
+                    'app_debit'      => $aDebit,
+                    'app_credit'     => $aCredit,
+                    'status'         => $isClean ? 'matched' : 'mismatch',
+                    'context'        => $isClean
+                        ? 'fully matched by date+reference'
+                        : implode(', ', array_filter([
+                            $withdrawalsMatch ? null : 'withdrawals ≠ credit_amount',
+                            $lodgmentsMatch   ? null : 'lodgments ≠ debit_amount',
+                        ])),
+                    'matched_by'     => 'date_and_reference',
+                ];
+            } else {
+                $results[] = [
+                    'bank_id'        => $bank->id,
+                    'app_id'         => null,
+                    'date'           => $date,
+                    'bank_reference' => $ref ?: null,
+                    'app_reference'  => null,
+                    'bank_debit'     => $bWithdrawals,
+                    'bank_credit'    => $bLodgments,
+                    'app_debit'      => null,
+                    'app_credit'     => null,
+                    'status'         => 'unmatched',
+                    'context'        => 'exists in bank only (no app line with same date+reference)',
+                    'matched_by'     => null,
+                ];
+            }
+        }
+
+        // Remaining app lines are app-only discrepancies
+        foreach ($appsByKey as $leftovers) {
+            foreach ($leftovers as $app) {
+                $results[] = [
+                    'bank_id'        => null,
+                    'app_id'         => $app->id,
+                    'date'           => \Illuminate\Support\Carbon::parse($app->date)->toDateString(),
+                    'bank_reference' => null,
+                    'app_reference'  => (string) $app->reference,
+                    'bank_debit'     => null,
+                    'bank_credit'    => null,
+                    'app_debit'      => (float) ($app->debit_amount  ?? 0.0),
+                    'app_credit'     => (float) ($app->credit_amount ?? 0.0),
+                    'status'         => 'unmatched',
+                    'context'        => 'exists in app only (no bank line with same date+reference)',
+                    'matched_by'     => null,
+                ];
+            }
+        }
+
+        return $results;
+    }
+
+
+    /**
+     * Build the stat block from computed lines.
+     * - counts of discrepancies / dual_reflections / no_discrepancies
+     * - number of credit transactions on both sides
+     * - number of debit transactions on both sides
+     * - total credits on both sides
+     * - total debits on both sides
+     * - difference between total credits and total debits (per side + gap between sides)
+     */
+    private function summarizeLines(\Illuminate\Support\Collection $lines): array
+    {
+        $toF = static fn($v) => $v === null ? 0.0 : (float) $v;
+
+        // Map statuses -> business labels
+        $countNoDisc  = $lines->where('status', 'matched')->count();
+        $countDual    = $lines->whereIn('status', ['mismatch', 'mismatched'])->count();
+        $countDisc    = $lines->where('status', 'unmatched')->count();
+
+        // Txn counts
+        $bankCreditTxnCount = $lines->filter(fn($r) => $toF($r['bank_credit'] ?? null) > 0)->count();
+        $bankDebitTxnCount  = $lines->filter(fn($r) => $toF($r['bank_debit'] ?? null)  > 0)->count();
+        $appCreditTxnCount  = $lines->filter(fn($r) => $toF($r['app_credit']  ?? null) > 0)->count();
+        $appDebitTxnCount   = $lines->filter(fn($r) => $toF($r['app_debit']   ?? null) > 0)->count();
+
+        // Totals
+        $bankTotalCredits = $lines->sum(fn($r) => $toF($r['bank_credit'] ?? null));
+        $bankTotalDebits  = $lines->sum(fn($r) => $toF($r['bank_debit']  ?? null));
+        $appTotalCredits  = $lines->sum(fn($r) => $toF($r['app_credit']  ?? null));
+        $appTotalDebits   = $lines->sum(fn($r) => $toF($r['app_debit']   ?? null));
+
+        // Differences (per side)
+        $bankNet = $bankTotalCredits - $bankTotalDebits;
+        $appNet  = $appTotalCredits  - $appTotalDebits;
+        $netGap  = $bankNet - $appNet; // helpful reconciliation indicator
+
+        return [
+            'counts' => [
+                'discrepancies'     => $countDisc,
+                'dual_reflections'  => $countDual,
+                'no_discrepancies'  => $countNoDisc,
+            ],
+            'transactions' => [
+                'bank' => [
+                    'credit_count' => $bankCreditTxnCount,
+                    'debit_count'  => $bankDebitTxnCount,
+                ],
+                'app' => [
+                    'credit_count' => $appCreditTxnCount,
+                    'debit_count'  => $appDebitTxnCount,
+                ],
+            ],
+            'totals' => [
+                'bank' => [
+                    'credits' => $bankTotalCredits,
+                    'debits'  => $bankTotalDebits,
+                    'net'     => $bankNet,     // credits - debits
+                ],
+                'app' => [
+                    'credits' => $appTotalCredits,
+                    'debits'  => $appTotalDebits,
+                    'net'     => $appNet,      // credits - debits
+                ],
+                'net_gap_between_bank_and_app' => $netGap, // bank.net - app.net
+            ],
+        ];
+    }
+
+
+
+
+
+
+
+
+
+
+    public function buildReconciliationPreview(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'account_id'  => 'required|exists:finance_chart_of_accounts,id',
+            'start_date'  => 'required|date',
+            'end_date'    => 'required|date|after_or_equal:start_date',
+            'batch_id'    => 'nullable|string',
+            'save'        => 'nullable|boolean',   // default false
+            'replace'     => 'nullable|boolean',   // when saving: wipe existing in window
+        ]);
+        if ($validator->fails()) {
+            throw new BadRequestException($validator->errors()->first());
+        }
+
+        $companyId = Auth::user()->current_company_id;
+        $accountId = (int) $request->account_id;
+        $account = FinanceChartOfAccount::where('id', $accountId)
+            ->where('company_id', $companyId)
+            ->select('id', 'name')
+            ->firstOrFail();
+        $startDate = Carbon::parse($request->start_date)->toDateString();
+        $endDate   = Carbon::parse($request->end_date)->toDateString();
+        $batchId   = $account->name;
+        $title   = $account->name;
+
+        // 1) Build-only comparison — STRICT rule: same (date + ref) then amount mapping
+        $lines = collect($this->computeLinesForWindowStrict($companyId, $accountId, $startDate, $endDate));
+
+        // 2) Stats
+        $stats = $this->summarizeLines($lines);
+
+        // 3) Optional: save to DB
+        $savedInfo = null;
+        if ($request->boolean('save')) {
+
+            $companyId = Auth::user()->current_company_id;
+            $userId    = Auth::id();
+
+            // create the run first (store counts for fast listing)
+            $run = ReconciliationRun::create([
+                'company_id'        => $companyId,
+                'account_id'        => $accountId,
+                'start_date'        => $startDate,
+                'end_date'          => $endDate,
+                'batch_id'          => $batchId,
+                'title'             => $title,
+                'discrepancies'     => $stats['counts']['discrepancies'],
+                'dual_reflections'  => $stats['counts']['dual_reflections'],
+                'no_discrepancies'  => $stats['counts']['no_discrepancies'],
+                'created_by'        => $userId,
+            ]);
+
+
+            if ($request->boolean('replace')) {
+                ReconciliationRecord::where('company_id', $companyId)
+                    ->where('account_id', $accountId)
+                    ->where('run_id', $run->id) // unlikely yet, but safe
+                    ->delete();
+            }
+
+            $now = now();
+            $payload = $lines->map(function ($row) use ($companyId, $accountId, $batchId, $now, $run) {
+                $status = $row['status'] ?? 'unmatched';
+                $classification = $status === 'matched'
+                    ? 'no_discrepancy'
+                    : (in_array($status, ['mismatch', 'mismatched'], true) ? 'dual_reflection' : 'discrepancy');
+
+                return [
+                    'company_id'      => $companyId,
+                    'account_id'      => $accountId,
+                    'run_id'          => $run->id,
+                    'date'            => Carbon::parse($row['date'])->toDateString(),
+                    'batch_id'        => $batchId ?? ($row['batch_id'] ?? null),
+
+                    'bank_id'         => $row['bank_id'] ?? null,
+                    'app_id'          => $row['app_id'] ?? null,
+                    'bank_reference'  => $row['bank_reference'] ?? null,
+                    'app_reference'   => $row['app_reference'] ?? null,
+
+                    'bank_debit'      => $row['bank_debit'] ?? null,
+                    'bank_credit'     => $row['bank_credit'] ?? null,
+                    'app_debit'       => $row['app_debit'] ?? null,
+                    'app_credit'      => $row['app_credit'] ?? null,
+
+                    'classification'  => $classification,
+                    'matched_by'      => $row['matched_by'] ?? null,
+                    'context'         => $row['context'] ?? null,
+
+                    'created_at'      => $now,
+                    'updated_at'      => $now,
+                ];
+            })->all();
+
+            DB::transaction(function () use ($payload) {
+                ReconciliationRecord::upsert(
+                    $payload,
+                    ['company_id', 'account_id', 'bank_id', 'app_id'],
+                    ['date', 'batch_id', 'bank_reference', 'app_reference', 'bank_debit', 'bank_credit', 'app_debit', 'app_credit', 'classification', 'matched_by', 'context', 'updated_at']
+                );
+            });
+
+            $savedInfo = ['enabled' => true, 'count' => count($payload)];
+        }
+
+        // 4) Response (build-only or build+save)
+        return response()->json([
+            'period'     => ['start_date' => $startDate, 'end_date' => $endDate],
+            'account_id' => $accountId,
+            'account_name' => $account->name,
+            'batch_id'   => $batchId,
+            'stats'      => $stats,     // ← stat block (see structure below)
+            'lines'      => $lines->values(), // ← the exact line structure you requested
+            'saved'      => $savedInfo ?: ['enabled' => false, 'count' => 0],
+        ]);
+    }
+
+
+    public function getReconciliationSummaryFromRecords($request)
+    {
+        $validator = Validator::make($request->all(), [
+            'account_id'  => 'required|exists:finance_chart_of_accounts,id',
+            'start_date'  => 'nullable|date',
+            'end_date'    => 'nullable|date|after_or_equal:start_date',
+            'group_by'    => 'nullable|in:day,batch', // default: day
+            'sort_by'     => 'nullable|in:date,discrepancies,dual_reflections,no_discrepancies',
+            'sort_order'  => 'nullable|in:asc,desc',
+            'search'      => 'nullable|string',
+            'paginate'    => 'nullable|boolean',
+            'limit'       => 'nullable|integer|min:1|max:200',
+            'download'    => 'nullable|in:csv,xlsx',
+            'batch_id'    => 'nullable|string',
+        ]);
+        if ($validator->fails()) {
+            throw new BadRequestException($validator->errors()->first());
+        }
+
+        $companyId = Auth::user()->current_company_id;
+
+        $query = ReconciliationRecord::query()
+            ->where('company_id', $companyId)
+            ->where('account_id', $request->account_id);
+
+        // Date range (optional)
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('date', [$request->start_date, $request->end_date]);
+        }
+
+        // Filter by batch (optional)
+        if ($request->filled('batch_id')) {
+            $query->where('batch_id', $request->batch_id);
+        }
+
+        // Grouping
+        $groupBy = $request->get('group_by', 'day');
+        if ($groupBy === 'batch') {
+            $query->selectRaw("
+            COALESCE(batch_id, '') as group_key,
+            SUM(CASE WHEN classification = 'discrepancy' THEN 1 ELSE 0 END) as discrepancies,
+            SUM(CASE WHEN classification = 'dual_reflection' THEN 1 ELSE 0 END) as dual_reflections,
+            SUM(CASE WHEN classification = 'no_discrepancy' THEN 1 ELSE 0 END) as no_discrepancies,
+            MAX(date) as date
+        ")
+                ->groupBy('group_key');
+        } else {
+            $query->selectRaw("
+            date as group_key,
+            SUM(CASE WHEN classification = 'discrepancy' THEN 1 ELSE 0 END) as discrepancies,
+            SUM(CASE WHEN classification = 'dual_reflection' THEN 1 ELSE 0 END) as dual_reflections,
+            SUM(CASE WHEN classification = 'no_discrepancy' THEN 1 ELSE 0 END) as no_discrepancies
+        ")
+                ->groupBy('date');
+        }
+
+        // Execute
+        $rows = collect($query->get())->map(function ($r) use ($groupBy) {
+            return [
+                'date'             => $groupBy === 'batch' ? ($r->date ? Carbon::parse($r->date)->toDateString() : null) : $r->group_key,
+                'batch_id'         => $groupBy === 'batch' ? ($r->group_key ?: null) : null,
+                'discrepancies'    => (int) $r->discrepancies,
+                'dual_reflections' => (int) $r->dual_reflections,
+                'no_discrepancies' => (int) $r->no_discrepancies,
+            ];
+        });
+
+        // Search (matches date or batch_id)
+        if ($search = trim((string) $request->get('search', ''))) {
+            $s = mb_strtolower($search);
+            $rows = $rows->filter(function ($row) use ($s) {
+                return str_contains(mb_strtolower((string)$row['date']), $s)
+                    || ($row['batch_id'] && str_contains(mb_strtolower((string)$row['batch_id']), $s));
+            })->values();
+        }
+
+        // Sort
+        $sortBy    = $request->get('sort_by', 'date');
+        $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $rows      = $rows->sortBy($sortBy, SORT_REGULAR, $sortOrder === 'desc')->values();
+
+        // Export (optional)
+        if ($download = $request->get('download')) {
+            $filename = 'reconciliation-summary-' . now()->format('Ymd_His') . '.' . $download;
+            return Excel::download(
+                new ReconciliationSummaryExport($rows->toArray()),
+                $filename
+            );
+        }
+
+        // Paginate (default)
+        if ($request->boolean('paginate', true)) {
+            $page  = max(1, (int) $request->get('page', 1));
+            $limit = max(1, (int) $request->get('limit', 20));
+            $slice = $rows->forPage($page, $limit)->values();
+
+            return new LengthAwarePaginator(
+                $slice,
+                $rows->count(),
+                $limit,
+                $page,
+                ['path' => request()->url(), 'query' => request()->query()]
+            );
+        }
+
+        return $rows;
+    }
+
+
+    public function listReconciliationRecords($request)
+    {
+        $validator = Validator::make($request->all(), [
+            'account_id'  => 'required|exists:finance_chart_of_accounts,id',
+            'start_date'  => 'nullable|date',
+            'end_date'    => 'nullable|date|after_or_equal:start_date',
+            'classification' => 'nullable|in:discrepancy,dual_reflection,no_discrepancy',
+            'batch_id'    => 'nullable|string',
+            'search'      => 'nullable|string',
+            'sort_by'     => 'nullable|in:date,classification,bank_id,app_id',
+            'sort_order'  => 'nullable|in:asc,desc',
+            'paginate'    => 'nullable|boolean',
+            'limit'       => 'nullable|integer|min:1|max:200',
+        ]);
+        if ($validator->fails()) {
+            throw new BadRequestException($validator->errors()->first());
+        }
+
+        $companyId = Auth::user()->current_company_id;
+
+        $q = ReconciliationRecord::where('company_id', $companyId)
+            ->where('account_id', $request->account_id)
+            ->when($request->filled('start_date') && $request->filled('end_date'), fn($qq) =>
+            $qq->whereBetween('date', [$request->start_date, $request->end_date]))
+            ->when($request->filled('classification'), fn($qq) =>
+            $qq->where('classification', $request->classification))
+            ->when($request->filled('batch_id'), fn($qq) =>
+            $qq->where('batch_id', $request->batch_id));
+
+        if ($s = trim((string) $request->get('search', ''))) {
+            $q->where(function ($w) use ($s) {
+                $w->where('bank_reference', 'like', "%$s%")
+                    ->orWhere('app_reference', 'like', "%$s%")
+                    ->orWhere('context', 'like', "%$s%");
+            });
+        }
+
+        $sortBy = $request->get('sort_by', 'date');
+        $sortOrder = $request->filled('sort_by')
+            ? (strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc')
+            : 'desc';
+
+        // $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $q->orderBy($sortBy, $sortOrder);
+
+        if ($request->boolean('paginate', true)) {
+            return $q->paginate($request->get('limit', 20));
+        }
+
+        return $q->get();
+    }
+
+
+
+    public function listReconciliationRuns(Request $request)
+{
+    $validator = \Validator::make($request->all(), [
+        'account_id' => 'nullable|exists:finance_chart_of_accounts,id',
+        'start_date' => 'nullable|date',
+        'end_date'   => 'nullable|date|after_or_equal:start_date',
+        'search'     => 'nullable|string', // matches title or batch_id
+        'sort_by'    => 'nullable|in:created_at,start_date,end_date,discrepancies,dual_reflections,no_discrepancies',
+        'sort_order' => 'nullable|in:asc,desc',
+        'limit'      => 'nullable|integer|min:1|max:200',
+        'page'       => 'nullable|integer|min:1',
+    ]);
+    if ($validator->fails()) {
+        throw new BadRequestException($validator->errors()->first());
+    }
+
+    $companyId = \Auth::user()->current_company_id;
+
+    $q = \App\Models\ReconciliationRun::query()
+        ->where('company_id', $companyId)
+        ->when($request->filled('account_id'), fn($qq) => $qq->where('account_id', $request->account_id))
+        ->when($request->filled('start_date') && $request->filled('end_date'), fn($qq) =>
+            $qq->where(function ($w) use ($request) {
+                $w->whereBetween('start_date', [$request->start_date, $request->end_date])
+                  ->orWhereBetween('end_date',   [$request->start_date, $request->end_date]);
+            }))
+        ->when($s = trim((string)$request->get('search', '')), fn($qq) =>
+            $qq->where(function ($w) use ($s) {
+                $w->where('title', 'like', "%{$s}%")
+                  ->orWhere('batch_id', 'like', "%{$s}%");
+            }));
+
+    // sanitize sort inputs and defend against whitespace/casing issues
+    $allowedSorts = ['created_at', 'start_date', 'end_date', 'discrepancies', 'dual_reflections', 'no_discrepancies'];
+    $sortBy = trim((string)$request->get('sort_by', 'created_at'));
+    if (!in_array($sortBy, $allowedSorts, true)) {
+        $sortBy = 'created_at';
+    }
+
+    $sortOrder = strtolower(trim((string)$request->get('sort_order', 'desc'))) === 'asc' ? 'asc' : 'desc';
+
+    $q->orderBy($sortBy, $sortOrder);
+
+    $limit = (int)$request->get('limit', 20);
+    $runs = $q->paginate($limit);
+
+    // Shape each row for the list UI
+    $runs->getCollection()->transform(function ($run) {
+        return [
+            'id'                => $run->id,
+            'account_id'        => $run->account_id,
+            'period'            => ['start_date' => $run->start_date, 'end_date' => $run->end_date],
+            'batch_id'          => $run->batch_id,
+            'title'             => $run->title,
+            'counts'            => [
+                'discrepancies'     => (int)$run->discrepancies,
+                'dual_reflections'  => (int)$run->dual_reflections,
+                'no_discrepancies'  => (int)$run->no_discrepancies,
+            ],
+            'created_at'        => $run->created_at,
+        ];
+    });
+
+    return $runs;
+}
+
+
+
+
+    public function getReconciliationRun(Request $request, int $runId)
+    {
+        $companyId = \Auth::user()->current_company_id;
+
+        /** @var \App\Models\ReconciliationRun $run */
+        $run = ReconciliationRun::where('company_id', $companyId)->findOrFail($runId);
+
+        // Lines can be large: paginate them optionally
+        $validator = \Validator::make($request->all(), [
+            'lines_limit' => 'nullable|integer|min:1|max:500',
+            'lines_page'  => 'nullable|integer|min:1',
+        ]);
+        if ($validator->fails()) {
+            throw new BadRequestException($validator->errors()->first());
+        }
+
+        $linesLimit = (int)($request->get('lines_limit', 100));
+        $linesPage  = (int)($request->get('lines_page', 1));
+
+        $linesQuery = ReconciliationRecord::where('company_id', $companyId)
+            ->where('run_id', $run->id)
+            ->orderBy('date')
+            ->orderBy('id');
+
+        $linesPaginator = $linesQuery->paginate($linesLimit, ['*'], 'page', $linesPage);
+
+        // Build stats from records (or use run counts + recompute totals)
+        $lines = collect($linesPaginator->items());
+        $stats = $this->summarizeLines($linesQuery->get()->collect()); // full set for accurate totals
+
+        return [
+            'run' => [
+                'id'          => $run->id,
+                'account_id'  => $run->account_id,
+                'period'      => ['start_date' => $run->start_date, 'end_date' => $run->end_date],
+                'batch_id'    => $run->batch_id,
+                'title'       => $run->title,
+                'counts'      => [
+                    'discrepancies'     => (int)$run->discrepancies,
+                    'dual_reflections'  => (int)$run->dual_reflections,
+                    'no_discrepancies'  => (int)$run->no_discrepancies,
+                ],
+                'created_at'  => $run->created_at,
+            ],
+            'stats' => $stats,                     // preview-style stats (counts + totals, etc.)
+            'lines' => [                           // paginated lines, your requested shape
+                'current_page' => $linesPaginator->currentPage(),
+                'per_page'     => $linesPaginator->perPage(),
+                'total'        => $linesPaginator->total(),
+                'data'         => $lines->map(function ($r) {
+                    return [
+                        'bank_id'        => $r->bank_id,
+                        'app_id'         => $r->app_id,
+                        'date'           => $r->date,
+                        'bank_reference' => $r->bank_reference,
+                        'app_reference'  => $r->app_reference,
+                        'bank_debit'     => $r->bank_debit,
+                        'bank_credit'    => $r->bank_credit,
+                        'app_debit'      => $r->app_debit,
+                        'app_credit'     => $r->app_credit,
+                        // derive status from classification, to match preview language
+                        'status'         => $r->classification === 'no_discrepancy' ? 'matched' : ($r->classification === 'dual_reflection' ? 'mismatch' : 'unmatched'),
+                        'context'        => $r->context,
+                        'matched_by'     => $r->matched_by,
+                    ];
+                }),
+            ],
         ];
     }
 }
