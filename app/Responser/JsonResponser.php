@@ -56,6 +56,11 @@ class JsonResponser
                 'error_trace' => $th->getTraceAsString(),
             ]);
         }
+
+        if ($data instanceof JsonResponse) {
+            $data = $data->getData(true); // unwrap to array
+        }
+        
         return response()->json([
             "error" => $error,
             "message" => $message,

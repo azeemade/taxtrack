@@ -306,12 +306,23 @@ Route::group([
 
                     Route::prefix('reconciliation')->group(function () {
                         Route::post('/upload-bankstatement', [ReconciliationController::class, 'uploadBankStatement']);
-                        Route::get('/all_statements', [ReconciliationController::class, 'allBankStatements']);
-                        Route::get('/all_account_transactions', [ReconciliationController::class, 'allAccountTransactions']);
+                        Route::post('/download-bankstatement-template', [ReconciliationController::class, 'downloadBankStatementTemplate']);
+            
+                        Route::post('/build-and-save-reconciliation-records', [ReconciliationController::class, 'buildAndSaveReconciliationRecords']);
+                        Route::post('/list-reconciliation-runs', [ReconciliationController::class, 'listReconciliationRuns']);
+                        Route::get('/get-reconciliation-run/{runId}', [ReconciliationController::class, 'getReconciliationRun']);
+                        
+                        
+                        // Route::get('/all_statements', [ReconciliationController::class, 'allBankStatements']);
+                        // Route::get('/all_account_transactions', [ReconciliationController::class, 'allAccountTransactions']);
 
-                        Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'getBankReconciliationSummary']);
-                        Route::post('/bank-reconciliation-lines', [ReconciliationController::class, 'getBankReconciliationLines']);
-                        Route::post('/reconcile-lines', [ReconciliationController::class, 'reconcileLine']);
+                        // Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'getBankReconciliationSummary']);
+                        // Route::post('/bank-reconciliation-lines', [ReconciliationController::class, 'getBankReconciliationLines']);
+                        // Route::post('/reconcile-lines', [ReconciliationController::class, 'reconcileLine']);
+                        
+                        
+                        // Route::post('/list-reconciliation-records', [ReconciliationController::class, 'listReconciliationRecords']);
+                        // Route::post('/get-reconciliation-summary-from-records', [ReconciliationController::class, 'getReconciliationSummaryFromRecords']);
 
 
 

@@ -165,6 +165,18 @@ class ReconciliationController extends Controller
         }
     }
 
+    public function downloadBankStatementTemplate(Request $request)
+    {
+        try {
+            $data = $this->accountReconciliationService->downloadBankStatementTemplate($request);
+            return Excel::download(new BankStatementTemplateExport($data), 'bank_statement_template.xlsx');
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
     public function getBankReconciliationSummary(Request $request)
     {
         try {
@@ -228,4 +240,95 @@ class ReconciliationController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+
+
+
+
+
+
+    public function buildAndSaveReconciliationRecords(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'account_id' => 'required|exists:finance_chart_of_accounts,id',
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+                'period_type' => 'nullable|in:specific_date,this_month,quarter_end,year_end,financial_year_end,last_month,this_quarter,last_quarter,this_year_to_current_date,this_quarter_to_current_date,this_month_to_current_date,quarter_end,year_end,financial_year_end',
+                'date_input' => 'nullable|date',
+                'batch_id' => 'nullable|string',
+                'replace' => 'nullable|boolean',
+            ]);
+
+            if ($validator->fails()) {
+                throw new BadRequestException($validator->errors()->first());
+            }
+
+            $result = $this->accountReconciliationService->buildReconciliationPreview($request);
+            return JsonResponser::send(false, 'Reconciliation processed', $result, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            // return JsonResponser::send(true, $th, [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+
+
+    
+
+
+    public function getReconciliationRun(Request $request, $runId)
+    {
+        try {
+            $result = $this->accountReconciliationService->getReconciliationRun($request, $runId);
+            return JsonResponser::send(false, 'Reconciliation Run fetched successfully', $result, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+
+    public function listReconciliationRuns(Request $request)
+    {
+        try {
+            $result = $this->accountReconciliationService->listReconciliationRuns($request);
+            return JsonResponser::send(false, 'Reconciliation Runs fetched successfully', $result, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }   
+
+
+    //Not needed currently
+    public function listReconciliationRecords(Request $request)
+    {
+        try {
+            $result = $this->accountReconciliationService->listReconciliationRecords($request);
+            return JsonResponser::send(false, 'Reconciliation Records fetched successfully', $result, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function getReconciliationSummaryFromRecords(Request $request)
+    {
+        try {
+            $result = $this->accountReconciliationService->getReconciliationSummaryFromRecords($request);
+            return JsonResponser::send(false, 'Reconciliation Summary fetched successfully', $result, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+
 }
