@@ -13,6 +13,7 @@ use App\Http\Controllers\v1\Company\Report\FinancialStatement\FinancialStatement
 use App\Http\Controllers\v1\Company\Report\Reconciliation\ReconciliationController;
 use App\Http\Controllers\v1\Company\Report\TaxAndBalances\TaxBalancesController;
 use App\Http\Controllers\v1\Company\Report\Transaction\AccountTransactionController;
+use App\Http\Controllers\BulkUploadController;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -408,7 +409,7 @@ Route::group([
 
                     Route::group(['prefix' => 'reconciliation'], function () {
                         Route::post('/account-summary', [ReconciliationController::class, 'accountSummary']);
-                        
+
                         Route::post('/bank-summary', [CashSummaryController::class, 'index']);
                         Route::post('/trial-balance', [ReconciliationController::class, 'trialBalance']);
                     });
@@ -564,6 +565,19 @@ Route::group([
                 ], function () {
                     Route::post('/shared/file-upload', 'SharedActionController@uploadFile');
                     Route::match(['get', 'post', 'put', 'delete'], '/shared/{prefix}/{model}/{id}/{action}', 'SharedActionController');
+                    // Bulk Upload Routes
+                    Route::group([
+                        'prefix' => 'shared/bulk-upload',
+                        'middleware' => ['auth:api']
+                    ], function () {
+                        Route::get('/modules', [BulkUploadController::class, 'getAvailableModules']);
+                        Route::get('/template/{module}', [BulkUploadController::class, 'downloadTemplate']); // Supports ?type=individual|organization
+                        Route::post('/upload', [BulkUploadController::class, 'upload']);
+                        Route::get('/jobs', [BulkUploadController::class, 'getUserJobs']);
+                        Route::get('/jobs/{id}', [BulkUploadController::class, 'getJobStatus']);
+                        Route::get('/jobs/{id}/error-report', [BulkUploadController::class, 'downloadErrorReport']);
+                        Route::delete('/jobs/{id}', [BulkUploadController::class, 'deleteJob']);
+                    });
                 });
             });
         }
