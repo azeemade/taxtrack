@@ -11,10 +11,12 @@ use App\Http\Requests\Auth\CreateBasicInformationRequest;
 use App\Http\Requests\Auth\CreateOnboardingRoleRequest;
 use App\Http\Requests\Auth\InviteUsersRequest;
 use App\Jobs\Company\ProcessCompanyOnboarding;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Notifications\Auth\OnboardingOtpNotification;
 use App\Responser\JsonResponser;
 use App\Services\Company\CompanyService;
+use App\Services\ManageSubscriptionServices\CompanySubscriptionService;
 use App\Services\RoleServices\RoleService;
 use App\Services\UserServices\UserService;
 use App\Traits\VerificationTrait;
@@ -32,12 +34,18 @@ class RegisterController extends Controller
     protected UserService $userService;
     protected RoleService $roleService;
     protected CompanyService $companyService;
+    protected CompanySubscriptionService $companySubscriptionService;
 
-    public function __construct(UserService $userService, CompanyService $companyService, RoleService $roleService)
-    {
+    public function __construct(
+        UserService $userService,
+        CompanyService $companyService,
+        RoleService $roleService,
+        CompanySubscriptionService $companySubscriptionService
+    ) {
         $this->userService = $userService;
         $this->roleService = $roleService;
         $this->companyService = $companyService;
+        $this->companySubscriptionService = $companySubscriptionService;
     }
 
     public function userCheck(Request $request)
@@ -337,6 +345,28 @@ class RegisterController extends Controller
                 $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
                 $company->currencies()->attach($user->currency_id);
                 $company->attachEmailTemplates();
+
+                if (isset($company['subscription_plan_id']) && $company['subscription_plan_id']) {
+                    $planId = $company['subscription_plan_id'];
+                    $free = false;
+                    $duration = $company['duration'];
+                } else {
+                    $freePlan = SubscriptionPlan::where('is_free', true)->first();
+                    $planId = $freePlan->id;
+                    $free = true;
+                    $duration = $freePlan->duration > 30 ? 'yearly' : 'monthly';
+                }
+                $this->companySubscriptionService->subscribeToPlan([
+                    'user_id' => $id,
+                    'company_id' => $company->id,
+                    'subscription_plan_id' => $planId,
+                    'is_free' => $free,
+                    'duration' => $duration,
+                    'additional_users_count' => $company['additional_users_count'] ?? 0,
+                    'provider_payment_method_id' => $company['provider_payment_method_id'] ?? null,
+                    'save_card' => $company['save_card'] ?? false,
+                    'action' => $company['action'] ?? 'subscribe',
+                ]);
 
 
                 // ProcessCompanyOnboarding::dispatch($company);

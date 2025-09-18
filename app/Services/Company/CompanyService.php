@@ -110,6 +110,7 @@ class CompanyService
     public function create(array $data, int $created_by = null)
     {
         return Company::create([
+            ...$data,
             'name' => $data['name'],
             'address' => $data['address'],
             'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,

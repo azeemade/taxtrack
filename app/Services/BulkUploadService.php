@@ -34,13 +34,13 @@ class BulkUploadService
     {
         $this->availableModules = [
             'customer' => CustomerBulkUpload::class,
-            'invoice' => InvoiceBulkUpload::class,
+            // 'invoice' => InvoiceBulkUpload::class,
             'sales-invoice' => InvoiceBulkUpload::class,
-            'quote' => QuoteBulkUpload::class,
+            // 'quote' => QuoteBulkUpload::class,
             'sales-quote' => QuoteBulkUpload::class,
             'credit-note' => CreditNoteBulkUpload::class,
             'vendor' => VendorBulkUpload::class,
-            'supplier' => VendorBulkUpload::class,
+            // 'supplier' => VendorBulkUpload::class,
             'purchase-order' => PurchaseOrderBulkUpload::class,
             'purchase-invoice' => PurchaseInvoiceBulkUpload::class,
             'bill' => BillBulkUpload::class,

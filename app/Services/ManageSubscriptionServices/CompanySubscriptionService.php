@@ -368,7 +368,7 @@ class CompanySubscriptionService
             'credit_balance' => $subscriber->credit_balance - $amountPaid['credit_note_balance'],
         ]);
 
-        if (isset($request['free']) && $request['free']) {
+        if (isset($request['is_free']) && $request['is_free']) {
             return;
         }
 
