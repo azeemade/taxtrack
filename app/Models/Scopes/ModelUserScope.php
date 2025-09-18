@@ -18,8 +18,10 @@ class ModelUserScope implements Scope
         if ($currentUser) {
             $currentUserCompany = $currentUser?->company;
             if ($currentUser->hasRole(['client'])) {
-                $builder->where($model->getTable() . '.created_by', $currentUser?->id)
-                    ->orWhere($model->getTable() . '.company_id', $currentUserCompany?->id);
+                $userIdKey = $model->userIdKey ?? 'created_by';
+                $companyIdKey = $model->companyIdKey ?? 'company_id';
+                $builder->where($model->getTable() . '.' . $userIdKey, $currentUser?->id)
+                    ->orWhere($model->getTable() . '.' . $companyIdKey, $currentUserCompany?->id);
             }
         }
     }

@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\ThirdPartyApi\Stripe\Stripe;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 
 class CompanySubscriptionService
 {
@@ -30,6 +31,7 @@ class CompanySubscriptionService
     public function subscriptionHistory($request, ?int $subscriber_id = null)
     {
         $records = SubscriptionHistory::query()
+            ->subscriber()
             ->select('id', 'subscribed_at', 'subscription_plan_id', 'billed_per', 'status', 'amount_paid', 'plan_amount', 'subscribed_at', 'end_date', 'receipt_no')
             ->with([
                 'plan:id,title',
@@ -151,7 +153,7 @@ class CompanySubscriptionService
      */
     public function createRefundRequest($request)
     {
-        $currentUser = auth()->user();
+        $currentUser = Auth::udser();
         $subscriber = $this->findSubscriber(
             $currentUser->current_company_id
         );
@@ -240,7 +242,7 @@ class CompanySubscriptionService
      */
     public function cancelPlan($request)
     {
-        $currentUser = auth()->user();
+        $currentUser = Auth::user();
         $subscriber = $this->findSubscriber(
             $currentUser->current_company_id
         );
@@ -281,7 +283,7 @@ class CompanySubscriptionService
 
     public function currentPlan()
     {
-        $currentUser = auth()->user();
+        $currentUser = Auth::user();
         $record = Subscriber::select('id', 'current_subscription_plan_id', 'company_id')
             ->with([
                 'subscriptionPlan:id,title,short_description',
@@ -309,11 +311,13 @@ class CompanySubscriptionService
         /**
          * Web hook is required for auto renewal of subscription on stripe
          */
-        $currentUser = auth()->check() ? auth()->user() : User::find($request['user_id']);
+        $currentUser = Auth::check() ? Auth::user() : User::find($request['user_id']);
         if (!$currentUser) {
             throw new BadRequestException('User not found');
         }
-        $company = auth()->check() ? $currentUser->company : Company::find($request['company_id']);
+        $company = Auth::check() ? $currentUser->company : Company::find($request['company_id']);
+        // echo (json_encode($company));
+        // exit;
         if (!$company) {
             throw new BadRequestException('Company not found');
         }

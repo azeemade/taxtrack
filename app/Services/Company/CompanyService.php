@@ -117,7 +117,7 @@ class CompanyService
             'companyUUID' => GeneralHelper::generateCompanyUUID(),
             'domain' => isset($data['domain']) ? $data['domain'] : null,
             'status' => CompanyStatusEnums::APPROVED->value,
-            'created_by' => auth()->user()?->id ?: $created_by
+            'created_by' => Auth::user()?->id ?: $created_by
         ]);
     }
 
