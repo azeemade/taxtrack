@@ -13,6 +13,7 @@ use App\Services\CloudinaryErrorReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
@@ -151,7 +152,7 @@ class BulkUploadController extends Controller
                     'statistics' => $result['statistics'],
                     'errors' => $result['errors'],
                     'warnings' => $result['warnings'],
-                    'stored_data_count' => $result['stored_data_count'],
+                    'stored_data_count' => $result['created_records_count'],
                 ]);
             } else {
                 // Dispatch async job
@@ -236,7 +237,7 @@ class BulkUploadController extends Controller
     /**
      * Download error report
      */
-    public function downloadErrorReport(int $jobId): BinaryFileResponse|JsonResponse
+    public function downloadErrorReport(int $jobId): Response|JsonResponse
     {
         try {
             $job = BulkUploadJob::where('user_id', auth()->id())->findOrFail($jobId);
@@ -261,9 +262,10 @@ class BulkUploadController extends Controller
             $filename = 'bulk_upload_errors_' . $job->module_name . '_' . $job->id . '.xlsx';
 
             // Return file as download
-            return response($fileContent)
-                ->header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+            return new Response($fileContent, 200, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -309,22 +311,27 @@ class BulkUploadController extends Controller
      */
     protected function processSync(BulkUploadContract $bulkUploadHandler, string $filePath): array
     {
-        $import = new DynamicBulkUploadImport($bulkUploadHandler);
+        $import = new DynamicBulkUploadImport(
+            $bulkUploadHandler,
+            auth()->id(),
+            auth()->user()->current_company_id ?? null
+        );
         Excel::import($import, $filePath);
 
         $results = $import->prepareDataForStorage();
 
-        // Store data immediately for sync processing
-        $storedData = [];
+        // Process the prepared data and create actual records with post-creation operations
+        $creationResults = [];
         if ($results['statistics']['successful_rows'] > 0) {
-            $storedData = $this->storeProcessedDataSync($results['processed_data'], $bulkUploadHandler->getModelClass());
+            $creationResults = $import->processPreparedData();
         }
 
         return [
             'statistics' => $results['statistics'],
-            'errors' => $results['errors'],
+            'errors' => array_merge($results['errors'], $creationResults['errors'] ?? []),
             'warnings' => $results['warnings'],
-            'stored_data_count' => count($storedData),
+            'created_records_count' => $creationResults['total_created'] ?? 0,
+            'creation_errors_count' => $creationResults['total_failed'] ?? 0,
         ];
     }
 

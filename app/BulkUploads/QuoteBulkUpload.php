@@ -5,48 +5,51 @@ namespace App\BulkUploads;
 use App\Abstracts\BulkUploadAbstract;
 use App\Models\Quote;
 use App\Models\Customer;
+use App\Services\Quotes\QuoteService;
 
 class QuoteBulkUpload extends BulkUploadAbstract
 {
     public function getValidationRules(): array
     {
         return [
-            'quote_number' => 'required|string|max:100',
-            'customer_name' => 'required|string|max:255',
-            'customer_email' => 'nullable|email|max:255',
             'issue_date' => 'required|date',
-            'expiry_date' => 'required|date|after_or_equal:issue_date',
+            'quote_number' => 'required|string|max:100',
+            'terms_and_conditions' => 'nullable|string|max:1000',
+            'customer_note' => 'nullable|string|max:1000',
+            'customer_name' => 'required|string|max:255',
+            'customer_contact' => 'required|string|max:255',
             'status' => 'nullable|in:draft,sent,accepted,declined,expired',
+            'category' => 'nullable|string',
             'currency' => 'nullable|string|size:3',
-            'tax_rate' => 'nullable|numeric|min:0|max:100',
-            'discount_amount' => 'nullable|numeric|min:0',
-            'discount_type' => 'nullable|in:fixed,percentage',
-            'notes' => 'nullable|string|max:1000',
-            'item_description' => 'nullable|string|max:500',
-            'item_quantity' => 'nullable|numeric|min:0.01',
-            'item_rate' => 'nullable|numeric|min:0',
-            'item_amount' => 'nullable|numeric|min:0',
+            'additional_charge' => 'nullable|numeric|min:0',
+            'item_description' => 'required|string|max:500',
+            'item_category' => 'nullable|string|max:500',
+            'item_quantity' => 'required|numeric|min:0.01',
+            'item_discount' => 'nullable|numeric|min:0|max:100',
+            'item_vat' => 'nullable|numeric|min:0|max:100',
+            'item_unit_price' => 'required|numeric|min:0'
         ];
     }
 
     public function getTemplateHeaders(?string $subType = null): array
     {
         return [
-            'Quote Number',
-            'Customer Name',
-            'Customer Email',
             'Issue Date',
-            'Expiry Date',
+            'Quote Number',
+            'Terms and Conditions',
+            'Customer Note',
+            'Customer Name',
+            'Customer Contact',
             'Status',
+            'Category',
             'Currency',
-            'Tax Rate (%)',
-            'Discount Amount',
-            'Discount Type',
-            'Notes',
+            'Additional Charge',
             'Item Description',
+            'Item Category',
             'Item Quantity',
-            'Item Rate',
-            'Item Amount',
+            'Item Discount',
+            'Item VAT',
+            'Item Unit Price',
         ];
     }
 
@@ -54,21 +57,22 @@ class QuoteBulkUpload extends BulkUploadAbstract
     {
         return [
             [
-                'QUO-001',
-                'John Doe',
-                'john.doe@example.com',
                 '2024-01-15',
-                '2024-02-15',
+                'QUO-001',
+                'Thank you for your business',
+                'Consulting Services',
+                'Jon Doe',
+                'john.doe@example.com',
                 'draft',
-                'USD',
-                '8.5',
-                '50.00',
-                'fixed',
-                'Thank you for your interest',
+                'Consulting Services',
+                'NGN',
+                '10.00',
+                'Item 1',
                 'Consulting Services',
                 '10',
+                '50.00',
+                '8.5',
                 '100.00',
-                '1000.00',
             ],
         ];
     }
@@ -91,10 +95,8 @@ class QuoteBulkUpload extends BulkUploadAbstract
             }
 
             // Calculate totals (similar to InvoiceBulkUpload)
-            $itemAmount = $validatedData['item_amount'] ??
-                (($validatedData['item_quantity'] ?? 1) * ($validatedData['item_rate'] ?? 0));
+            $subtotal = $validatedData['item_unit_price'] * ($validatedData['item_quantity'] ?? 1);
 
-            $subtotal = $itemAmount;
             $discountAmount = $this->calculateDiscount($subtotal, $validatedData);
             $discountedSubtotal = $subtotal - $discountAmount;
             $taxAmount = $this->calculateTax($discountedSubtotal, $validatedData);
@@ -102,35 +104,57 @@ class QuoteBulkUpload extends BulkUploadAbstract
 
             // Check for duplicate quote number
             $existingQuote = Quote::where('company_id', $this->getCurrentCompanyId())
-                ->where('quote_number', $validatedData['quote_number'])
+                ->where('quoteID', $validatedData['quote_number'])
                 ->first();
 
             if ($existingQuote) {
-                $this->addError("Row {$rowNumber}: Quote number '{$validatedData['quote_number']}' already exists");
-                return null;
+                $this->addWarning("Row {$rowNumber}: Quote number '{$validatedData['quote_number']}' already exists. The value will be updated");
             }
+
+            $currency = $this->findCurrency($validatedData['currency']);
+
+            if ($validatedData['category']) {
+                $category = $this->findCategory($validatedData['category'], 'invoices');
+            }
+            if ($validatedData['item_category']) {
+                $itemCategory = $this->findCategory($validatedData['item_category'], 'line_items');
+            }
+
+            $quoteService = app(QuoteService::class);
 
             // Prepare quote data
             $quoteData = [
-                'quote_number' => $validatedData['quote_number'],
-                'customer_id' => $customer->id,
-                'issue_date' => \Carbon\Carbon::parse($validatedData['issue_date'])->format('Y-m-d'),
-                'expiry_date' => \Carbon\Carbon::parse($validatedData['expiry_date'])->format('Y-m-d'),
+                'quote_date' => \Carbon\Carbon::parse($validatedData['issue_date'])->format('Y-m-d H:i:s'),
+                'additional_referenceID' => $quoteService->generateQuoteId(),
+                'quoteID' => $validatedData['quote_number'],
+                'terms_and_conditions' => $validatedData['terms_and_conditions'],
+                'customer_note' => $validatedData['customer_note'],
+                'sub_total' => $subtotal,
+                'additional_charge' => $validatedData['additional_charge'] ?? 0,
+                'quote_total' => $total,
                 'status' => $validatedData['status'] ?? 'draft',
-                'currency' => $validatedData['currency'] ?? 'USD',
-                'tax_rate' => $validatedData['tax_rate'] ?? 0,
-                'discount_amount' => $discountAmount,
-                'discount_type' => $validatedData['discount_type'] ?? 'fixed',
-                'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
-                'total_amount' => $total,
-                'notes' => $validatedData['notes'],
-                'company_id' => $this->getCurrentCompanyId(),
+                'category_id' => $category->id ?? null,
+                'currency_id' => $currency->id ?? $this->getCurrentCompanyCurrency()->id,
                 'created_by' => $this->getCurrentUserId(),
-                'edited_by' => $this->getCurrentUserId(),
+                'company_id' => $this->getCurrentCompanyId(),
+                'customer_id' => $customer->id
+            ];
+            $lineItemData = [
+                'item_details' => $validatedData['item_description'] ?? 'Default Item',
+                'quantity' => $validatedData['item_quantity'] ?? 1,
+                'price' => $validatedData['item_unit_price'] ?? 0,
+                'discount' => $discountAmount,
+                'vat' => $taxAmount,
+                'amount' => $subtotal,
+                'category_id' => $itemCategory->id ?? null,
+                'created_by' => $this->getCurrentUserId(),
+                'company_id' => $this->getCurrentCompanyId()
             ];
 
-            return $quoteData;
+            return [
+                'quote' => $quoteData,
+                'line_items' => [$lineItemData],
+            ];
         } catch (\Exception $e) {
             $this->addError("Row {$rowNumber}: " . $e->getMessage());
             return null;
@@ -153,8 +177,6 @@ class QuoteBulkUpload extends BulkUploadAbstract
             'quote_number.required' => 'Quote number is required.',
             'customer_name.required' => 'Customer name is required.',
             'issue_date.required' => 'Issue date is required.',
-            'expiry_date.required' => 'Expiry date is required.',
-            'expiry_date.after_or_equal' => 'Expiry date must be on or after issue date.',
         ]);
     }
 
@@ -169,60 +191,12 @@ class QuoteBulkUpload extends BulkUploadAbstract
     }
 
     /**
-     * Find or create customer (reuse from InvoiceBulkUpload)
-     */
-    protected function findOrCreateCustomer(array $data, int $rowNumber): ?Customer
-    {
-        $companyId = $this->getCurrentCompanyId();
-
-        if (!empty($data['customer_email'])) {
-            $customer = Customer::where('company_id', $companyId)
-                ->where('email', $data['customer_email'])
-                ->first();
-
-            if ($customer) {
-                return $customer;
-            }
-        }
-
-        $customer = Customer::where('company_id', $companyId)
-            ->where('name', $data['customer_name'])
-            ->first();
-
-        if ($customer) {
-            return $customer;
-        }
-
-        try {
-            $customer = Customer::create([
-                'name' => $data['customer_name'],
-                'email' => $data['customer_email'],
-                'company_id' => $companyId,
-                'created_by' => $this->getCurrentUserId(),
-                'edited_by' => $this->getCurrentUserId(),
-            ]);
-
-            $this->addWarning("Row {$rowNumber}: Created new customer '{$data['customer_name']}'");
-            return $customer;
-        } catch (\Exception $e) {
-            $this->addError("Row {$rowNumber}: Failed to create customer '{$data['customer_name']}': " . $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
      * Calculate discount amount
      */
     protected function calculateDiscount(float $subtotal, array $data): float
     {
-        $discountAmount = $data['discount_amount'] ?? 0;
-        $discountType = $data['discount_type'] ?? 'fixed';
-
-        if ($discountType === 'percentage') {
-            return ($subtotal * $discountAmount) / 100;
-        }
-
-        return min($discountAmount, $subtotal);
+        $discount = $data['item_discount'] ?? 0;
+        return ($subtotal * $discount) / 100;
     }
 
     /**
@@ -230,7 +204,50 @@ class QuoteBulkUpload extends BulkUploadAbstract
      */
     protected function calculateTax(float $subtotal, array $data): float
     {
-        $taxRate = $data['tax_rate'] ?? 0;
+        $taxRate = $data['item_vat'] ?? 0;
         return ($subtotal * $taxRate) / 100;
+    }
+
+    /**
+     * Create complex quote record with line items
+     * 
+     * @param array $data
+     * @return \App\Models\Quote|null
+     */
+    protected function createComplexRecord(array $data)
+    {
+        if (!isset($data['quote']) || !isset($data['line_items'])) {
+            return null;
+        }
+
+        try {
+            // Create the quote first
+            $quote = Quote::create($data['quote']);
+
+            return $quote;
+        } catch (\Exception $e) {
+            $this->addError("Failed to create quote: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Perform post-creation operations for quotes
+     * This includes adding line items and other operations
+     * 
+     * @param \App\Models\Quote $quote
+     * @param array $data
+     * @return void
+     */
+    protected function performPostCreationOperations($quote, array $data): void
+    {
+        try {
+            // Add line items to the quote
+            if (isset($data['line_items']) && is_array($data['line_items'])) {
+                $quote->addLineItems($data['line_items']);
+            }
+        } catch (\Exception $e) {
+            $this->addError("Failed to perform post-creation operations for quote {$quote->quoteID}: " . $e->getMessage());
+        }
     }
 }

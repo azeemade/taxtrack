@@ -64,8 +64,15 @@ class ProcessBulkUploadJob implements ShouldQueue
                 'started_at' => now(),
             ]);
 
-            // Import the Excel file
-            $import = new DynamicBulkUploadImport($this->bulkUploadHandler);
+            // Load user relationship to get company context
+            $this->bulkUploadJob->load('user');
+
+            // Import the Excel file with user context
+            $import = new DynamicBulkUploadImport(
+                $this->bulkUploadHandler,
+                $this->bulkUploadJob->user_id,
+                $this->bulkUploadJob->user->current_company_id ?? null
+            );
             Excel::import($import, $this->filePath);
 
             // Get processing results
@@ -74,10 +81,10 @@ class ProcessBulkUploadJob implements ShouldQueue
             $errors = $results['errors'];
             $warnings = $results['warnings'];
 
-            // Store the processed data if there are successful rows
-            $storedData = [];
+            // Process the prepared data and create actual records with post-creation operations
+            $creationResults = [];
             if ($statistics['successful_rows'] > 0) {
-                $storedData = $this->storeProcessedData($results['processed_data']);
+                $creationResults = $import->processPreparedData();
             }
 
             // Generate error report if there are errors
@@ -96,9 +103,9 @@ class ProcessBulkUploadJob implements ShouldQueue
                 'status' => 'completed',
                 'completed_at' => now(),
                 'statistics' => $statistics,
-                'errors' => $errors,
+                'errors' => array_merge($errors, $creationResults['errors'] ?? []),
                 'warnings' => $warnings,
-                'stored_data_count' => count($storedData),
+                'stored_data_count' => $creationResults['total_created'] ?? 0,
                 'error_report_path' => $errorReportPath,
             ]);
 

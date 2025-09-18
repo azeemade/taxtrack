@@ -3,9 +3,13 @@
 namespace App\Abstracts;
 
 use App\Contracts\BulkUploadContract;
+use App\Models\Category;
+use App\Models\Customer;
+use App\Services\Customer\CustomerService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Nnjeim\World\Models\Currency;
 
 abstract class BulkUploadAbstract implements BulkUploadContract
 {
@@ -14,6 +18,8 @@ abstract class BulkUploadAbstract implements BulkUploadContract
     protected int $processedRows = 0;
     protected int $successfulRows = 0;
     protected int $failedRows = 0;
+    protected ?int $userId = null;
+    protected ?int $companyId = null;
 
     /**
      * Default validation messages
@@ -195,12 +201,29 @@ abstract class BulkUploadAbstract implements BulkUploadContract
     }
 
     /**
+     * Set user context for bulk upload processing
+     *
+     * @param int $userId
+     * @param int $companyId
+     * @return void
+     */
+    public function setUserContext(int $userId, int $companyId): void
+    {
+        $this->userId = $userId;
+        $this->companyId = $companyId;
+    }
+
+    /**
      * Get current user ID
      *
      * @return int|null
      */
     protected function getCurrentUserId(): ?int
     {
+        if ($this->userId !== null) {
+            return $this->userId;
+        }
+
         if (Auth::check()) {
             return Auth::id();
         }
@@ -214,10 +237,205 @@ abstract class BulkUploadAbstract implements BulkUploadContract
      */
     protected function getCurrentCompanyId(): ?int
     {
+        if ($this->companyId !== null) {
+            return $this->companyId;
+        }
+
         if (Auth::check()) {
             $user = Auth::user();
             return $user->current_company_id ?? null;
         }
         return null;
+    }
+
+    /**
+     * Get current company currency
+     *
+     * @return \Nnjeim\World\Models\Currency|null
+     */
+    protected function getCurrentCompanyCurrency(): ?Currency
+    {
+        if ($this->companyId !== null) {
+            $company = \App\Models\Company::find($this->companyId);
+            return $company?->currentCurrency();
+        }
+
+        if (Auth::check()) {
+            return Auth::user()->company->currentCurrency();
+        }
+        return null;
+    }
+
+    /**
+     * Find Category
+     * 
+     * @param string $category
+     * @param string $table
+     * @return \App\Models\Category|null
+     */
+    protected function findCategory(string $categoryName, string $table): ?Category
+    {
+        $category = Category::where('name', $categoryName)
+            ->where('table', $table)->first();
+
+        if (!$category) {
+            $category = Category::create([
+                'name' => $categoryName,
+                'table' => $table,
+            ]);
+        }
+        return $category;
+    }
+
+    /**
+     * Process the prepared data and create the actual records
+     * This method should be called after all rows have been processed
+     * 
+     * @param array $processedData
+     * @return array
+     */
+    public function processPreparedData(array $processedData): array
+    {
+        $createdRecords = [];
+        $errors = [];
+
+        foreach ($processedData as $index => $data) {
+            try {
+                $record = $this->createRecord($data);
+                if ($record) {
+                    $createdRecords[] = $record;
+
+                    // Perform post-creation operations
+                    $this->performPostCreationOperations($record, $data);
+                }
+            } catch (\Exception $e) {
+                $errors[] = "Failed to create record at index {$index}: " . $e->getMessage();
+                $this->addError("Failed to create record at index {$index}: " . $e->getMessage());
+            }
+        }
+
+        return [
+            'created_records' => $createdRecords,
+            'errors' => $errors,
+            'total_created' => count($createdRecords),
+            'total_failed' => count($errors)
+        ];
+    }
+
+    /**
+     * Create a single record from prepared data
+     * Override this method in child classes for custom creation logic
+     * 
+     * @param array $data
+     * @return mixed|null
+     */
+    protected function createRecord(array $data)
+    {
+        $modelClass = $this->getModelClass();
+
+        // If data contains the main model data directly
+        if (isset($data['invoice']) || isset($data['quote']) || isset($data['customer'])) {
+            // Handle complex data structures like invoices with line items
+            return $this->createComplexRecord($data);
+        }
+
+        // Handle simple data structures
+        return $modelClass::create($data);
+    }
+
+    /**
+     * Create complex records (like invoices with line items)
+     * Override this method in child classes for custom complex creation logic
+     * 
+     * @param array $data
+     * @return mixed|null
+     */
+    protected function createComplexRecord(array $data)
+    {
+        // Default implementation - should be overridden by child classes
+        return null;
+    }
+
+    /**
+     * Perform operations after record creation (like adding line items, sending emails, etc.)
+     * Override this method in child classes for custom post-creation logic
+     * 
+     * @param mixed $record
+     * @param array $data
+     * @return void
+     */
+    protected function performPostCreationOperations($record, array $data): void
+    {
+        // Default implementation - should be overridden by child classes
+        // This is where you would add line items, send emails, etc.
+    }
+
+    /**
+     * Find or create customer
+     */
+    protected function findOrCreateCustomer(array $data, int $rowNumber): ?Customer
+    {
+        $companyId = $this->getCurrentCompanyId();
+
+        // Try to find by email first
+        if (!empty($data['customer_contact'])) {
+            $customer = Customer::where('company_id', $companyId)
+                ->where(function ($query) use ($data) {
+                    $query->where('email', $data['customer_contact'])
+                        ->orWhere('phone_number', $data['customer_contact']);
+                })
+                ->first();
+
+            if ($customer) {
+                return $customer;
+            }
+        }
+
+        // Try to find by name
+        $customer = Customer::where('company_id', $companyId)
+            ->where('company_name', $data['customer_name'])
+            ->first();
+
+        if ($customer) {
+            return $customer;
+        }
+
+        // Create new customer if not found
+        try {
+            $email = null;
+            $phoneNumber = null;
+            if (filter_var($data['customer_contact'], FILTER_VALIDATE_EMAIL)) {
+                $email = $data['customer_contact'];
+            } else {
+                $phoneNumber = $data['customer_contact'];
+            }
+            $customerService = app(CustomerService::class);
+            $customer = Customer::create([
+                'email' => $email,
+                'company_name' => $data['customer_name'],
+                'customerID' => $customerService->generateCompanyReference(),
+                'customer_type' => 'individual',
+                'business_type' => 'proprietorship',
+                'currency_id' => $this->getCurrentCompanyCurrency()->id,
+                'phone_number' => $phoneNumber,
+                'company_id' => $companyId,
+                'created_by' => $this->getCurrentUserId()
+            ]);
+
+            $this->addWarning("Row {$rowNumber}: Created new customer '{$data['customer_name']}'");
+            return $customer;
+        } catch (\Exception $e) {
+            $this->addError("Row {$rowNumber}: Failed to create customer '{$data['customer_name']}': " . $e->getMessage());
+            return null;
+        }
+    }
+
+
+    /**
+     * Find currency
+     */
+    protected function findCurrency(string $currency): ?Currency
+    {
+        return Currency::where('code', $currency)->first();
     }
 }

@@ -97,4 +97,9 @@ class Invoice extends Model
     {
         return $this->morphOne(BadDebt::class, 'documentable');
     }
+
+    public function quote()
+    {
+        return $this->belongsTo(Quote::class);
+    }
 }

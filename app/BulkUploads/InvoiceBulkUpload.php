@@ -6,50 +6,61 @@ use App\Abstracts\BulkUploadAbstract;
 use App\Models\Invoice;
 use App\Models\Customer;
 use App\Models\LineItem;
+use App\Models\Quote;
+use App\Services\Customer\CustomerService;
+use App\Services\Invoices\InvoiceService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Validator;
+use Nnjeim\World\Models\Currency;
 
 class InvoiceBulkUpload extends BulkUploadAbstract
 {
+
     public function getValidationRules(): array
     {
         return [
-            'invoice_number' => 'required|string|max:100',
             'customer_name' => 'required|string|max:255',
-            'customer_email' => 'nullable|email|max:255',
+            'customer_contact' => 'required|string|max:255',
+            'currency_code' => 'required|string|size:3',
+            'category' => 'nullable|string',
+            'invoice_number' => 'required|string|max:100',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
+            'terms_and_conditions' => 'nullable|string|max:1000',
+            'customer_notes' => 'nullable|string|max:1000',
+            'quote_number' => 'nullable|string|max:100|exists:quotes,quoteID,company_id,' . $this->getCurrentCompanyId(),
             'status' => 'nullable|in:draft,sent,paid,overdue,cancelled',
-            'currency' => 'nullable|string|size:3',
-            'tax_rate' => 'nullable|numeric|min:0|max:100',
-            'discount_amount' => 'nullable|numeric|min:0',
-            'discount_type' => 'nullable|in:fixed,percentage',
-            'notes' => 'nullable|string|max:1000',
-            'item_description' => 'nullable|string|max:500',
-            'item_quantity' => 'nullable|numeric|min:0.01',
-            'item_rate' => 'nullable|numeric|min:0',
-            'item_amount' => 'nullable|numeric|min:0',
+            'payment_status' => 'nullable|in:pending,partial-payment,full-payment',
+            'additional_charge' => 'nullable|numeric|min:0',
+            'item_description' => 'required|string|max:500',
+            'item_category' => 'nullable|string|max:500',
+            'item_quantity' => 'required|numeric|min:0.01',
+            'item_discount' => 'nullable|numeric|min:0|max:100',
+            'item_vat' => 'nullable|numeric|min:0|max:100',
+            'item_unit_price' => 'required|numeric|min:0'
         ];
     }
 
     public function getTemplateHeaders(?string $subType = null): array
     {
         return [
-            'Invoice Number',
             'Customer Name',
-            'Customer Email',
+            'Customer Contact',
+            'Currency Code',
+            'Category',
+            'Invoice Number',
             'Issue Date',
             'Due Date',
+            'Terms and Conditions',
+            'Customer Notes',
+            'Quote Number',
             'Status',
-            'Currency',
-            'Tax Rate (%)',
-            'Discount Amount',
-            'Discount Type',
-            'Notes',
+            'Payment Status',
             'Item Description',
+            'Item Category',
             'Item Quantity',
-            'Item Rate',
-            'Item Amount',
+            'Item Discount',
+            'Item VAT',
+            'Item Unit Price'
         ];
     }
 
@@ -57,21 +68,24 @@ class InvoiceBulkUpload extends BulkUploadAbstract
     {
         return [
             [
-                'INV-001',
                 'John Doe',
                 'john.doe@example.com',
+                'USD',
+                'Services',
+                'INV-001',
                 '2024-01-15',
                 '2024-02-15',
-                'draft',
-                'USD',
-                '8.5',
-                '50.00',
-                'fixed',
                 'Thank you for your business',
                 'Consulting Services',
+                '',
+                'draft',
+                'pending',
+                'Consulting Services',
+                'Services',
                 '10',
-                '100.00',
-                '1000.00',
+                '50.00',
+                '8.5',
+                '100.00'
             ],
         ];
     }
@@ -94,53 +108,76 @@ class InvoiceBulkUpload extends BulkUploadAbstract
             }
 
             // Calculate totals
-            $itemAmount = $validatedData['item_amount'] ??
-                (($validatedData['item_quantity'] ?? 1) * ($validatedData['item_rate'] ?? 0));
+            $subtotal = $validatedData['item_unit_price'] * ($validatedData['item_quantity'] ?? 1);
 
-            $subtotal = $itemAmount;
             $discountAmount = $this->calculateDiscount($subtotal, $validatedData);
             $discountedSubtotal = $subtotal - $discountAmount;
             $taxAmount = $this->calculateTax($discountedSubtotal, $validatedData);
             $total = $discountedSubtotal + $taxAmount;
 
             // Check for duplicate invoice number
-            $existingInvoice = Invoice::where('company_id', $this->getCurrentCompanyId())
-                ->where('invoice_number', $validatedData['invoice_number'])
+            $existingInvoice = Invoice::where('invoiceID', $validatedData['invoice_number'])
                 ->first();
 
             if ($existingInvoice) {
-                $this->addError("Row {$rowNumber}: Invoice number '{$validatedData['invoice_number']}' already exists");
-                return null;
+                $this->addWarning("Row {$rowNumber}: Invoice number '{$validatedData['invoice_number']}' already exists. The value will be updated");
             }
+
+            $quote = null;
+            if ($validatedData['quote_number']) {
+                $quote = Quote::where('quoteID', $validatedData['quote_number'])
+                    ->where('company_id', $this->getCurrentCompanyId())
+                    ->first();
+            }
+
+            $currency = $this->findCurrency($validatedData['currency_code']);
+
+            $category = null;
+            if ($validatedData['category']) {
+                $category = $this->findCategory($validatedData['category'], 'invoices');
+            }
+
+            $itemCategory = null;
+            if ($validatedData['item_category']) {
+                $itemCategory = $this->findCategory($validatedData['item_category'], 'line_items');
+            }
+
+            $invoiceService = app(InvoiceService::class);
+
 
             // Prepare invoice data
             $invoiceData = [
-                'invoice_number' => $validatedData['invoice_number'],
-                'customer_id' => $customer->id,
-                'issue_date' => Carbon::parse($validatedData['issue_date'])->format('Y-m-d'),
+                'invoiceID' => $validatedData['invoice_number'],
+                'referenceID' => $invoiceService->generateRefId(),
+                'additional_referenceID' => $invoiceService->generateRefId(),
+                'start_date' => Carbon::parse($validatedData['issue_date'])->format('Y-m-d'),
                 'due_date' => Carbon::parse($validatedData['due_date'])->format('Y-m-d'),
+                'terms_and_conditions' => $validatedData['terms_and_conditions'],
+                'customer_note' => $validatedData['customer_notes'],
                 'status' => $validatedData['status'] ?? 'draft',
-                'currency' => $validatedData['currency'] ?? 'USD',
-                'tax_rate' => $validatedData['tax_rate'] ?? 0,
-                'discount_amount' => $discountAmount,
-                'discount_type' => $validatedData['discount_type'] ?? 'fixed',
-                'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
-                'total_amount' => $total,
-                'notes' => $validatedData['notes'],
-                'company_id' => $this->getCurrentCompanyId(),
+                'sub_total' => $subtotal,
+                'additional_charge' => $validatedData['additional_charge'] ?? 0,
+                'invoice_value' => $total,
+                'payment_status' => $validatedData['payment_status'] ?? 'pending',
+                'customer_id' => $customer->id,
+                'currency_id' => $currency->id ?? $this->getCurrentCompanyCurrency()->id,
+                'quote_id' => $quote->id ?? null,
+                'category_id' => $category->id ?? null,
                 'created_by' => $this->getCurrentUserId(),
-                'edited_by' => $this->getCurrentUserId(),
+                'company_id' => $this->getCurrentCompanyId()
             ];
 
             // Prepare line item data
             $lineItemData = [
-                'description' => $validatedData['item_description'] ?? 'Default Item',
+                'item_details' => $validatedData['item_description'] ?? 'Default Item',
                 'quantity' => $validatedData['item_quantity'] ?? 1,
-                'rate' => $validatedData['item_rate'] ?? 0,
-                'amount' => $itemAmount,
+                'price' => $validatedData['item_unit_price'] ?? 0,
+                'discount' => $discountAmount,
+                'vat' => $taxAmount,
+                'amount' => $subtotal,
+                'category_id' => $itemCategory->id ?? null,
                 'created_by' => $this->getCurrentUserId(),
-                'edited_by' => $this->getCurrentUserId(),
+                'company_id' => $this->getCurrentCompanyId()
             ];
 
             return [
@@ -188,63 +225,12 @@ class InvoiceBulkUpload extends BulkUploadAbstract
     }
 
     /**
-     * Find or create customer
-     */
-    protected function findOrCreateCustomer(array $data, int $rowNumber): ?Customer
-    {
-        $companyId = $this->getCurrentCompanyId();
-
-        // Try to find by email first
-        if (!empty($data['customer_email'])) {
-            $customer = Customer::where('company_id', $companyId)
-                ->where('email', $data['customer_email'])
-                ->first();
-
-            if ($customer) {
-                return $customer;
-            }
-        }
-
-        // Try to find by name
-        $customer = Customer::where('company_id', $companyId)
-            ->where('name', $data['customer_name'])
-            ->first();
-
-        if ($customer) {
-            return $customer;
-        }
-
-        // Create new customer if not found
-        try {
-            $customer = Customer::create([
-                'name' => $data['customer_name'],
-                'email' => $data['customer_email'],
-                'company_id' => $companyId,
-                'created_by' => $this->getCurrentUserId(),
-                'edited_by' => $this->getCurrentUserId(),
-            ]);
-
-            $this->addWarning("Row {$rowNumber}: Created new customer '{$data['customer_name']}'");
-            return $customer;
-        } catch (\Exception $e) {
-            $this->addError("Row {$rowNumber}: Failed to create customer '{$data['customer_name']}': " . $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
      * Calculate discount amount
      */
     protected function calculateDiscount(float $subtotal, array $data): float
     {
-        $discountAmount = $data['discount_amount'] ?? 0;
-        $discountType = $data['discount_type'] ?? 'fixed';
-
-        if ($discountType === 'percentage') {
-            return ($subtotal * $discountAmount) / 100;
-        }
-
-        return min($discountAmount, $subtotal);
+        $discount = $data['item_discount'] ?? 0;
+        return ($subtotal * $discount) / 100;
     }
 
     /**
@@ -252,7 +238,60 @@ class InvoiceBulkUpload extends BulkUploadAbstract
      */
     protected function calculateTax(float $subtotal, array $data): float
     {
-        $taxRate = $data['tax_rate'] ?? 0;
+        $taxRate = $data['item_vat'] ?? 0;
         return ($subtotal * $taxRate) / 100;
+    }
+
+    /**
+     * Create complex invoice record with line items
+     * 
+     * @param array $data
+     * @return \App\Models\Invoice|null
+     */
+    protected function createComplexRecord(array $data)
+    {
+        if (!isset($data['invoice']) || !isset($data['line_items'])) {
+            return null;
+        }
+
+        try {
+            // Create the invoice first
+            $invoice = Invoice::create($data['invoice']);
+
+            return $invoice;
+        } catch (\Exception $e) {
+            $this->addError("Failed to create invoice: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Perform post-creation operations for invoices
+     * This includes adding line items and other operations similar to InvoiceService::updateOrCreate
+     * 
+     * @param \App\Models\Invoice $invoice
+     * @param array $data
+     * @return void
+     */
+    protected function performPostCreationOperations($invoice, array $data): void
+    {
+        try {
+            // Add line items to the invoice
+            if (isset($data['line_items']) && is_array($data['line_items'])) {
+                $invoice->addLineItems($data['line_items']);
+            }
+
+            // Update quote status if this invoice was created from a quote
+            if (isset($data['invoice']['quote_id']) && $data['invoice']['quote_id']) {
+                $quote = Quote::find($data['invoice']['quote_id']);
+                if ($quote) {
+                    $quote->update([
+                        'status' => \App\Enums\FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            $this->addError("Failed to perform post-creation operations for invoice {$invoice->invoiceID}: " . $e->getMessage());
+        }
     }
 }
