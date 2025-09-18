@@ -3,6 +3,8 @@
 namespace App\Services\AccountReconciliation;
 
 use App\Exceptions\BadRequestException;
+use App\Exports\Banking\BankReconciliationStructuredExport;
+use App\Exports\Banking\ReconciliationRunExport;
 use App\Exports\Banking\ReconciliationSummaryExport;
 use App\Helpers\GeneralHelper;
 use App\Models\FinanceAccountEntry;
@@ -13,13 +15,16 @@ use App\Models\ReconciliationMatch;
 use App\Models\ReconciliationRecord;
 use App\Models\ReconciliationRun;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Response as ResponseFacade;
 
 class AccountReconciliationService
 {
@@ -944,7 +949,6 @@ class AccountReconciliationService
         ]);
     }
 
-
     public function getReconciliationSummaryFromRecords($request)
     {
         $validator = Validator::make($request->all(), [
@@ -1053,7 +1057,6 @@ class AccountReconciliationService
         return $rows;
     }
 
-
     public function listReconciliationRecords($request)
     {
         $validator = Validator::make($request->all(), [
@@ -1106,76 +1109,71 @@ class AccountReconciliationService
         return $q->get();
     }
 
-
-
     public function listReconciliationRuns(Request $request)
-{
-    $validator = \Validator::make($request->all(), [
-        'account_id' => 'nullable|exists:finance_chart_of_accounts,id',
-        'start_date' => 'nullable|date',
-        'end_date'   => 'nullable|date|after_or_equal:start_date',
-        'search'     => 'nullable|string', // matches title or batch_id
-        'sort_by'    => 'nullable|in:created_at,start_date,end_date,discrepancies,dual_reflections,no_discrepancies',
-        'sort_order' => 'nullable|in:asc,desc',
-        'limit'      => 'nullable|integer|min:1|max:200',
-        'page'       => 'nullable|integer|min:1',
-    ]);
-    if ($validator->fails()) {
-        throw new BadRequestException($validator->errors()->first());
-    }
+    {
+        $validator = \Validator::make($request->all(), [
+            'account_id' => 'nullable|exists:finance_chart_of_accounts,id',
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'search'     => 'nullable|string', // matches title or batch_id
+            'sort_by'    => 'nullable|in:created_at,start_date,end_date,discrepancies,dual_reflections,no_discrepancies',
+            'sort_order' => 'nullable|in:asc,desc',
+            'limit'      => 'nullable|integer|min:1|max:200',
+            'page'       => 'nullable|integer|min:1',
+        ]);
+        if ($validator->fails()) {
+            throw new BadRequestException($validator->errors()->first());
+        }
 
-    $companyId = \Auth::user()->current_company_id;
+        $companyId = \Auth::user()->current_company_id;
 
-    $q = \App\Models\ReconciliationRun::query()
-        ->where('company_id', $companyId)
-        ->when($request->filled('account_id'), fn($qq) => $qq->where('account_id', $request->account_id))
-        ->when($request->filled('start_date') && $request->filled('end_date'), fn($qq) =>
+        $q = \App\Models\ReconciliationRun::query()
+            ->where('company_id', $companyId)
+            ->when($request->filled('account_id'), fn($qq) => $qq->where('account_id', $request->account_id))
+            ->when($request->filled('start_date') && $request->filled('end_date'), fn($qq) =>
             $qq->where(function ($w) use ($request) {
                 $w->whereBetween('start_date', [$request->start_date, $request->end_date])
-                  ->orWhereBetween('end_date',   [$request->start_date, $request->end_date]);
+                    ->orWhereBetween('end_date',   [$request->start_date, $request->end_date]);
             }))
-        ->when($s = trim((string)$request->get('search', '')), fn($qq) =>
+            ->when($s = trim((string)$request->get('search', '')), fn($qq) =>
             $qq->where(function ($w) use ($s) {
                 $w->where('title', 'like', "%{$s}%")
-                  ->orWhere('batch_id', 'like', "%{$s}%");
+                    ->orWhere('batch_id', 'like', "%{$s}%");
             }));
 
-    // sanitize sort inputs and defend against whitespace/casing issues
-    $allowedSorts = ['created_at', 'start_date', 'end_date', 'discrepancies', 'dual_reflections', 'no_discrepancies'];
-    $sortBy = trim((string)$request->get('sort_by', 'created_at'));
-    if (!in_array($sortBy, $allowedSorts, true)) {
-        $sortBy = 'created_at';
+        // sanitize sort inputs and defend against whitespace/casing issues
+        $allowedSorts = ['created_at', 'start_date', 'end_date', 'discrepancies', 'dual_reflections', 'no_discrepancies'];
+        $sortBy = trim((string)$request->get('sort_by', 'created_at'));
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'created_at';
+        }
+
+        $sortOrder = strtolower(trim((string)$request->get('sort_order', 'desc'))) === 'asc' ? 'asc' : 'desc';
+
+        $q->orderBy($sortBy, $sortOrder);
+
+        $limit = (int)$request->get('limit', 20);
+        $runs = $q->paginate($limit);
+
+        // Shape each row for the list UI
+        $runs->getCollection()->transform(function ($run) {
+            return [
+                'id'                => $run->id,
+                'account_id'        => $run->account_id,
+                'period'            => ['start_date' => $run->start_date, 'end_date' => $run->end_date],
+                'batch_id'          => $run->batch_id,
+                'title'             => $run->title,
+                'counts'            => [
+                    'discrepancies'     => (int)$run->discrepancies,
+                    'dual_reflections'  => (int)$run->dual_reflections,
+                    'no_discrepancies'  => (int)$run->no_discrepancies,
+                ],
+                'created_at'        => $run->created_at,
+            ];
+        });
+
+        return $runs;
     }
-
-    $sortOrder = strtolower(trim((string)$request->get('sort_order', 'desc'))) === 'asc' ? 'asc' : 'desc';
-
-    $q->orderBy($sortBy, $sortOrder);
-
-    $limit = (int)$request->get('limit', 20);
-    $runs = $q->paginate($limit);
-
-    // Shape each row for the list UI
-    $runs->getCollection()->transform(function ($run) {
-        return [
-            'id'                => $run->id,
-            'account_id'        => $run->account_id,
-            'period'            => ['start_date' => $run->start_date, 'end_date' => $run->end_date],
-            'batch_id'          => $run->batch_id,
-            'title'             => $run->title,
-            'counts'            => [
-                'discrepancies'     => (int)$run->discrepancies,
-                'dual_reflections'  => (int)$run->dual_reflections,
-                'no_discrepancies'  => (int)$run->no_discrepancies,
-            ],
-            'created_at'        => $run->created_at,
-        ];
-    });
-
-    return $runs;
-}
-
-
-
 
     public function getReconciliationRun(Request $request, int $runId)
     {
@@ -1188,11 +1186,13 @@ class AccountReconciliationService
         $validator = \Validator::make($request->all(), [
             'lines_limit' => 'nullable|integer|min:1|max:500',
             'lines_page'  => 'nullable|integer|min:1',
+            'export'      => 'nullable|boolean',
         ]);
         if ($validator->fails()) {
             throw new BadRequestException($validator->errors()->first());
         }
 
+        $export = $request->get('export', false);
         $linesLimit = (int)($request->get('lines_limit', 100));
         $linesPage  = (int)($request->get('lines_page', 1));
 
@@ -1201,6 +1201,18 @@ class AccountReconciliationService
             ->orderBy('date')
             ->orderBy('id');
 
+        if ($export) {
+            // Log export request
+            Log::info('Export requested for reconciliation run', [
+                'run_id' => $runId,
+                'company_id' => $companyId,
+                'user_id' => \Auth::user()->id
+            ]);
+
+            // Generate Excel file
+            $filename = "reconciliation_run_{$runId}_" . now()->format('Ymd_His') . '.xlsx';
+            return Excel::download(new ReconciliationRunExport($runId, $companyId), $filename);
+        }
         $linesPaginator = $linesQuery->paginate($linesLimit, ['*'], 'page', $linesPage);
 
         // Build stats from records (or use run counts + recompute totals)
@@ -1245,5 +1257,136 @@ class AccountReconciliationService
                 }),
             ],
         ];
+    }
+
+    /**
+     * Build the Bank Reconciliation Summary report or export it.
+     *
+     * Query params:
+     *  - account_id (required)
+     *  - start_date (required, Y-m-d)
+     *  - end_date   (required, Y-m-d)
+     *  - export   (optional: boolean)
+     */
+    public function bankReconciliationSummary(Request $request)
+    {
+        $v = Validator::make($request->all(), [
+            'account_id' => 'required|exists:finance_chart_of_accounts,id',
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'export'   => 'nullable|boolean'
+        ]);
+        if ($v->fails()) {
+            throw new BadRequestException($v->errors()->first());
+        }
+
+        $companyId = Auth::user()->current_company_id;
+        $start = Carbon::parse($request->start_date)->startOfDay();
+        $end   = Carbon::parse($request->end_date)->endOfDay();
+
+        $account = FinanceChartOfAccount::where('company_id', $companyId)
+            ->findOrFail($request->account_id);
+
+        // ---- APP (ledger) ----
+        // opening balance before start-date
+        $prior = FinanceAccountEntry::query()
+            ->where('account_id', $account->id)
+            ->whereHas('journalEntry', fn($q) => $q->where('company_id', $companyId)->where('status', 'published'))
+            ->where('date', '<', $start->toDateString())
+            ->get(['debit_amount', 'credit_amount']);
+
+        $appOpening = (float)($account->opening_balance ?? 0)
+            + (float)$prior->sum('debit_amount')
+            - (float)$prior->sum('credit_amount');
+
+        $appRows = FinanceAccountEntry::query()
+            ->where('account_id', $account->id)
+            ->whereHas('journalEntry', fn($q) => $q->where('company_id', $companyId)->where('status', 'published'))
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->orderBy('date')->orderBy('id')
+            ->get(['id', 'date', 'reference', 'debit_amount', 'credit_amount']);
+
+        // Build running balance (+debit, -credit)
+        $running = $appOpening;
+        $appTx = $appRows->map(function ($r) use (&$running) {
+            $amount = (float)$r->debit_amount - (float)$r->credit_amount; // single amount column
+            $running += $amount;
+            return [
+                'id'        => $r->id,
+                'date'      => Carbon::parse($r->date)->toDateString(),
+                'reference' => (string)$r->reference,
+                'amount'    => round($amount, 2),
+                'balance'   => round($running, 2),
+            ];
+        });
+
+        $appGrouped = $appTx->groupBy('date')->map(function (Collection $rows, $date) {
+            return [
+                'date'  => $date,
+                'items' => $rows->values(),
+            ];
+        })->sortKeys()->values();
+
+        // ---- BANK (statement) ----
+        $bankRows = FinanceBankStatement::query()
+            ->where('company_id', $companyId)
+            ->where('account_id', $account->id)
+            ->whereBetween('transaction_date', [$start->toDateString(), $end->toDateString()])
+            ->orderBy('transaction_date')->orderBy('id')
+            ->get(['id', 'transaction_date', 'referenceID', 'withdrawals', 'lodgments', 'balance']);
+
+        // If bank.balance is missing on some rows, compute a running balance using amount = lodgments - withdrawals,
+        // starting from the first row’s (existing) balance if present; otherwise start from 0.
+        $bankTx = collect();
+        $runningBank = null;
+
+        foreach ($bankRows as $r) {
+            $date = Carbon::parse($r->transaction_date)->toDateString();
+            $amount = (float)($r->lodgments ?? 0) - (float)($r->withdrawals ?? 0);
+            // choose balance: prefer provided balance, else compute
+            if ($runningBank === null) {
+                $runningBank = is_null($r->balance) ? 0.0 : (float)$r->balance - $amount; // so after adding amount we reach the row balance
+            }
+            $runningBank += $amount;
+            $balance = is_null($r->balance) ? $runningBank : (float)$r->balance;
+
+            $bankTx->push([
+                'id'        => $r->id,
+                'date'      => $date,
+                'reference' => (string)($r->referenceID ?? ''),
+                'amount'    => round($amount, 2),
+                'balance'   => round($balance, 2),
+            ]);
+        }
+
+        $bankGrouped = $bankTx->groupBy('date')->map(function (Collection $rows, $date) {
+            return [
+                'date'  => $date,
+                'items' => $rows->values(),
+            ];
+        })->sortKeys()->values();
+
+        $payload = [
+            'filters' => [
+                'account'    => ['id' => $account->id, 'name' => $account->name ?? null],
+                'start_date' => $start->toDateString(),
+                'end_date'   => $end->toDateString(),
+            ],
+            'app' => [
+                'opening_balance' => round($appOpening, 2),
+                'grouped'         => $appGrouped,
+            ],
+            'bank' => [
+                'grouped'         => $bankGrouped,
+            ],
+        ];
+
+        // export
+        if ($request->get('export', false)) {
+            $file = 'bank-reconciliation-summary-' . now()->format('Ymd_His') . '.xlsx';
+            return Excel::download(new BankReconciliationStructuredExport($payload), $file);
+        }
+       
+        return $payload;
     }
 }

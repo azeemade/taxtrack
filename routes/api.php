@@ -298,11 +298,13 @@ Route::group([
 
                     Route::prefix('reconciliation')->group(function () {
                         Route::post('/upload-bankstatement', [ReconciliationController::class, 'uploadBankStatement']);
-                        Route::post('/download-bankstatement-template', [ReconciliationController::class, 'downloadBankStatementTemplate']);
+                        Route::get('/download-bankstatement-template', [ReconciliationController::class, 'downloadBankStatementTemplate']);
             
                         Route::post('/build-and-save-reconciliation-records', [ReconciliationController::class, 'buildAndSaveReconciliationRecords']);
                         Route::post('/list-reconciliation-runs', [ReconciliationController::class, 'listReconciliationRuns']);
                         Route::get('/get-reconciliation-run/{runId}', [ReconciliationController::class, 'getReconciliationRun']);
+
+                        Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'bankReeconciliationSummary']);
                         
                         
                         // Route::get('/all_statements', [ReconciliationController::class, 'allBankStatements']);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Company\Report\Reconciliation;
 
 use App\Exceptions\BadRequestException;
+use App\Exports\Banking\BankStatementTemplateExport;
 use App\Exports\Report\AccountSummaryExport;
 use App\Exports\Report\BankReconciliationLinesExport;
 use App\Exports\Report\BankReconciliationSummaryExport;
@@ -168,8 +169,13 @@ class ReconciliationController extends Controller
     public function downloadBankStatementTemplate(Request $request)
     {
         try {
-            $data = $this->accountReconciliationService->downloadBankStatementTemplate($request);
-            return Excel::download(new BankStatementTemplateExport($data), 'bank_statement_template.xlsx');
+            // Optional: pass dynamic data if needed, else it uses default sample
+            $data = [];
+
+            return Excel::download(
+                new BankStatementTemplateExport($data),
+                'bank_statement_template.xlsx'
+            );
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
@@ -217,7 +223,7 @@ class ReconciliationController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
-    
+
     public function reconcileLine(Request $request)
     {
         try {
@@ -276,13 +282,17 @@ class ReconciliationController extends Controller
 
 
 
-    
+
 
 
     public function getReconciliationRun(Request $request, $runId)
     {
         try {
             $result = $this->accountReconciliationService->getReconciliationRun($request, $runId);
+            if ($request->get('export', false)) {
+                // Return the Excel download response
+                return $result;
+            }
             return JsonResponser::send(false, 'Reconciliation Run fetched successfully', $result, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
@@ -302,7 +312,22 @@ class ReconciliationController extends Controller
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
-    }   
+    }
+
+    public function bankReeconciliationSummary(Request $request)
+    {
+        try {
+            $result = $this->accountReconciliationService->bankReconciliationSummary($request);
+            if ($request->get('export', false)) {
+                return $result;
+            }
+            return JsonResponser::send(false, 'Reconciliation Run fetched successfully', $result, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 
 
     //Not needed currently
@@ -329,6 +354,4 @@ class ReconciliationController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
-
-
 }
