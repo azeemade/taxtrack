@@ -306,13 +306,10 @@ Route::group([
 
                     Route::prefix('reconciliation')->group(function () {
                         Route::post('/upload-bankstatement', [ReconciliationController::class, 'uploadBankStatement']);
-                        Route::post('/download-bankstatement-template', [ReconciliationController::class, 'downloadBankStatementTemplate']);
-
+                        Route::get('/download-bankstatement-template', [ReconciliationController::class, 'downloadBankStatementTemplate']);
                         Route::post('/build-and-save-reconciliation-records', [ReconciliationController::class, 'buildAndSaveReconciliationRecords']);
                         Route::post('/list-reconciliation-runs', [ReconciliationController::class, 'listReconciliationRuns']);
                         Route::get('/get-reconciliation-run/{runId}', [ReconciliationController::class, 'getReconciliationRun']);
-
-
                         // Route::get('/all_statements', [ReconciliationController::class, 'allBankStatements']);
                         // Route::get('/all_account_transactions', [ReconciliationController::class, 'allAccountTransactions']);
 
@@ -323,15 +320,6 @@ Route::group([
 
                         // Route::post('/list-reconciliation-records', [ReconciliationController::class, 'listReconciliationRecords']);
                         // Route::post('/get-reconciliation-summary-from-records', [ReconciliationController::class, 'getReconciliationSummaryFromRecords']);
-
-
-
-                        // Route::get('/all_reconciliation', [AccountReconciliationController::class, 'allAccountReconciliation']);
-                        // Route::get('/stats', [AccountReconciliationController::class, 'dashboardStats']);
-                        // Route::get('/export-banktemplate', [AccountReconciliationController::class, 'getDownload']);
-                        // Route::post('/reconcile', [AccountReconciliationController::class, 'reconcileBankStatement']);
-                        // Route::get('/show/{id}', [AccountReconciliationController::class, 'singleReconcilaition']);
-                        // Route::get('/download-reconciliation-report/{id}', [AccountReconciliationController::class, 'downloadReconciliationReport']);
                     });
                 });
 
@@ -391,6 +379,7 @@ Route::group([
                             Route::post('/operating-expenses', [BusinessSnapshotController::class, 'getOperatingExpensesReport']);
                             Route::post('/average-time', [BusinessSnapshotController::class, 'getAverageTime']);
                             Route::post('/business-snapshot-summary', [BusinessSnapshotController::class, 'businessSnapshotSummary']);
+                            
                         });
 
                         Route::group(['prefix' => 'business-performance', "namespace" => "FinancialPerformance"], function () {
@@ -423,6 +412,8 @@ Route::group([
 
                         Route::post('/bank-summary', [CashSummaryController::class, 'index']);
                         Route::post('/trial-balance', [ReconciliationController::class, 'trialBalance']);
+
+                        Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'bankReeconciliationSummary']);
                     });
 
                     Route::group(['prefix' => 'tax-and-balances'], function () {
