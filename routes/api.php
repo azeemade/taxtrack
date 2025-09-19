@@ -385,6 +385,7 @@ Route::group([
                             Route::post('/operating-expenses', [BusinessSnapshotController::class, 'getOperatingExpensesReport']);
                             Route::post('/average-time', [BusinessSnapshotController::class, 'getAverageTime']);
                             Route::post('/business-snapshot-summary', [BusinessSnapshotController::class, 'businessSnapshotSummary']);
+                            
                         });
 
                         Route::group(['prefix' => 'business-performance', "namespace" => "FinancialPerformance"], function () {
@@ -417,6 +418,8 @@ Route::group([
                         
                         Route::post('/bank-summary', [CashSummaryController::class, 'index']);
                         Route::post('/trial-balance', [ReconciliationController::class, 'trialBalance']);
+
+                        Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'bankReeconciliationSummary']);
                     });
 
                     Route::group(['prefix' => 'tax-and-balances'], function () {

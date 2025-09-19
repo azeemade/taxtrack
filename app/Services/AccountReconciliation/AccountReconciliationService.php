@@ -934,7 +934,11 @@ class AccountReconciliationService
                 );
             });
 
-            $savedInfo = ['enabled' => true, 'count' => count($payload)];
+            $savedInfo = [
+                'enabled' => true,
+                'count'   => count($payload),
+                'run_id'      => $run->id,
+            ];
         }
 
         // 4) Response (build-only or build+save)
@@ -1182,6 +1186,82 @@ class AccountReconciliationService
         /** @var \App\Models\ReconciliationRun $run */
         $run = ReconciliationRun::where('company_id', $companyId)->findOrFail($runId);
 
+        $validator = \Validator::make($request->all(), [
+            'export' => 'nullable|boolean',
+        ]);
+        if ($validator->fails()) {
+            throw new BadRequestException($validator->errors()->first());
+        }
+
+        $export = $request->boolean('export', false);
+
+        $linesQuery = ReconciliationRecord::where('company_id', $companyId)
+            ->where('run_id', $run->id)
+            ->orderBy('date')
+            ->orderBy('id');
+
+        if ($export) {
+            // Log export request
+            Log::info('Export requested for reconciliation run', [
+                'run_id'    => $runId,
+                'company_id' => $companyId,
+                'user_id'   => \Auth::user()->id,
+            ]);
+
+            $filename = "reconciliation_run_{$runId}_" . now()->format('Ymd_His') . '.xlsx';
+            return Excel::download(new ReconciliationRunExport($runId, $companyId), $filename);
+        }
+
+        // Get all lines without pagination
+        $lines = $linesQuery->get();
+
+        // Build stats from the full set
+        $stats = $this->summarizeLines($lines);
+
+        return [
+            'run' => [
+                'id'          => $run->id,
+                'account_id'  => $run->account_id,
+                'period'      => ['start_date' => $run->start_date, 'end_date' => $run->end_date],
+                'batch_id'    => $run->batch_id,
+                'title'       => $run->title,
+                'counts'      => [
+                    'discrepancies'     => (int) $run->discrepancies,
+                    'dual_reflections'  => (int) $run->dual_reflections,
+                    'no_discrepancies'  => (int) $run->no_discrepancies,
+                ],
+                'created_at'  => $run->created_at,
+            ],
+            'stats' => $stats,
+            'lines' => $lines->map(function ($r) {
+                return [
+                    'bank_id'        => $r->bank_id,
+                    'app_id'         => $r->app_id,
+                    'date'           => $r->date,
+                    'bank_reference' => $r->bank_reference,
+                    'app_reference'  => $r->app_reference,
+                    'bank_debit'     => $r->bank_debit,
+                    'bank_credit'    => $r->bank_credit,
+                    'app_debit'      => $r->app_debit,
+                    'app_credit'     => $r->app_credit,
+                    'status'         => $r->classification === 'no_discrepancy'
+                        ? 'matched'
+                        : ($r->classification === 'dual_reflection' ? 'mismatch' : 'unmatched'),
+                    'context'        => $r->context,
+                    'matched_by'     => $r->matched_by,
+                ];
+            })->values(), // reset indexes
+        ];
+    }
+
+
+    public function getReconciliationRunPaginatedLines(Request $request, int $runId)
+    {
+        $companyId = \Auth::user()->current_company_id;
+
+        /** @var \App\Models\ReconciliationRun $run */
+        $run = ReconciliationRun::where('company_id', $companyId)->findOrFail($runId);
+
         // Lines can be large: paginate them optionally
         $validator = \Validator::make($request->all(), [
             'lines_limit' => 'nullable|integer|min:1|max:500',
@@ -1386,7 +1466,7 @@ class AccountReconciliationService
             $file = 'bank-reconciliation-summary-' . now()->format('Ymd_His') . '.xlsx';
             return Excel::download(new BankReconciliationStructuredExport($payload), $file);
         }
-       
+
         return $payload;
     }
 }
