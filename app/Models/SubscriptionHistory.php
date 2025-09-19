@@ -4,11 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class SubscriptionHistory extends Model
 {
     use HasFactory;
     protected $guarded = ['id'];
+
+    public function scopeSubscriber($query)
+    {
+        // dd(Auth::user()->company->id, Auth::user()->id);
+        return $query->whereRelation('subscriber', 'company_id', Auth::user()->company->id)
+            ->whereRelation('subscriber', 'user_id', Auth::user()->id);
+    }
 
     public function subscriptionRefund()
     {

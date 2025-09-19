@@ -151,7 +151,7 @@ class CustomerService
         $record->editContactPerson($request['contact_persons']);
     }
 
-    protected function generateCompanyReference()
+    public function generateCompanyReference()
     {
         return GeneralHelper::getModelUniqueOrderlyId([
             "modelNamespace" => 'App\Models\Customer',

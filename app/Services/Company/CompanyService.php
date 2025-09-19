@@ -110,13 +110,14 @@ class CompanyService
     public function create(array $data, int $created_by = null)
     {
         return Company::create([
+            ...$data,
             'name' => $data['name'],
             'address' => $data['address'],
             'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null,
             'companyUUID' => GeneralHelper::generateCompanyUUID(),
             'domain' => isset($data['domain']) ? $data['domain'] : null,
             'status' => CompanyStatusEnums::APPROVED->value,
-            'created_by' => auth()->user()?->id ?: $created_by
+            'created_by' => Auth::user()?->id ?: $created_by
         ]);
     }
 

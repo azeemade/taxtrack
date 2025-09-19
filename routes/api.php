@@ -13,6 +13,7 @@ use App\Http\Controllers\v1\Company\Report\FinancialStatement\FinancialStatement
 use App\Http\Controllers\v1\Company\Report\Reconciliation\ReconciliationController;
 use App\Http\Controllers\v1\Company\Report\TaxAndBalances\TaxBalancesController;
 use App\Http\Controllers\v1\Company\Report\Transaction\AccountTransactionController;
+use App\Http\Controllers\BulkUploadController;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -121,6 +122,13 @@ Route::group([
                         Route::patch('/change-status/{id}', 'CustomerController@changeStatus');
                         Route::delete('/delete{id}', 'CustomerController@delete');
                         Route::get('{id}/generate-statement', 'CustomerController@generateCustomerStatement');
+                        Route::group([
+                            "prefix" => "analytics"
+                        ], function () {
+                            Route::get('/payment-duration', 'CustomerAnalyticsController@paymentDuration');
+                            Route::get('/payment-consistency', 'CustomerAnalyticsController@paymentConsistency');
+                            Route::get('/outstanding-balance', 'CustomerAnalyticsController@outstandingBalance');
+                        });
                     });
 
                     //credit notes
@@ -299,33 +307,19 @@ Route::group([
                     Route::prefix('reconciliation')->group(function () {
                         Route::post('/upload-bankstatement', [ReconciliationController::class, 'uploadBankStatement']);
                         Route::get('/download-bankstatement-template', [ReconciliationController::class, 'downloadBankStatementTemplate']);
-            
                         Route::post('/build-and-save-reconciliation-records', [ReconciliationController::class, 'buildAndSaveReconciliationRecords']);
                         Route::post('/list-reconciliation-runs', [ReconciliationController::class, 'listReconciliationRuns']);
                         Route::get('/get-reconciliation-run/{runId}', [ReconciliationController::class, 'getReconciliationRun']);
-
-                        Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'bankReeconciliationSummary']);
-                        
-                        
                         // Route::get('/all_statements', [ReconciliationController::class, 'allBankStatements']);
                         // Route::get('/all_account_transactions', [ReconciliationController::class, 'allAccountTransactions']);
 
                         // Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'getBankReconciliationSummary']);
                         // Route::post('/bank-reconciliation-lines', [ReconciliationController::class, 'getBankReconciliationLines']);
                         // Route::post('/reconcile-lines', [ReconciliationController::class, 'reconcileLine']);
-                        
-                        
+
+
                         // Route::post('/list-reconciliation-records', [ReconciliationController::class, 'listReconciliationRecords']);
                         // Route::post('/get-reconciliation-summary-from-records', [ReconciliationController::class, 'getReconciliationSummaryFromRecords']);
-
-
-
-                        // Route::get('/all_reconciliation', [AccountReconciliationController::class, 'allAccountReconciliation']);
-                        // Route::get('/stats', [AccountReconciliationController::class, 'dashboardStats']);
-                        // Route::get('/export-banktemplate', [AccountReconciliationController::class, 'getDownload']);
-                        // Route::post('/reconcile', [AccountReconciliationController::class, 'reconcileBankStatement']);
-                        // Route::get('/show/{id}', [AccountReconciliationController::class, 'singleReconcilaition']);
-                        // Route::get('/download-reconciliation-report/{id}', [AccountReconciliationController::class, 'downloadReconciliationReport']);
                     });
                 });
 
@@ -415,7 +409,7 @@ Route::group([
 
                     Route::group(['prefix' => 'reconciliation'], function () {
                         Route::post('/account-summary', [ReconciliationController::class, 'accountSummary']);
-                        
+
                         Route::post('/bank-summary', [CashSummaryController::class, 'index']);
                         Route::post('/trial-balance', [ReconciliationController::class, 'trialBalance']);
 
@@ -573,6 +567,19 @@ Route::group([
                 ], function () {
                     Route::post('/shared/file-upload', 'SharedActionController@uploadFile');
                     Route::match(['get', 'post', 'put', 'delete'], '/shared/{prefix}/{model}/{id}/{action}', 'SharedActionController');
+                    // Bulk Upload Routes
+                    Route::group([
+                        'prefix' => 'shared/bulk-upload',
+                        'middleware' => ['auth:api']
+                    ], function () {
+                        Route::get('/modules', [BulkUploadController::class, 'getAvailableModules']);
+                        Route::get('/template/{module}', [BulkUploadController::class, 'downloadTemplate']); // Supports ?type=individual|organization
+                        Route::post('/upload', [BulkUploadController::class, 'upload']);
+                        Route::get('/jobs', [BulkUploadController::class, 'getUserJobs']);
+                        Route::get('/jobs/{id}', [BulkUploadController::class, 'getJobStatus']);
+                        Route::get('/jobs-error-report/{id}', [BulkUploadController::class, 'downloadErrorReport']);
+                        Route::delete('/jobs/{id}', [BulkUploadController::class, 'deleteJob']);
+                    });
                 });
             });
         }

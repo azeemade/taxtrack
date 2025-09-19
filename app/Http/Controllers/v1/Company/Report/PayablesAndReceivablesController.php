@@ -38,7 +38,9 @@ class PayablesAndReceivablesController extends Controller
             })
                 ->when(
                     $dateFilter,
-                    fn($query, $dateFilter) => $query->whereHas('invoices', fn($subquery, $dateFilter) => $subquery->whereBetween('created_at', $dateFilter))
+                    function ($query) use ($dateFilter) {
+                        $query->whereHas('invoices', fn($subquery) => $subquery->whereBetween('created_at', $dateFilter));
+                    }
                 )
                 ->when(
                     $request->date_search,
@@ -125,7 +127,9 @@ class PayablesAndReceivablesController extends Controller
                     ->where(fn($subquery) => $subquery->where('purchase_order_due_date', '<', now())->orWhere('invoice_end_date', '<', now()));
             })->when(
                 $dateFilter,
-                fn($query, $dateFilter) => $query->whereHas('invoices', fn($subquery, $dateFilter) => $subquery->whereBetween('created_at', $dateFilter))
+                function ($query) use ($dateFilter) {
+                    $query->whereHas('invoices', fn($subquery) => $subquery->whereBetween('created_at', $dateFilter));
+                }
             )
                 ->when(
                     $request->date_search,
@@ -197,7 +201,9 @@ class PayablesAndReceivablesController extends Controller
             })
                 ->when(
                     $dateFilter,
-                    fn($query, $dateFilter) => $query->whereHas('invoices', fn($subquery, $dateFilter) => $subquery->whereBetween('created_at', $dateFilter))
+                    function ($query) use ($dateFilter) {
+                        $query->whereHas('invoices', fn($subquery) => $subquery->whereBetween('created_at', $dateFilter));
+                    }
                 )
                 ->when(
 
@@ -288,10 +294,11 @@ class PayablesAndReceivablesController extends Controller
                     ->where(fn($subquery) => $subquery->where('due_date', '<', now()));
             })->when(
                 $dateFilter,
-                fn($query, $dateFilter) => $query->whereHas('invoices', fn($subquery, $dateFilter) => $subquery->whereBetween('created_at', $dateFilter))
+                function ($query) use ($dateFilter) {
+                    $query->whereHas('invoices', fn($subquery) => $subquery->whereBetween('created_at', $dateFilter));
+                }
             )
                 ->when(
-
                     $request->date_search,
                     function ($query, $dateSearch) {
                         match ($dateSearch) {
@@ -358,10 +365,11 @@ class PayablesAndReceivablesController extends Controller
                 ->where(fn($subquery) => $subquery->whereRelation('invoices', 'purchase_order_due_date', '<', now())->orWhereRelation('invoices', 'invoice_end_date', '<', now()))
                 ->when(
                     $dateFilter,
-                    fn($query, $dateFilter) => $query->whereHas('invoices', fn($subquery, $dateFilter) => $subquery->whereBetween('created_at', $dateFilter))
+                    function ($query) use ($dateFilter) {
+                        return $query->whereHas('invoices', fn($subquery) => $subquery->whereBetween('created_at', $dateFilter));
+                    }
                 )
                 ->when(
-
                     $request->date_search,
                     function ($query, $dateSearch) {
                         match ($dateSearch) {
@@ -445,7 +453,9 @@ class PayablesAndReceivablesController extends Controller
                 ->where(fn($subquery) => $subquery->where('purchase_order_due_date', '<', now())->orWhere('invoice_end_date', '<', now()))
                 ->when(
                     $dateFilter,
-                    fn($query, $dateFilter) => $query->whereBetween('created_at', $dateFilter)
+                    function ($query) use ($dateFilter) {
+                        $query->whereBetween('created_at', $dateFilter);
+                    }
                 )
                 ->when(
 
@@ -521,7 +531,9 @@ class PayablesAndReceivablesController extends Controller
                 ->where(fn($query) => $query->whereIn('payment_status', [PaymentStatusEnums::PARTIAL_PAYMENT->value, PaymentStatusEnums::PENDING->value])->orWhereNull('payment_status'))
                 ->when(
                     $dateFilter,
-                    fn($query, $dateFilter) => $query->whereBetween('created_at', $dateFilter)
+                    function ($query) use ($dateFilter) {
+                        $query->whereBetween('created_at', $dateFilter);
+                    }
                 )
                 ->when(
 
@@ -602,7 +614,9 @@ class PayablesAndReceivablesController extends Controller
                 ->where(fn($query) => $query->whereIn('payment_status', [PaymentStatusEnums::PARTIAL_PAYMENT->value, PaymentStatusEnums::PENDING->value])->orWhereNull('payment_status'))
                 ->when(
                     $dateFilter,
-                    fn($query, $dateFilter) => $query->whereBetween('created_at', $dateFilter)
+                    function ($query) use ($dateFilter) {
+                        $query->whereBetween('created_at', $dateFilter);
+                    }
                 )
                 ->when(
 

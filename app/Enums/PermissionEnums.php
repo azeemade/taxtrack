@@ -187,7 +187,8 @@ enum PermissionEnums: string
     case VIEW_ROLES = 'view_roles';
     case CREATE_ROLES = 'create_roles';
     case MANAGE_ROLES = 'manage_roles';
-
+    
+    case ACCESS_AUDIT_LOGS = 'access_audit_logs';
 
 
         /// ADMIN PERMISSIONS
@@ -226,6 +227,8 @@ enum PermissionEnums: string
         return match ($module) {
             'dashboard' => array_filter(self::cases(), fn($permission) =>
             str_contains($permission->value, '_dashboard')),
+            'audit_logs' => array_filter(self::cases(), fn($permission) =>
+            str_contains($permission->value, '_audit')),
             'admin_dashboard' => array_filter(self::cases(), fn($permission) =>
             str_contains($permission->value, '_admin_dashboard')),
             'sales' => array_filter(self::cases(), fn($permission) =>
@@ -401,7 +404,8 @@ enum PermissionEnums: string
             ],
             'admin_refund' => ['admin_refund'],
             'admin_dashboard' => ['admin_dashboard'],
-            'dashboard' => ['dashboard']
+            'dashboard' => ['dashboard'],
+            'audit_logs' => ['audit_logs'],
         ];
 
         foreach ($availableModules as $key => $module) {

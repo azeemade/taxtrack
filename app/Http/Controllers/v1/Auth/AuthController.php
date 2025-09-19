@@ -52,7 +52,11 @@ class AuthController extends Controller
                 'last_login' => now()
             ]);
 
-            $user['companies'] = $user->getCurrentSubscriptionDetails();
+
+            if ($user->current_company_id) {
+                $user['subscription'] = $user->getCurrentSubscriptionDetails();
+                $user['company']['current_currency'] = $user->company->currentCurrency();
+            }
 
             $data = [
                 'user' => $user,
