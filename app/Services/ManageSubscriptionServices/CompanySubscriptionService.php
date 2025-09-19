@@ -326,16 +326,20 @@ class CompanySubscriptionService
             throw new BadRequestException('Subscription plan is required');
         }
 
+        $plan = $this->getPlan([
+            'subscription_plan_id' => $request['subscription_plan_id'] ?? null,
+            'is_free' => $request['is_free'] ?? false,
+        ]);
+
+        if (!$plan || !$plan->is_active || $plan->status === GeneralEnums::INACTIVE->value) {
+            throw new BadRequestException('Plan not found or is inactive');
+        }
+
         $subscriber = $this->handleSubscriber([
             'company_id' => $company->id,
             'user_id' => $currentUser->id,
             'name' => $company->name,
             'email' => $currentUser->email,
-        ]);
-
-        $plan = $this->getPlan([
-            'subscription_plan_id' => $request['subscription_plan_id'] ?? null,
-            'is_free' => $request['is_free'] ?? false,
         ]);
 
         $durationDependencies = $this->getPlanDurationDependencies($request['duration'], $plan, $request['is_free'] ?? false);
@@ -401,7 +405,7 @@ class CompanySubscriptionService
                 ],
             ];
 
-            if (isset($request['additional_users_count']) && $request['additional_users_count'] > 0) {
+            if (isset($request['additional_users_count']) && $request['additional_users_count'] > 0 && $durationDependencies['provider_seat_price_id']) {
                 $subscriptionItems[] = [
                     'price' => $durationDependencies['provider_seat_price_id'],
                     'quantity' => $request['additional_users_count'],

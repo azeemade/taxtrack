@@ -225,6 +225,9 @@ class GuestController extends Controller
                         ->where('is_active', true)
                         ->where('is_free', false);
                 })
+                ->when(isset($request->status) && $request->status, function ($query) use ($request) {
+                    $query->where('status', $request->status);
+                })
                 ->get();
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
