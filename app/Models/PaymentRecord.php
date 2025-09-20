@@ -44,6 +44,8 @@ class PaymentRecord extends Model
                 return [
                     'description' => $item->item_details,
                     'quantity' => $item->quantity,
+                    'vat' => $item->vat > 0 ? $item->vat . '%' : null,
+                    'discount' => $item->discount > 0 ? $item->discount . '%' : null,
                     'price' => $this->recordable->vendor->currency->code . $item->price,
                     'amount' => $this->recordable->vendor->currency->code . $item->amount,
                 ];

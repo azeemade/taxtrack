@@ -48,6 +48,8 @@ class Invoice extends Model
                 return [
                     'description' => $item->item_details,
                     'quantity' => $item->quantity,
+                    'vat' => $item->vat > 0 ? $item->vat . '%' : null,
+                    'discount' => $item->discount > 0 ? $item->discount . '%' : null,
                     'price' => $this->customer->currency->code . $item->price,
                     'amount' => $this->customer->currency->code . $item->amount,
                 ];
