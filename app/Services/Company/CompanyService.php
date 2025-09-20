@@ -61,6 +61,7 @@ class CompanyService
             'physical_address_information',
             'social_media',
             'registration_id',
+            'terms_and_conditions',
         )
             ->find($currentUser->current_company_id);
 
