@@ -100,6 +100,7 @@ class InvoiceController extends Controller
             DB::beginTransaction();
 
             $record = $this->paymentRecordService->modify([...$request->validated(), 'model' => 'invoices', 'model_id' => $id]);
+            $record->recordable->customer->increment('current_balance', $record->amount_paid);
 
             DB::commit();
             return JsonResponser::send(false, 'Invoice issued successfully', $record, Response::HTTP_OK);
