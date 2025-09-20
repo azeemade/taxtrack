@@ -334,13 +334,13 @@ abstract class BulkUploadAbstract implements BulkUploadContract
         $modelClass = $this->getModelClass();
 
         // If data contains the main model data directly
-        if (isset($data['invoice']) || isset($data['quote']) || isset($data['customer'])) {
-            // Handle complex data structures like invoices with line items
-            return $this->createComplexRecord($data);
-        }
+        // if (isset($data['invoice']) || isset($data['quote']) || isset($data['customer'])) {
+        // Handle complex data structures like invoices with line items
+        return $this->createComplexRecord($data);
+        // }
 
         // Handle simple data structures
-        return $modelClass::create($data);
+        // return $modelClass::create($data);
     }
 
     /**

@@ -39,7 +39,7 @@ class InvoiceService
                 ...$request,
                 'quote_date' => $request['quote_date'] ?? now(),
                 'referenceID' => $this->generateRefId(),
-                'invoiceID' => $this->generateInvoiceId(),
+                'invoiceID' => $request['invoiceID'] ?? $this->generateInvoiceId(),
                 'is_recurring' => $request['save_status'] == 'recur' ? true : false,
                 'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
                 'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
@@ -59,7 +59,7 @@ class InvoiceService
             $record->addLineItems($request['line_items']);
         }
 
-        if ($request['save_status'] == 'send') {
+        if (isset($request['save_status']) && $request['save_status'] == 'send') {
             $this->sharedActionServices->emailEntity($record);
         }
 

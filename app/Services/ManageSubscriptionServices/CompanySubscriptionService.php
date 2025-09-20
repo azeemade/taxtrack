@@ -315,9 +315,9 @@ class CompanySubscriptionService
         if (!$currentUser) {
             throw new BadRequestException('User not found');
         }
-        $company = Auth::check() ? $currentUser->company : Company::find($request['company_id']);
-        // echo (json_encode($company));
-        // exit;
+
+        $company = isset($request['company_id']) ? Company::find($request['company_id']) : $currentUser->company;
+
         if (!$company) {
             throw new BadRequestException('Company not found');
         }
