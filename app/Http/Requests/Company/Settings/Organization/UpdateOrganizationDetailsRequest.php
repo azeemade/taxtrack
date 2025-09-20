@@ -49,6 +49,7 @@ class UpdateOrganizationDetailsRequest extends FormRequest
             "social_media.twitter" => 'sometimes|string|max:100',
             "social_media.instagram" => 'sometimes|string|max:100',
             "social_media.whatsapp" => 'sometimes|string|max:100',
+            "terms_and_conditions" => 'sometimes|nullable|string|max:250',
         ];
     }
 }

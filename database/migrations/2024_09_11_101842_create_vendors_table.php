@@ -34,6 +34,7 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->string('special_instruction')->nullable();
             $table->string('payment_term')->nullable();
+            $table->mediumText('terms_and_conditions')->nullable();
             $table->string('bank_name')->nullable();
             $table->string('bank_account_number')->nullable();
             $table->string('bank_identification_code')->nullable();

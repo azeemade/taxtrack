@@ -72,7 +72,8 @@ class CustomerController extends Controller
                     'customer_type',
                     'currency_id',
                     'phone_ext',
-                    'payment_term'
+                    'payment_term',
+                    'terms_and_conditions'
                 ),
                 "company_name" => $request->display_name,
                 "customer_logo" => $request->image,
@@ -125,7 +126,8 @@ class CustomerController extends Controller
                     'city_id',
                     'state_id',
                     'country_id',
-                    'city_id'
+                    'city_id',
+                    'terms_and_conditions'
                 ),
                 "customer_logo" => $request->image,
                 "email" => $request->primary_email,
@@ -158,7 +160,8 @@ class CustomerController extends Controller
                     'customer_type',
                     'currency_id',
                     'phone_ext',
-                    'payment_term'
+                    'payment_term',
+                    'terms_and_conditions'
                 ),
                 "id" => $id,
                 "company_name" => $request->display_name,
@@ -213,7 +216,8 @@ class CustomerController extends Controller
                     'city_id',
                     'state_id',
                     'country_id',
-                    'city_id'
+                    'city_id',
+                    'terms_and_conditions'
                 ),
                 "id" => $id,
                 "customer_logo" => $request->image,
