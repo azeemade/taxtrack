@@ -10,6 +10,7 @@ use App\Http\Requests\Auth\CompanyUserRequest;
 use App\Http\Requests\Auth\CreateBasicInformationRequest;
 use App\Http\Requests\Auth\CreateOnboardingRoleRequest;
 use App\Http\Requests\Auth\InviteUsersRequest;
+use App\Http\Resources\CompanyHouseCompanyResource;
 use App\Jobs\Company\ProcessCompanyOnboarding;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -18,6 +19,7 @@ use App\Responser\JsonResponser;
 use App\Services\Company\CompanyService;
 use App\Services\ManageSubscriptionServices\CompanySubscriptionService;
 use App\Services\RoleServices\RoleService;
+use App\Services\ThirdPartyApi\CompanyHouseApi;
 use App\Services\UserServices\UserService;
 use App\Traits\VerificationTrait;
 use Illuminate\Http\Request;
@@ -405,6 +407,18 @@ class RegisterController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+        }
+    }
+
+    public function companyCheck(Request $request)
+    {
+        try {
+            $response = CompanyHouseApi::companySearch($request->query('q'), $request->query('limit'), $request->query('offset'));
+            return JsonResponser::send(false, 'Company search successful', CompanyHouseCompanyResource::collection($response['items']));
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }

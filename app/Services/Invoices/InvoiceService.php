@@ -161,10 +161,10 @@ class InvoiceService
             });
 
         return [
-            'total_invoice_value' => (clone $records)->sum('invoice_value'),
+            'total_invoice_value' => (clone $records)->whereIn('status', [FinancialDocumentStatusEnums::ISSUED->value, FinancialDocumentStatusEnums::OVERDUE->value])->sum('invoice_value'),
             'total_invoice_amount_due' => (clone $records)->where('status', FinancialDocumentStatusEnums::OVERDUE)->sum('invoice_value'),
-            'total_invoice_paid' => (clone $records)->get()->sum('total_amount_paid'),
-            'total_invoice_due_today' => (clone $records)->whereDay('due_date', now()->day)->sum('invoice_value'),
+            'total_invoice_paid' => (clone $records)->get()->whereIn('status', [FinancialDocumentStatusEnums::ISSUED->value, FinancialDocumentStatusEnums::OVERDUE->value])->sum('total_amount_paid'),
+            'total_invoice_due_today' => (clone $records)->whereDay('due_date', now()->day)->whereIn('status', [FinancialDocumentStatusEnums::ISSUED->value, FinancialDocumentStatusEnums::OVERDUE->value])->sum('invoice_value'),
         ];
     }
 
