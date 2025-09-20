@@ -72,7 +72,7 @@ class CreditNoteService
         $record = CreditNote::create([
             ...$request,
             'issue_date' => $request['issue_date'] ?? now(),
-            'referenceID' => $this->generateRefId(),
+            'referenceID' => $request['referenceID'] ?? $this->generateRefId(),
             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
             'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
         ]);

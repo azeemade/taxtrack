@@ -316,10 +316,10 @@ class BulkUploadController extends Controller
             auth()->id(),
             auth()->user()->current_company_id ?? null
         );
+
         Excel::import($import, $filePath);
 
         $results = $import->prepareDataForStorage();
-
         // Process the prepared data and create actual records with post-creation operations
         $creationResults = [];
         if ($results['statistics']['successful_rows'] > 0) {
