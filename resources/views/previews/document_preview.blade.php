@@ -33,7 +33,7 @@
         <table class="parties-table">
             <tr>
                 <td class="from-party">
-                    <div class="badge">TaxTrack</div>
+                    <div class="badge">BookCalc</div>
                     <p class="party-label">{{ ucwords($previewables['model']) }} From:</p>
                     <p class="party-name company">{{ $previewables['company']['name'] }}</p>
                     <p style="width: min-content">{{ $previewables['company']['address'] }}</p>

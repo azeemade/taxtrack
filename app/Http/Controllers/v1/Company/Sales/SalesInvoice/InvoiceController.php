@@ -99,7 +99,7 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
-            $record = $this->paymentRecordService->create($request->validated());
+            $record = $this->paymentRecordService->modify([...$request->validated(), 'model' => 'invoices', 'model_id' => $id]);
 
             DB::commit();
             return JsonResponser::send(false, 'Invoice issued successfully', $record, Response::HTTP_OK);
