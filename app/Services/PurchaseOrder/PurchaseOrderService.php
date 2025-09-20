@@ -25,7 +25,6 @@ class PurchaseOrderService
 
     public function updateOrCreate($request)
     {
-        // try {
         //code...
         $record = PurchaseOrder::updateOrCreate(
             [
@@ -52,10 +51,6 @@ class PurchaseOrderService
         }
 
         return $record;
-        // } catch (\Throwable $th) {
-        //     //throw $th;
-        //     dd($th);
-        // }
     }
 
     public function view(int $id)

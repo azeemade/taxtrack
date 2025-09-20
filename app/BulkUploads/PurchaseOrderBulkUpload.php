@@ -108,6 +108,10 @@ class PurchaseOrderBulkUpload extends BulkUploadAbstract
                 ->where('purchase_order_no', $validatedData['order_number'])
                 ->first();
 
+            if ($existingPurchaseOrder) {
+                $this->addWarning("Row {$rowNumber}: Purchase order number '{$validatedData['order_number']}' already exists. The value will be updated");
+            }
+
             // Calculate totals properly
             $unitPrice = $validatedData['item_unit_price'];
             $quantity = $validatedData['item_quantity'] ?? 1;
@@ -146,7 +150,7 @@ class PurchaseOrderBulkUpload extends BulkUploadAbstract
                 'line_items' => [
                     [
                         'item_details' => $validatedData['item_details'],
-                        'category_id' => $validatedData['item_category'],
+                        'category_id' => $itemCategory->id ?? null,
                         'quantity' => $validatedData['item_quantity'],
                         'price' => $validatedData['item_unit_price'],
                     ]
