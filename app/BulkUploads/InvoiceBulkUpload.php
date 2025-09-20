@@ -118,12 +118,16 @@ class InvoiceBulkUpload extends BulkUploadAbstract
                 ->first();
 
             // Calculate totals
-            $subtotal = $validatedData['item_unit_price'] * ($validatedData['item_quantity'] ?? 1);
+            $unitPrice = $validatedData['item_unit_price'];
+            $quantity = $validatedData['item_quantity'] ?? 1;
+            $discountPercent = $validatedData['item_discount'] ?? 0;
+            $vatPercent = $validatedData['item_vat'] ?? 0;
 
-            $discountAmount = $this->calculateDiscount($subtotal, $validatedData);
-            $discountedSubtotal = $subtotal - $discountAmount + ($validatedData['additional_charge'] ?? 0);
-            $taxAmount = $this->calculateTax($discountedSubtotal, $validatedData);
-            $total = $discountedSubtotal + $taxAmount + ($existingInvoice->invoice_value ?? 0);
+            $totalUnitPrice = $this->invoiceService->calculateLineItemTotalUnitPrice($unitPrice, $quantity);
+            $lineItemTotal = $this->invoiceService->calculateLineItemTotal($totalUnitPrice, $discountPercent, $vatPercent);
+            $subtotal = $lineItemTotal + ($existingInvoice?->lineItems->sum('amount') ?? 0);
+
+            $total = $subtotal + $validatedData['additional_charge'];
 
             if ($existingInvoice) {
                 $this->addWarning("Row {$rowNumber}: Invoice number '{$validatedData['invoice_number']}' already exists. The value will be updated");
@@ -177,9 +181,9 @@ class InvoiceBulkUpload extends BulkUploadAbstract
                 'item_details' => $validatedData['item_description'] ?? 'Default Item',
                 'quantity' => $validatedData['item_quantity'] ?? 1,
                 'price' => $validatedData['item_unit_price'] ?? 0,
-                'discount' => $discountAmount,
-                'vat' => $taxAmount,
-                'amount' => $subtotal,
+                'discount' => $discountPercent,
+                'vat' => $vatPercent,
+                'amount' => $lineItemTotal,
                 'category_id' => $itemCategory->id ?? null,
                 'created_by' => $this->getCurrentUserId(),
                 'company_id' => $this->getCurrentCompanyId()

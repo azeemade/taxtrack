@@ -71,7 +71,7 @@ class Quote extends Model
                 'name' => $this->customer->company_name,
                 'address' => $this->customer->address,
                 'email' => $this->customer->email,
-                'currency' => $this->customer->currency->symbol,
+                'currency' => $this->customer->currency->code,
             ],
             'issued_date' => $this->quote_date,
             'due_date' => null,
@@ -80,8 +80,8 @@ class Quote extends Model
                 return [
                     'description' => $item->item_details,
                     'quantity' => $item->quantity,
-                    'price' => $this->customer->currency->symbol . $item->price,
-                    'amount' => $this->customer->currency->symbol . $item->amount,
+                    'price' => $this->customer->currency->code . $item->price,
+                    'amount' => $this->customer->currency->code . $item->amount,
                 ];
             }),
             'sub_total' => $this->sub_total,

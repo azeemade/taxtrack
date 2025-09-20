@@ -41,7 +41,7 @@ class PurchaseOrder extends Model
                 'name' => $this->vendor->vendor_name,
                 'address' => $this->vendor->primary_address,
                 'email' => $this->vendor->primary_email,
-                'currency' => $this->vendor->currency->symbol,
+                'currency' => $this->vendor->currency->code,
             ],
             'issued_date' => $this->purchase_order_date,
             'due_date' => null,
@@ -50,8 +50,8 @@ class PurchaseOrder extends Model
                 return [
                     'description' => $item->item_details,
                     'quantity' => $item->quantity,
-                    'price' => $this->vendor->currency->symbol . $item->price,
-                    'amount' => $this->vendor->currency->symbol . $item->amount,
+                    'price' => $this->vendor->currency->code . $item->price,
+                    'amount' => $this->vendor->currency->code . $item->amount,
                 ];
             }),
             'sub_total' => $this->sub_total,

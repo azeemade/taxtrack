@@ -33,7 +33,7 @@ class DebitNote extends Model
                 'name' => $this->vendor->vendor_name,
                 'address' => $this->vendor->primary_address,
                 'email' => $this->vendor->primary_email,
-                'currency' => $this->vendor->currency->symbol,
+                'currency' => $this->vendor->currency->code,
             ],
             'issued_date' => $this->date_issued,
             'due_date' => null,
@@ -41,8 +41,8 @@ class DebitNote extends Model
             'line_items' => $this->lineItems->map(function ($item) {
                 return [
                     'list_item' => $item->item_details,
-                    'price' => $item->documentable->vendor->currency->symbol . $item->price,
-                    'credit_amount' => $item->documentable->vendor->currency->symbol . $item->credit_amount,
+                    'price' => $item->documentable->vendor->currency->code . $item->price,
+                    'credit_amount' => $item->documentable->vendor->currency->code . $item->credit_amount,
                 ];
             }),
             'sub_total' => $this->lineItems()->sum('credit_amount'),

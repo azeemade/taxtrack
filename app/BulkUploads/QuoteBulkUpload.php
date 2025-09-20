@@ -105,6 +105,10 @@ class QuoteBulkUpload extends BulkUploadAbstract
                 ->where('quoteID', $validatedData['quote_number'])
                 ->first();
 
+            if ($existingQuote) {
+                $this->addWarning("Row {$rowNumber}: Quote number '{$validatedData['quote_number']}' already exists. The value will be updated");
+            }
+
             // Calculate totals properly
             $unitPrice = $validatedData['item_unit_price'];
             $quantity = $validatedData['item_quantity'] ?? 1;
@@ -115,14 +119,10 @@ class QuoteBulkUpload extends BulkUploadAbstract
             $totalUnitPrice = $this->quoteService->calculateLineItemTotalUnitPrice($unitPrice, $quantity);
             $lineItemTotal = $this->quoteService->calculateLineItemTotal($totalUnitPrice, $discountPercent, $vatPercent);
 
-            $subtotal = $lineItemTotal;
+            $subtotal = $lineItemTotal + ($existingQuote?->lineItems->sum('amount') ?? 0);
             $additionalCharge = $validatedData['additional_charge'] ?? 0;
             $total = $this->quoteService->calculateQuoteTotal($subtotal, 0, $additionalCharge);
 
-
-            if ($existingQuote) {
-                $this->addWarning("Row {$rowNumber}: Quote number '{$validatedData['quote_number']}' already exists. The value will be updated");
-            }
 
             $currency = $this->findCurrency($validatedData['currency']);
 
@@ -167,7 +167,7 @@ class QuoteBulkUpload extends BulkUploadAbstract
 
             return [
                 'quote' => $quoteData,
-                'line_items' => [$lineItemData], // Single line item per row
+                'line_items' => array_merge($existingQuote?->lineItems->isNotEmpty() ? $existingQuote->lineItems->toArray() : [], [$lineItemData]),
             ];
         } catch (\Exception $e) {
             $this->addError("Row {$rowNumber}: " . $e->getMessage());
