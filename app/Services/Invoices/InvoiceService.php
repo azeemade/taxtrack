@@ -46,6 +46,8 @@ class InvoiceService
             ]
         );
 
+        $record->customer->decrement('current_balance', $record->invoice_value);
+
         if (isset($request['quote_id']) && $request['quote_id']) {
             $quote = Quote::find($request['quote_id']);
             $quote->update([
