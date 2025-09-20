@@ -16,10 +16,10 @@ class CompanyHouseCompanyResource extends JsonResource
     {
         return [
             'company_name' => $this['title'],
-            'company_number' => $this['company_number'],
-            'address' => $this['address_snippet'],
-            'company_status' => $this['company_status'],
-            'date_of_creation' => $this['date_of_creation']
+            'company_number' => $this['company_number'] ?? '',
+            'address' => $this['address_snippet'] ?? '',
+            'company_status' => $this['company_status'] ?? '',
+            'date_of_creation' => $this['date_of_creation'] ?? ''
         ];
     }
 }

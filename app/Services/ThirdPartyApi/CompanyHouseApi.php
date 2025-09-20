@@ -2,6 +2,7 @@
 
 namespace App\Services\ThirdPartyApi;
 
+use App\Exceptions\BadRequestException;
 use Illuminate\Support\Facades\Http;
 
 class CompanyHouseApi
@@ -23,7 +24,7 @@ class CompanyHouseApi
             'start_index' => $start_index,
         ]);
         if (!$response->successful()) {
-            return false;
+            throw new BadRequestException($response->json()['errors'][0]['error'] ?? 'Company search failed');
         }
         return $response->json();
     }
