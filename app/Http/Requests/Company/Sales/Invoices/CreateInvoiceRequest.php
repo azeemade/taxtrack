@@ -33,12 +33,12 @@ class CreateInvoiceRequest extends FormRequest
     {
         return [
             'customer_id' => 'required|integer|exists:customers,id',
-            'currency_id' => [
-                'required',
-                'integer',
-                'exists:currencies,id',
-                $this->validateCustomerCurrency()
-            ],
+            // 'currency_id' => [
+            //     'required',
+            //     'integer',
+            //     'exists:currencies,id',
+            //     $this->validateCustomerCurrency()
+            // ],
             'start_date' => 'required|date_format:Y-m-d',
             'due_date' => 'required|date_format:Y-m-d|after_or_equal:start_date',
             'additional_referenceID' => 'nullable|string|max:20',
@@ -87,18 +87,18 @@ class CreateInvoiceRequest extends FormRequest
         ];
     }
 
-    private function validateCustomerCurrency(): \Closure
-    {
-        return function ($attribute, $value, $fail) {
-            $customerCurrency = Customer::where('currency_id', $value)
-                ->where('id', $this->input('customer_id'))
-                ->first();
+    // private function validateCustomerCurrency(): \Closure
+    // {
+    //     return function ($attribute, $value, $fail) {
+    //         $customerCurrency = Customer::where('currency_id', $value)
+    //             ->where('id', $this->input('customer_id'))
+    //             ->first();
 
-            if (!$customerCurrency) {
-                $fail('Invalid customer currency selected');
-            }
-        };
-    }
+    //         if (!$customerCurrency) {
+    //             $fail('Invalid customer currency selected');
+    //         }
+    //     };
+    // }
 
     private function validateSubTotal(): \Closure
     {

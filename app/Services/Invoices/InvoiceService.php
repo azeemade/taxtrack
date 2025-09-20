@@ -31,12 +31,14 @@ class InvoiceService
 
     public function updateOrCreate($request)
     {
+        $customer = Customer::find($request['customer_id']);
         $record = Invoice::updateOrCreate(
             [
                 "id" => $request["id"] ?? null
             ],
             [
                 ...$request,
+                'currency_id' => $customer->currency_id,
                 'quote_date' => $request['quote_date'] ?? now(),
                 'referenceID' => $this->generateRefId(),
                 'invoiceID' => $request['invoiceID'] ?? $this->generateInvoiceId(),

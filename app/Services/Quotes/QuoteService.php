@@ -129,12 +129,14 @@ class QuoteService
 
     public function updateOrCreate($request)
     {
+        $customer = Customer::find($request['customer_id']);
         $record = Quote::updateOrCreate(
             [
                 "id" => $request["id"] ?? null
             ],
             [
                 ...$request,
+                'currency_id' => $customer->currency_id,
                 'quote_date' => $request['quote_date'] ?? now(),
                 'quoteID' => $request['quoteID'] ?? $this->generateQuoteId(),
                 'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
