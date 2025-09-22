@@ -23,8 +23,9 @@ class StaffProfileResource extends JsonResource
             'company_type' => $this->company_type,
             'onboarding_completed' => $this->onboarding_completed,
             'status' => $this->status,
+            'can_login' => $this->can_login,
             'subscription' => $this->getCurrentSubscriptionDetails()->only('id', 'subscribed_at', 'end_date', 'subscription_plan_id', 'plan_amount', 'amount_paid'),
-            'users_permissions' => $this->user_permissions->map(function ($permission) {
+            'user_permissions' => $this->user_permissions->map(function ($permission) {
                 return $permission->only('id', 'name', 'app', 'module', 'submodule');
             }),
             'user_permissions_count' => $this->user_permissions_count,
