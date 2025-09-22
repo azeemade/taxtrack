@@ -26,7 +26,8 @@ class JournalEntryRequest extends FormRequest
             'accountEntries.*.account_id' => 'required|integer|exists:finance_chart_of_accounts,id',
             'accountEntries.*.credit_amount' => 'nullable|min:0', //numeric
             'accountEntries.*.debit_amount' => 'nullable|min:0', //numeric
-            // 'accountEntries.*.description' => 'nullable|string|max:255',
+            'accountEntries.*.description' => 'nullable|string|max:255',
+            'accountEntries.*.reference' => 'required|string|max:255',
             'accountEntries.*.transaction_date' => 'required|date',
         ];
 
@@ -58,6 +59,9 @@ class JournalEntryRequest extends FormRequest
             'accountEntries.*.credit_amount.min' => 'The credit amount must be at least 0.',
             'accountEntries.*.debit_amount.min' => 'The debit amount must be at least 0.',
             // 'accountEntries.*.description.max' => 'The description may not be greater than 255 characters.',
+            'accountEntries.*.reference.required' => 'The reference is required.',
+            'accountEntries.*.reference.string' => 'The reference must be a valid string.',
+            'accountEntries.*.reference.max' => 'The reference may not be greater than 255 characters.',
         ];
     }
 

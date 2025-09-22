@@ -4,6 +4,7 @@ namespace App\Http\Controllers\v1\Auth\Onboarding;
 
 use App\Enums\CustomerTypeEnums;
 use App\Exceptions\BadRequestException;
+use App\Helpers\Posting\CoaProvisionerFromConfig;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AddCompanyRequest;
 use App\Http\Requests\Auth\CompanyUserRequest;
@@ -370,6 +371,11 @@ class RegisterController extends Controller
 
 
                 // ProcessCompanyOnboarding::dispatch($company);
+
+                (new CoaProvisionerFromConfig())
+                    ->provisionForCompany($company->id, $id);
+
+                    //ProvisionCoaForCompany::dispatch($companyId, $editedBy)->onQueue('high-priority');
             }
 
             foreach ($request->users as $user) {

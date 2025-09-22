@@ -5,6 +5,8 @@ namespace App\Services\SharedServices;
 use App\Exceptions\BadRequestException;
 use App\Helpers\FileUploadHelper;
 use App\Helpers\GeneralHelper;
+use App\Helpers\Posting\InvoicePosting;
+use App\Helpers\Posting\JournalCleanup;
 use App\Mail\Shared\EntityDocumentEmail;
 use App\Mail\Shared\EntityRemainderEmail;
 use App\Services\EmailSettings\EmailSettingsService;
@@ -80,6 +82,9 @@ class SharedActionService
 
     public function delete(Model $model)
     {
+        // Clean accounting if this model carries a journal
+        (new JournalCleanup())->deleteForModel($model);
+
         $model->delete();
         return true;
     }
@@ -116,6 +121,10 @@ class SharedActionService
                 $newLineItem->save();
             }
             $newLineItem->save();
+
+            //Sync Invoice Journal - Account Entries
+            (new InvoicePosting())
+                ->syncInvoiceJournal($newModel, (int) $newModel->company_id, (int) ($newModel->created_by ?? null));
         } elseif ($newModel instanceof \App\Models\Quote) {
             $newModel->quoteID = $this->generateModelId(
                 'App\Models\Quote',
