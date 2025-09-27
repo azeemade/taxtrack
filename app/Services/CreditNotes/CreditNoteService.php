@@ -85,10 +85,12 @@ class CreditNoteService
                 ...$value,
                 'credit_amount_total' => $value['credit_amount']
             ]);
-            $creditNoteInvoice->lineItem()->update([
-                'credit_amount' => $value['credit_amount'],
-                'full_credit' => $value['credit_in_full']
-            ]);
+            $creditNoteInvoice->lineItem()
+                ->where('id', $value['line_item_id'])
+                ->update([
+                    'credit_amount' => $value['credit_amount'],
+                    'full_credit' => $value['credit_in_full']
+                ]);
         }
 
         if ($request['save_status'] == 'send') {
@@ -176,10 +178,12 @@ class CreditNoteService
                 ]);
             }
 
-            $creditNoteInvoice->lineItem()->update([
-                'credit_amount' => $value['credit_amount'],
-                'full_credit' => $value['credit_in_full']
-            ]);
+            $creditNoteInvoice->lineItem()
+                ->where('id', $value['line_item_id'])
+                ->update([
+                    'credit_amount' => $value['credit_amount'],
+                    'full_credit' => $value['credit_in_full']
+                ]);
         }
 
         if ($request['save_status'] == 'send') {

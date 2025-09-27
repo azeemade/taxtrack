@@ -72,7 +72,7 @@ class DebitNoteService
         $record = DebitNote::create([
             ...$request,
             'issue_date' => $request['date_issued'] ?? now(),
-            'noteID' => $this->generateNoteId(),
+            'noteID' => $request['noteID'] ?? $this->generateNoteId(),
             'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
         ]);
 
@@ -81,10 +81,12 @@ class DebitNoteService
                 'modelable_id' => $value['model_id'],
                 'modelable_type' => $value['model'] === 'purchase_invoices' ? DocumentableModelEnums::PURCHASE_INVOICE->value : DocumentableModelEnums::VENDOR_BILLS->value
             ]);
-            $debitNoteItems->modelable->lineItems()->update([
-                'debit_amount' => $value['debit_amount'],
-                'full_debit' => $value['debit_in_full']
-            ]);
+            $debitNoteItems->modelable->lineItems()
+                ->where('id', $value['line_item_id'])
+                ->update([
+                    'debit_amount' => $value['debit_amount'],
+                    'full_debit' => $value['debit_in_full']
+                ]);
         }
 
         return $record;
@@ -161,7 +163,7 @@ class DebitNoteService
         ]);
 
         foreach ($request['items'] as $value) {
-            $documentType = $value['model'] === 'purchase_invoices' ? DocumentableModelEnums::PURCHASE_INVOICE->value : DocumentableModelEnums::VENDOR_BILLS->value;
+            $documentType = $value['model'] === 'purchase_invoices' ?: DocumentableModelEnums::VENDOR_BILLS->value;
 
             $debitNoteItem = $record->debitNoteItems()
                 ->where('modelable_id', $value['model_id'])
@@ -179,10 +181,12 @@ class DebitNoteService
                 ]);
             }
 
-            $debitNoteItem->modelable->lineItems()->update([
-                'debit_amount' => $value['debit_amount'],
-                'full_debit' => $value['debit_in_full']
-            ]);
+            $debitNoteItem->modelable->lineItems()
+                ->where('id', $value['line_item_id'])
+                ->update([
+                    'debit_amount' => $value['debit_amount'],
+                    'full_debit' => $value['debit_in_full']
+                ]);
         }
 
         return $record;

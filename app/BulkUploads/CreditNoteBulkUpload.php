@@ -21,13 +21,13 @@ class CreditNoteBulkUpload extends BulkUploadAbstract
     public function getValidationRules(): array
     {
         return [
-            'reference_number' => 'required|string|unique:credit_notes,referenceID,NULL,id,company_id,' . $this->getCurrentCompanyId(),
+            'reference_number' => 'required|string',
             'customer_name' => 'required|string|max:255',
             'customer_contact' => 'required|string|max:255',
             'currency' => 'required|string|max:3',
             'issue_date' => 'required|date',
             'status' => 'required|string|in:draft,issued',
-            'line_item_invoice_number' => 'required|string|exists:invoices,invoiceID,company_id,' . $this->getCurrentCompanyId(),
+            'line_item_invoice_number' => 'required|string',
             'line_item_id' => ['required', 'numeric', $this->validateLineItem()],
             'amount' => ['required', 'numeric', 'min:0', $this->validateCreditAmount()]
         ];
