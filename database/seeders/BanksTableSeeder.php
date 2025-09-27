@@ -18,7 +18,7 @@ class BanksTableSeeder extends Seeder
     public function run(): void
     {
         try {
-            $filePath = './banks_database.csv'; // Relative to `storage/app`
+            $filePath = database_path('data/banks_database.csv');
             $parsedData = $this->parseCsvWithMaatwebsite($filePath);
 
             Bank::truncate();
