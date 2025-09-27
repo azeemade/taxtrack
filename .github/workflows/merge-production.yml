@@ -29,17 +29,23 @@ jobs:
             #       php artisan view:cache
             #       php artisan migrate --force
 
-            - name: Decode SSH key
+            - name: Setup SSH Key
               run: |
-                  echo "${{ secrets.PROD_SSH_KEY }}" | base64 --decode > /tmp/deploy_key
-                  chmod 600 /tmp/deploy_key
+                  mkdir -p ~/.ssh
+                  echo "${{ secrets.PROD_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
+                  chmod 600 ~/.ssh/id_rsa
+
+            # - name: Decode SSH key
+            #   run: |
+            #       echo "${{ secrets.PROD_SSH_KEY }}" | base64 --decode > /tmp/deploy_key
+            #       chmod 600 /tmp/deploy_key
 
             - name: Deploy to Production via SSH
               uses: appleboy/ssh-action@v0.1.10
               with:
                   host: ${{ secrets.PROD_HOST }}
                   username: ${{ secrets.PROD_USER }}
-                  key_path: /tmp/deploy_key
+                  key_path: ~/.ssh/id_rsa
                   port: 22
                   script: |
                       cd ${{ secrets.PROD_PROJECT_PATH }}
