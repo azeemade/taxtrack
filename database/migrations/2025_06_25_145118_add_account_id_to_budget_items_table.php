@@ -20,8 +20,6 @@ return new class extends Migration
                   ->onDelete('restrict');
             
             $table->index('account_id');
-
-            $table->string('name')->nullable();
         });
     }
 
