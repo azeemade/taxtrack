@@ -117,10 +117,17 @@ jobs:
 
           # Debug: Check if we can access the repo via different methods
           echo "Checking repository access methods..."
-          echo "1. API access (should work):"
-          curl -s -H "Authorization: token ${PERSONAL_ACCESS_TOKEN}" https://api.github.com/repos/Damoscky/taxtrack-api | grep -E '"name"|"private"|"permissions"'
+          echo "1. Full API permissions response:"
+          curl -s -H "Authorization: token ${PERSONAL_ACCESS_TOKEN}" https://api.github.com/repos/Damoscky/taxtrack-api | grep -A 10 '"permissions"'
 
-          echo "2. Git protocol test:"
+          echo "2. Testing write access via API:"
+          # Try to create a test file via API to test write permissions
+          echo '{"message":"test","content":"'$(echo "test" | base64)'"}' | curl -s -X PUT -H "Authorization: token ${PERSONAL_ACCESS_TOKEN}" -H "Content-Type: application/json" https://api.github.com/repos/Damoscky/taxtrack-api/contents/test-file.txt -d @- || echo "API write test failed"
+
+          echo "3. Check if we're a collaborator:"
+          curl -s -H "Authorization: token ${PERSONAL_ACCESS_TOKEN}" https://api.github.com/repos/Damoscky/taxtrack-api/collaborators | head -5
+
+          echo "4. Git protocol test (read only):"
           git ls-remote https://${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git HEAD || echo "Git protocol failed"
 
           exit 1
