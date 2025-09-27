@@ -25,9 +25,6 @@ jobs:
           git remote add master_repo https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Damoscky/taxtrack-api.git
           git remote set-url master_repo https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Damoscky/taxtrack-api.git
 
-      # - name: Add master repo as Remote
-      #   run: |
-      #     git remote add master_repo https://github.com/Damoscky/taxtrack-api.git
-
-      - name: 🔄 Push to master repo
-        run: git push master_repo develop
+      - name: 🔄 Sync to master repo
+        run: |
+          git push master_repo develop:develop
