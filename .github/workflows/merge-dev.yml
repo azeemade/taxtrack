@@ -80,6 +80,21 @@ jobs:
         env:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          # Ensure the remote is set up with the token (use username:token format for private repos)
-          git remote set-url master_repo https://${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
-          git push master_repo develop:develop
+          # Try the most reliable method for private repositories
+          echo "Attempting to sync to master repository..."
+
+          # Use token as both username and password (most reliable for private repos)
+          echo "Using token as username:password format..."
+          git remote set-url master_repo https://${PERSONAL_ACCESS_TOKEN}:${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
+
+          # Test the connection first
+          echo "Testing git connection..."
+          if git ls-remote master_repo HEAD; then
+            echo "✅ Git connection successful"
+            echo "Pushing to master repository..."
+            git push master_repo develop:develop
+            echo "✅ Successfully synced to master repository"
+          else
+            echo "❌ Git connection failed"
+            exit 1
+          fi
