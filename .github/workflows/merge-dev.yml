@@ -30,10 +30,21 @@ jobs:
         run: |
           echo "Testing token access to Damoscky/taxtrack-api..."
           echo "Token length: ${#PERSONAL_ACCESS_TOKEN}"
-          echo "Token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}"
-          curl -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/Damoscky/taxtrack-api 2>/dev/null | head -10
+          echo "Token starts with: ${PERSONAL_ACCESS_TOKEN:0:8}..."
+
+          # Test API access
+          echo "Testing API access..."
+          API_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+                               -H "Accept: application/vnd.github.v3+json" \
+                               https://api.github.com/repos/Damoscky/taxtrack-api)
+
+          if echo "$API_RESPONSE" | grep -q '"message"'; then
+            echo "API Error: $(echo "$API_RESPONSE" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)"
+          else
+            echo "API Success: Repository found"
+            echo "Repository name: $(echo "$API_RESPONSE" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)"
+            echo "Repository visibility: $(echo "$API_RESPONSE" | grep -o '"visibility":"[^"]*"' | cut -d'"' -f4)"
+          fi
 
           echo "Testing git access..."
           git ls-remote master_repo HEAD || echo "Git access failed"
