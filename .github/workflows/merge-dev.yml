@@ -17,6 +17,13 @@ jobs:
           server: ftp.jkp.mje.mybluehost.me
           username: developer@api.taxtrack.sbscuk.co.uk
           password: ${{ secrets.password }}
+
+      - name: Set up authentication for push
+        run: |
+          git config --global user.email "${{ secrets.GIT_EMAIL }}"
+          git config --global user.name "${{ secrets.GIT_USERNAME }}"
+          git remote set-url master_repo https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Damoscky/taxtrack-api.git
+
       - name: Add master repo as Remote
         run: |
           git remote add master_repo https://github.com/Damoscky/taxtrack-api.git
