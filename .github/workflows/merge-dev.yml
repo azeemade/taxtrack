@@ -80,21 +80,47 @@ jobs:
         env:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          # Try the most reliable method for private repositories
           echo "Attempting to sync to master repository..."
 
-          # Use token as both username and password (most reliable for private repos)
-          echo "Using token as username:password format..."
-          git remote set-url master_repo https://${PERSONAL_ACCESS_TOKEN}:${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
-
-          # Test the connection first
-          echo "Testing git connection..."
-          if git ls-remote master_repo HEAD; then
-            echo "✅ Git connection successful"
-            echo "Pushing to master repository..."
-            git push master_repo develop:develop
-            echo "✅ Successfully synced to master repository"
+          # Test direct clone first to isolate the issue
+          echo "Testing direct clone..."
+          if git clone https://${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git test-clone; then
+            echo "✅ Direct clone successful"
+            rm -rf test-clone
           else
-            echo "❌ Git connection failed"
-            exit 1
+            echo "❌ Direct clone failed"
           fi
+
+          # Try alternative: Use git push with full URL
+          echo "Trying direct push with URL..."
+          if git push https://${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git develop:develop; then
+            echo "✅ Direct push successful"
+            exit 0
+          fi
+
+          # Try with different authentication format
+          echo "Trying with x-access-token format..."
+          if git push https://x-access-token:${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git develop:develop; then
+            echo "✅ X-access-token push successful"
+            exit 0
+          fi
+
+          # Try using GitHub's built-in GITHUB_TOKEN
+          echo "Trying with GITHUB_TOKEN..."
+          if git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Damoscky/taxtrack-api.git develop:develop; then
+            echo "✅ GITHUB_TOKEN push successful"
+            exit 0
+          fi
+
+          echo "❌ All push methods failed"
+          echo "Let's check what's happening with the repository access..."
+
+          # Debug: Check if we can access the repo via different methods
+          echo "Checking repository access methods..."
+          echo "1. API access (should work):"
+          curl -s -H "Authorization: token ${PERSONAL_ACCESS_TOKEN}" https://api.github.com/repos/Damoscky/taxtrack-api | grep -E '"name"|"private"|"permissions"'
+
+          echo "2. Git protocol test:"
+          git ls-remote https://${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git HEAD || echo "Git protocol failed"
+
+          exit 1
