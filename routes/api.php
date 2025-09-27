@@ -596,6 +596,7 @@ Route::group([
         Route::get('/user/{id}/companies', 'GuestController@getUserCompanies');
         Route::get('/company/{id}/roles', 'GuestController@getCompanyRoles');
         Route::get('/error-logs', 'GuestController@errorLogs');
+        Route::post('/check-mail-server', 'GuestController@checkMailServer');
         Route::get('/card-brands', 'GuestController@cardBrands');
         Route::get('/all-banks', 'GuestController@allBanks');
         Route::get('/all-email-templates', 'GuestController@allEmailTemplate');
