@@ -19,27 +19,6 @@ jobs:
                   php-version: "8.2"
                   extensions: mbstring, bcmath, xml, curl, zip, gd, pdo, mysql
 
-            #   - name: Install Composer dependencies
-            #     run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-            #   - name: Run Laravel commands
-            #     run: |
-            #       php artisan config:cache
-            #       php artisan route:cache
-            #       php artisan view:cache
-            #       php artisan migrate --force
-
-            # - name: Setup SSH Key
-            #   run: |
-            #       mkdir -p ~/.ssh
-            #       echo "${{ secrets.PROD_SSH_KEY }}" | base64 -d > ~/.ssh/id_rsa
-            #       chmod 600 ~/.ssh/id_rsa
-
-            # - name: Decode SSH key
-            #   run: |
-            #       echo "${{ secrets.PROD_SSH_KEY }}" | base64 --decode > /tmp/deploy_key
-            #       chmod 600 /tmp/deploy_key
-
             - name: Deploy to Production via SSH
               uses: appleboy/ssh-action@v0.1.10
               with:
@@ -50,7 +29,7 @@ jobs:
                   script: |
                       cd ${{ secrets.PROD_PROJECT_PATH }}
                       git pull origin production
-                      composer install --no-interaction --prefer-dist --optimize-autoloader
+                      composer update --ignore-platform-req --no-interaction --prefer-dist --optimize-autoloader
                       php artisan config:cache
                       php artisan route:cache
                       php artisan view:cache
