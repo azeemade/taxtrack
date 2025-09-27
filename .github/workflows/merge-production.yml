@@ -45,7 +45,7 @@ jobs:
               with:
                   host: ${{ secrets.PROD_HOST }}
                   username: ${{ secrets.PROD_USER }}
-                  key_path: ${{ secrets.PROD_SSH_KEY }}
+                  key: ${{ secrets.PROD_SSH_KEY }}
                   port: 22
                   script: |
                       cd ${{ secrets.PROD_PROJECT_PATH }}
