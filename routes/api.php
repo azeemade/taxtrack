@@ -186,6 +186,13 @@ Route::group([
                         "namespace" => "PurchaseInvoice"
                     ], function () {
                         Route::apiResource('invoices', 'InvoiceController')
+                            ->names([
+                                'index' => 'purchase_invoices.index',
+                                'store' => 'purchase_invoices.store',
+                                'show' => 'purchase_invoices.show',
+                                'update' => 'purchase_invoices.update',
+                                'destroy' => 'purchase_invoices.destroy',
+                            ])
                             ->missing(function () {
                                 return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                             });

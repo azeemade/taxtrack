@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\v1\Company\Report\FinancialPerformance;
+namespace App\Http\Controllers\v1\Company\Report;
 
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;

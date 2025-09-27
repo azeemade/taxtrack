@@ -53,12 +53,14 @@ class UserTableSeeder extends Seeder
     protected function createUser(array $users): void
     {
         foreach ($users as  $user) {
+            $role = $user['role'];
+            unset($user['role']);
             $user = User::create($user);
             if ($user->has('company')) {
                 $role = $this->findRole('client');
                 $user->assignRole($role);
             } else {
-                $role = $this->findRole($user->name);
+                $role = $this->findRole($role);
                 $user->assignRole($role);
             }
         }
