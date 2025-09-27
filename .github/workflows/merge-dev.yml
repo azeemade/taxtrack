@@ -19,14 +19,18 @@ jobs:
           password: ${{ secrets.password }}
 
       - name: Set up authentication for push
+        env:
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
           git config --global user.email "${{ secrets.GIT_EMAIL }}"
           git config --global user.name "${{ secrets.GIT_USERNAME }}"
           # Try with Personal Access Token first
-          git remote add master_repo https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Damoscky/taxtrack-api.git
-          git remote set-url master_repo https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/Damoscky/taxtrack-api.git
+          git remote add master_repo https://x-access-token:${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
+          git remote set-url master_repo https://x-access-token:${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
 
       - name: Debug token permissions
+        env:
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
           echo "Testing token access to Damoscky/taxtrack-api..."
           echo "Token length: ${#PERSONAL_ACCESS_TOKEN}"
