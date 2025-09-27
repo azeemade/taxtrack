@@ -50,17 +50,13 @@ class BanksTableSeeder extends Seeder
             ];
         }
     }
+    
     public function parseCsvWithMaatwebsite($filePath)
     {
         $data = [];
 
-        // Ensure the file exists
-        if (!Storage::exists($filePath)) {
-            throw new Exception("File not found: $filePath");
-        }
-
         // Open the file
-        $file = fopen(Storage::path($filePath), 'r');
+        $file = fopen($filePath, 'r');
 
         // Read the file line by line
         while (($row = fgetcsv($file, 1000, ",")) !== false) {
