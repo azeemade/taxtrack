@@ -29,11 +29,11 @@ jobs:
             #       php artisan view:cache
             #       php artisan migrate --force
 
-            - name: Setup SSH Key
-              run: |
-                mkdir -p ~/.ssh
-                echo "${{ secrets.PROD_SSH_KEY }}" | base64 -d > ~/.ssh/id_rsa
-                chmod 600 ~/.ssh/id_rsa
+            # - name: Setup SSH Key
+            #   run: |
+            #       mkdir -p ~/.ssh
+            #       echo "${{ secrets.PROD_SSH_KEY }}" | base64 -d > ~/.ssh/id_rsa
+            #       chmod 600 ~/.ssh/id_rsa
 
             # - name: Decode SSH key
             #   run: |
@@ -45,7 +45,7 @@ jobs:
               with:
                   host: ${{ secrets.PROD_HOST }}
                   username: ${{ secrets.PROD_USER }}
-                  key_path: ~/.ssh/id_rsa
+                  key_path: ${{ secrets.PROD_SSH_KEY }}
                   port: 22
                   script: |
                       cd ${{ secrets.PROD_PROJECT_PATH }}
@@ -55,8 +55,3 @@ jobs:
                       php artisan route:cache
                       php artisan view:cache
                   #   php artisan migrate --force
-
-# Notes:
-# - Add PROD_HOST, PROD_USER, and PROD_SSH_KEY as secrets in your GitHub repo.
-# - Replace /home/your_cpanel_user/public_html/your_app_folder with your actual path.
-# - Ensure your cPanel server has git, composer, and PHP installed.
