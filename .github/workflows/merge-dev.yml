@@ -36,6 +36,8 @@ jobs:
                                -H "Accept: application/vnd.github.v3+json" \
                                https://api.github.com/repos/Damoscky/taxtrack-api)
 
+          echo "Full API Response: $API_RESPONSE"
+
           if echo "$API_RESPONSE" | grep -q '"message"'; then
             echo "API Error: $(echo "$API_RESPONSE" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)"
             exit 1
@@ -44,6 +46,26 @@ jobs:
             echo "Repository name: $(echo "$API_RESPONSE" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)"
             echo "Repository visibility: $(echo "$API_RESPONSE" | grep -o '"visibility":"[^"]*"' | cut -d'"' -f4)"
           fi
+
+          # Test alternative repository names
+          echo "Testing alternative repository names..."
+          for repo_name in "taxtrack" "taxtrack-api" "taxtrack_api"; do
+            echo "Testing Damoscky/$repo_name..."
+            ALT_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+                                -H "Accept: application/vnd.github.v3+json" \
+                                https://api.github.com/repos/Damoscky/$repo_name)
+            if ! echo "$ALT_RESPONSE" | grep -q '"message"'; then
+              echo "Found repository: Damoscky/$repo_name"
+              break
+            fi
+          done
+
+          # List all repositories the token has access to
+          echo "Listing repositories accessible with this token..."
+          REPOS_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+                               -H "Accept: application/vnd.github.v3+json" \
+                               https://api.github.com/user/repos?per_page=100)
+          echo "Repositories: $(echo "$REPOS_RESPONSE" | grep -o '"full_name":"[^"]*"' | head -10)"
 
           # Set up git remote with token
           echo "Setting up git remote..."
