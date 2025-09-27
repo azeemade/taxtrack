@@ -4,6 +4,7 @@ namespace App\Http\Requests\Company\Purchase\Supplier;
 
 use App\Models\CompanyContactPerson;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class CreateOrganizationRequest extends FormRequest
 {
@@ -41,12 +42,13 @@ class CreateOrganizationRequest extends FormRequest
             "bank_identification_code" => 'nullable|string',
             "primary_phone_ext" => 'required|string|exists:countries,phone_code',
             "address" => 'nullable|string',
+            "terms_and_conditions" => 'nullable|string',
             "country_id" => 'nullable|integer|exists:countries,id',
             "city_id" => 'nullable|integer|exists:cities,id',
             "state_id" => 'nullable|integer|exists:states,id',
             "contact_persons" => 'required|array',
             "contact_persons.*.id" => ['sometimes', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
-                $person = CompanyContactPerson::where('company_id', auth()->user()?->company?->id)
+                $person = CompanyContactPerson::where('company_id', Auth::user()?->company?->id)
                     ->where('id', $value)
                     ->first();
                 if (!$person) {

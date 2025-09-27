@@ -30,9 +30,16 @@ class CompanyUserRequest extends FormRequest
             'companies.*.country_id' => 'required|exists:countries,id',
             'companies.*.industry' => 'required|string||max:250',
             'companies.*.tax_id' => 'nullable|string|max:20',
+            'companies.*.tax_type' => 'nullable|string',
+            'companies.*.vat_registration_year' => 'nullable|string',
             'companies.*.registration_id' => 'nullable|string||max:20',
             'companies.*.fiscal_year_start' => 'nullable|date_format:m-d',
             'companies.*.fiscal_year_end' => 'nullable|date_format:m-d',
+            'companies.*.subscription_plan_id' => 'nullable|exists:subscription_plans,id',
+            'companies.*.provider_payment_method_id' => 'nullable|string',
+            'companies.*.save_card' => 'nullable',
+            'companies.*.additional_users_count' => 'nullable|numeric',
+            'companies.*.duration' => 'nullable|in:monthly,yearly',
             'users' => 'nullable|array',
             'users.*.name' => 'required|string|max:250',
             'users.*.roles' => 'nullable|array',
@@ -59,7 +66,7 @@ class CompanyUserRequest extends FormRequest
                         }
                     }
                 }
-            ]
+            ],
         ];
     }
 }

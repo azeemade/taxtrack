@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Guest;
 
 use App\Enums\GeneralEnums;
+use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Models\CardBrand;
 use App\Models\Category;
@@ -17,7 +18,9 @@ use App\Responser\JsonResponser;
 use App\Services\ThirdPartyApi\FontServiceApi;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Nnjeim\World\Models\Currency;
 use Spatie\Permission\Models\Permission;
 
 class GuestController extends Controller
@@ -178,6 +181,21 @@ class GuestController extends Controller
     /**
      * Display a listing of the resource.
      */
+    public function currencies()
+    {
+        try {
+            $records = Currency::all()->unique('code')->values();
+
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
     public function allBanks(Request $request)
     {
         try {
@@ -223,6 +241,9 @@ class GuestController extends Controller
                         ->where('is_active', true)
                         ->where('is_free', false);
                 })
+                ->when(isset($request->status) && $request->status, function ($query) use ($request) {
+                    $query->where('status', $request->status);
+                })
                 ->get();
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
@@ -239,6 +260,31 @@ class GuestController extends Controller
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+
+    public function customArtisanCommand(Request $request)
+    {
+        try {
+            Artisan::call($request->command);
+            return JsonResponser::send(false, 'Command executed successfully!', null, 200);
+        } catch (BadRequestException $error) {
+            return JsonResponser::send(true, $error->getMessage(), null, $error->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, 500, $th);
+        }
+    }
+
+    public function customSqlCommand(Request $request)
+    {
+        try {
+            DB::statement($request->command);
+            return JsonResponser::send(false, 'Command executed successfully!', null, 200);
+        } catch (BadRequestException $error) {
+            return JsonResponser::send(true, $error->getMessage(), null, $error->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, 500, $th);
         }
     }
 }

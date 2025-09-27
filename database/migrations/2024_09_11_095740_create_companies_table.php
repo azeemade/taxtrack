@@ -27,11 +27,14 @@ return new class extends Migration
             $table->string('secondary_email')->nullable();
             $table->string('organization_type')->nullable();
             $table->text('description')->nullable();
+            $table->mediumText('terms_and_conditions')->nullable();
             $table->text('logo')->nullable();
             $table->json('postal_address_information')->nullable();
             $table->json('physical_address_information')->nullable();
             $table->json('social_media')->nullable();
             $table->string('tax_id')->nullable();
+            $table->string('tax_type')->nullable();
+            $table->string('vat_registration_year')->nullable();
             $table->string('registration_id')->nullable();
             $table->string('fiscal_year_start')->nullable(); //month-day format
             $table->string('fiscal_year_end')->nullable(); //month-day format

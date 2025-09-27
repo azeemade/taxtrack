@@ -56,12 +56,12 @@ class OverviewService
 
         $plans = SubscriptionPlan::query()
             ->select('id', 'title', 'monthly_fee', 'yearly_fee') // Select only the title of the SubscriptionPlan
-            ->withCount(['subscriber as subscriber_count' => function ($query) use ($dateFilter) {
+            ->withCount(['subscriptions as subscriber_count' => function ($query) use ($dateFilter) {
                 // Filter subscribers by the dateFilter
                 if ($dateFilter) {
                     $query->where('created_at', '>=', $dateFilter);
                 }
-            }])->withSum('subscriptions', 'amount_paid');
+            }])->withSum('subscriptions as revenue_generated', 'amount_paid');
 
         $revenueGeneratedThisMonth = (clone $records)->whereMonth('created_at', Carbon::now()->month)->sum('amount_paid');
         $revenueGeneratedLastMonth = (clone $records)->whereMonth('created_at', Carbon::now()->subMonth()->month)->sum('amount_paid');

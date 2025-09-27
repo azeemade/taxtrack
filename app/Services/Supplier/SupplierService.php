@@ -22,7 +22,7 @@ class SupplierService
     public function list($request)
     {
         $records = Vendor::query()
-            ->select('id', 'vendor_name', 'primary_phone_number', 'referenceID', 'is_active')
+            ->select('id', 'vendor_name', 'primary_phone_number', 'referenceID', 'is_active', 'terms_and_conditions')
             ->with('contactPerson:id,full_name,company_contact_people.contactable_id')
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {

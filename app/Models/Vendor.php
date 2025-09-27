@@ -45,6 +45,11 @@ class Vendor extends Model
         return $this->hasMany(VendorBill::class);
     }
 
+    public function invoices()
+    {
+        return $this->hasMany(PurchaseInvoice::class);
+    }
+
     public function latestPaymentRecord()
     {
         return $this->hasOne(VendorBill::class)->latestOfMany();

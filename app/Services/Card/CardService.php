@@ -37,11 +37,16 @@ class CardService
 
     public function updateOrCreate($request)
     {
+        $request['created_by'] = auth()->user()->id;
+        $request['company_id'] = auth()->user()->company->id;
+
         $record = CardAccount::updateOrCreate(["id" => $request["id"] ?? null], [...$request]);
 
         if (!isset($request["id"])) {
             $record->paymentMethods()->create([
-                'referenceID' => $this->generateRefId()
+                'referenceID' => $this->generateRefId(),
+                'created_by' => auth()->user()->id,
+                'company_id' => auth()->user()->company->id,
             ]);
         }
 

@@ -8,7 +8,6 @@ use App\Http\Requests\Company\Accounting\JournalEntry\JournalEntryRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\JournalEntry\JournalEntryService;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class JournalOfEntryController extends Controller
@@ -24,6 +23,7 @@ class JournalOfEntryController extends Controller
     {
         try {
             $records = $this->journalEntryService->allJournalEntries($request);
+            if ($request->export) return $records;
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
@@ -31,7 +31,6 @@ class JournalOfEntryController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
-
 
     public function createJournalEntry(JournalEntryRequest $request)
     {
@@ -41,7 +40,7 @@ class JournalOfEntryController extends Controller
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 

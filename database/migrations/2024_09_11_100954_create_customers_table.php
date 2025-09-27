@@ -24,17 +24,18 @@ return new class extends Migration
             $table->unsignedInteger('employee_count')->default(1);
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('company_id');
-            $table->string('phone_ext');
-            $table->string('phone_number');
-            $table->string('email')->unique();
+            $table->string('phone_ext')->nullable();
+            $table->string('phone_number')->nullable();
+            $table->string('email')->nullable();
             $table->decimal('current_balance', 20, 2)->default(0.00);
             $table->string('payment_term')->nullable(); // in days
             $table->unsignedBigInteger('currency_id');
             $table->unsignedBigInteger('country_id')->nullable();
             $table->unsignedBigInteger('city_id')->nullable();
-            $table->string('address');
+            $table->string('address')->nullable();
             $table->string('zip_code')->nullable();
             $table->mediumText('special_instruction')->nullable();
+            $table->mediumText('terms_and_conditions')->nullable();
             $table->mediumText('customer_logo')->nullable();
             $table->mediumText('statement_document_link')->nullable();
             $table->boolean('is_active')->default(true);

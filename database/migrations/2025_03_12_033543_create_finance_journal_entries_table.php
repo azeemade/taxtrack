@@ -16,7 +16,7 @@ return new class extends Migration
             $table->date('date');
             $table->string('info')->default('JournalEntry');
             $table->foreignId('edited_by')->constrained('users')->onDelete('cascade');
-            $table->enum('status', ['draft', 'pending', 'published'])->default('draft'); 
+            $table->enum('status', ['draft', 'pending', 'published', 'unpublished'])->default('unpublished'); 
             $table->timestamps();
             $table->softDeletes();
         });

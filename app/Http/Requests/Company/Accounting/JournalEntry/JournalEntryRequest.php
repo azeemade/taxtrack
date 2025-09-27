@@ -26,7 +26,7 @@ class JournalEntryRequest extends FormRequest
             'accountEntries.*.account_id' => 'required|integer|exists:finance_chart_of_accounts,id',
             'accountEntries.*.credit_amount' => 'nullable|min:0', //numeric
             'accountEntries.*.debit_amount' => 'nullable|min:0', //numeric
-            'accountEntries.*.description' => 'nullable|string|max:255',
+            // 'accountEntries.*.description' => 'nullable|string|max:255',
             'accountEntries.*.transaction_date' => 'required|date',
         ];
 
@@ -57,30 +57,31 @@ class JournalEntryRequest extends FormRequest
             // 'accountEntries.*.debit_amount.numeric' => 'The debit amount must be a number.',
             'accountEntries.*.credit_amount.min' => 'The credit amount must be at least 0.',
             'accountEntries.*.debit_amount.min' => 'The debit amount must be at least 0.',
-            'accountEntries.*.description.max' => 'The description may not be greater than 255 characters.',
+            // 'accountEntries.*.description.max' => 'The description may not be greater than 255 characters.',
         ];
     }
 
-    // Custom logic after validation
-    protected function afterValidation(Validator $validator)
+    public function withValidator(Validator $validator)
     {
-        if (isset($this->accountEntries)) {
-            foreach ($this->accountEntries as $key => $accountEntry) {
-                $creditAmount = $accountEntry['credit_amount'] ?? null;
-                $debitAmount = $accountEntry['debit_amount'] ?? null;
+        $validator->after(function ($validator) {
+            if (isset($this->accountEntries)) {
+                foreach ($this->accountEntries as $key => $accountEntry) {
+                    $creditAmount = $accountEntry['credit_amount'] ?? null;
+                    $debitAmount = $accountEntry['debit_amount'] ?? null;
 
-                $creditAmount = is_numeric($creditAmount) ? (float)$creditAmount : null;
-                $debitAmount = is_numeric($debitAmount) ? (float)$debitAmount : null;
+                    $creditAmount = is_numeric($creditAmount) ? (float)$creditAmount : null;
+                    $debitAmount = is_numeric($debitAmount) ? (float)$debitAmount : null;
 
-                if (!is_null($creditAmount) && !is_null($debitAmount) && $creditAmount > 0 && $debitAmount > 0) {
-                    $validator->errors()->add("accountEntries.{$key}.credit_amount", "Both credit_amount and debit_amount cannot be filled at the same time.");
-                    $validator->errors()->add("accountEntries.{$key}.debit_amount", "Both credit_amount and debit_amount cannot be filled at the same time.");
-                } elseif ((is_null($creditAmount) || $creditAmount == 0) && (is_null($debitAmount) || $debitAmount == 0)) {
-                    $validator->errors()->add("accountEntries.{$key}.credit_amount", "Either credit_amount or debit_amount must be filled.");
-                    $validator->errors()->add("accountEntries.{$key}.debit_amount", "Either credit_amount or debit_amount must be filled.");
+                    if (!is_null($creditAmount) && !is_null($debitAmount) && $creditAmount > 0 && $debitAmount > 0) {
+                        $validator->errors()->add("accountEntries.{$key}.credit_amount", "Both credit_amount and debit_amount cannot be filled at the same time.");
+                        $validator->errors()->add("accountEntries.{$key}.debit_amount", "Both credit_amount and debit_amount cannot be filled at the same time.");
+                    } elseif ((is_null($creditAmount) || $creditAmount == 0) && (is_null($debitAmount) || $debitAmount == 0)) {
+                        $validator->errors()->add("accountEntries.{$key}.credit_amount", "Either credit_amount or debit_amount must be filled.");
+                        $validator->errors()->add("accountEntries.{$key}.debit_amount", "Either credit_amount or debit_amount must be filled.");
+                    }
                 }
             }
-        }
+        });
     }
 
     // Override failedValidation method to return custom error messages

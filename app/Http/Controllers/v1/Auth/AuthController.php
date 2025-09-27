@@ -6,6 +6,7 @@ use App\Enums\GeneralEnums;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
+use App\Http\Resources\Company\StaffProfileResource;
 use App\Models\User;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Response;
@@ -42,20 +43,13 @@ class AuthController extends Controller
                 return JsonResponser::send(true, 'Company is inactive. Contact admin', [], Response::HTTP_BAD_REQUEST);
             }
 
-            if ($user?->hasRole('client') && !$user->company) {
-                $user->update([
-                    'current_company_id' => $user->companies[0]
-                ]);
-            }
-
             $user->update([
+                'current_company_id' => $user?->hasRole('client') && !$user->company ? $user->companies[0]['id'] : $user->current_company_id,
                 'last_login' => now()
             ]);
 
-            $user['companies'] = $user->getCurrentSubscriptionDetails();
-
             $data = [
-                'user' => $user,
+                'user' => $user->current_company_id ? new StaffProfileResource($user) : $user,
                 'token' => $token,
                 'type' => 'bearer',
             ];

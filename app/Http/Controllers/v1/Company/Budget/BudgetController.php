@@ -5,6 +5,7 @@ namespace App\Http\Controllers\v1\Company\Budget;
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Budget\CreateBudgetRequest;
+use App\Http\Requests\Company\Budget\UpdateBudgetRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\Budget\BudgetService;
@@ -38,6 +39,19 @@ class BudgetController extends Controller
         }
     }
 
+    public function getBudgetTemplate()
+    {
+        try {
+            $records = $this->budgetService->getBudgetTemplate();
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
     /**
      * Store a newly created resource in storage.
      */
@@ -55,38 +69,98 @@ class BudgetController extends Controller
             return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, $th, null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(int $id)
+    // public function show(int $id)
+    // {
+    //     try {
+    //         $record = $this->budgetService->view($id);
+
+    //         return JsonResponser::send(false, 'Record found successfully', $record, Response::HTTP_OK);
+    //     } catch (BadRequestException $e) {
+    //         return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());
+    //     } catch (\Throwable $th) {
+    //         return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+    //     }
+    // }
+
+    public function show($budgetId)
     {
         try {
-            $record = $this->budgetService->view($id);
-
-            return JsonResponser::send(false, 'Record found successfully', $record, Response::HTTP_OK);
+            $budgetData = $this->budgetService->getBudget($budgetId);
+            return JsonResponser::send(false, 'Budget fetched successfully', $budgetData, 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return JsonResponser::send(true, 'Budget not found', null, 494);
         } catch (BadRequestException $e) {
-            return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());
+            return JsonResponser::send(true, $e->getMessage(), null, 422);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, $th, null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(CreateBudgetRequest $request, $id)
+    public function update(UpdateBudgetRequest $request, $budgetId)
     {
+        try {
+            $budget = $this->budgetService->update($budgetId, $request->validated());
+            return JsonResponser::send(false, 'Budget updated successfully', $budget, Response::HTTP_OK);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return JsonResponser::send(true, 'Budget not found', null, $e->getCode());
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, $th, null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+
+    // public function update(CreateBudgetRequest $request, $id)
+    // {
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $record = $this->budgetService->update($request->validated(), $id);
+
+    //         DB::commit();
+    //         return JsonResponser::send(false, 'Budget updated successfully', $record);
+    //     } catch (BadRequestException $e) {
+    //         DB::rollBack();
+    //         return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());
+    //     } catch (\Throwable $th) {
+    //         DB::rollBack();
+    //         return JsonResponser::send(true, 'Internal Server Error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+    //     }
+    // }
+
+    public function toggleStatus(Request $request, $id)
+    {
+        $request->validate([
+            "status" => "required|in:active,draft,inactive"
+        ]);
+
         try {
             DB::beginTransaction();
 
-            $record = $this->budgetService->update($request->validated(), $id);
+            $record = $this->budgetService->view($id);
+            if (!$record) {
+                throw new BadRequestException("Budget not found", Response::HTTP_BAD_REQUEST);
+            }
+
+            $record->update([
+                "status" => $request->status
+            ]);
 
             DB::commit();
-            return JsonResponser::send(false, 'Budget updated successfully', $record);
+            return JsonResponser::send(false, 'Budget status modified successfully', $record);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), null, $e->getCode());

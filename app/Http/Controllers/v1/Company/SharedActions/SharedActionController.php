@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v1\Company\SharedActions;
 
+use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Shared\SharedReminderRequest;
@@ -79,6 +80,9 @@ class SharedActionController extends Controller
         $request = app()->make(SharedReminderRequest::class);
 
         $this->sharedActionService->sendReminder([...$request->validated(), 'primary_email' => $model->previewables['entity_data']['email']]);
+        $model->update([
+            'share_status' => ShareStatusEnums::SHARED->value
+        ]);
 
         return ["message" => 'Reminder sent successfully', "record" => null];
     }

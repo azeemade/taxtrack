@@ -39,7 +39,7 @@ class Invoice extends Model
                 'name' => $this->customer->company_name,
                 'address' => $this->customer->address,
                 'email' => $this->customer->email,
-                'currency' => $this->customer->currency->symbol,
+                'currency' => $this->customer->currency->code,
             ],
             'issued_date' => $this->created_at,
             'due_date' => $this->due_date,
@@ -48,8 +48,10 @@ class Invoice extends Model
                 return [
                     'description' => $item->item_details,
                     'quantity' => $item->quantity,
-                    'price' => $this->customer->currency->symbol . $item->price,
-                    'amount' => $this->customer->currency->symbol . $item->amount,
+                    'vat' => $item->vat > 0 ? $item->vat . '%' : null,
+                    'discount' => $item->discount > 0 ? $item->discount . '%' : null,
+                    'price' => $this->customer->currency->code . $item->price,
+                    'amount' => $this->customer->currency->code . $item->amount,
                 ];
             }),
             'sub_total' => $this->sub_total,
@@ -96,5 +98,10 @@ class Invoice extends Model
     public function badDebt()
     {
         return $this->morphOne(BadDebt::class, 'documentable');
+    }
+
+    public function quote()
+    {
+        return $this->belongsTo(Quote::class);
     }
 }

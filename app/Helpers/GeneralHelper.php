@@ -70,6 +70,68 @@ class GeneralHelper
         return $uniqueId;
     }
 
+    public static function getModelUniqueRandomId2($data)
+    {
+        try {
+            // Validate required parameters
+            if (empty($data['modelNamespace']) || empty($data['modelField'])) {
+                return ['error' => true, 'message' => 'Model namespace and field must be specified'];
+            }
+
+            $modelClass = $data['modelNamespace'];
+            $modelField = $data['modelField'];
+
+            if (!class_exists($modelClass)) {
+                return ['error' => true, 'message' => "Model class {$modelClass} not found"];
+            }
+
+            $maxAttempts = 100; // Maximum attempts to generate unique ID
+            $attempt = 0;
+
+            while ($attempt < $maxAttempts) {
+                // Generate the ID using the helper method
+                $uniqueId = self::generateUniqueRandomId2($data);
+
+                // Check if ID exists using safe query construction
+                $exists = $modelClass::where($modelField, $uniqueId)->exists();
+
+                if (!$exists) {
+                    return $uniqueId;
+                }
+
+                $attempt++;
+            }
+            return ['error' => true, 'message' => "Failed to generate unique ID after {$maxAttempts} attempts"];
+        } catch (\Exception $e) {
+            return [
+                'error' => true,
+                'message' => 'ID Generation Error: ' . $e->getMessage(),
+                'data' => []
+            ];
+        }
+    }
+
+    public static function generateUniqueRandomId2($config)
+    {
+        $prefix = $config['prefix'] ?? '';
+        $length = $config['idLength'] ?? 7;
+        $type = $config['idType'] ?? 'numalpha';
+
+        $characters = match ($type) {
+            'num' => '0123456789',
+            default => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ' // numalpha
+        };
+
+        $randomString = '';
+        $maxIndex = strlen($characters) - 1;
+
+        for ($i = 0; $i < $length; $i++) {
+            $randomString .= $characters[random_int(0, $maxIndex)];
+        }
+
+        return $prefix . $randomString;
+    }
+
     public static function generateUniqueRandomId($data)
     {
         $prefix = $data['prefix'] ?? "";
@@ -100,7 +162,8 @@ class GeneralHelper
 
     public static function dateFilter(?string $period = null, ?array $customDate = null): array|bool
     {
-        if ($period === "Today") {
+        $currentUserCompany = auth()->user()->company;
+        if (in_array($period, ["today", "Today"])) {
             $carbonDateFilter = [Carbon::now()->startOfDay(), Carbon::now()->endOfDay()];
         } elseif ($period === "3 days") {
             // Last 3 days
@@ -114,14 +177,28 @@ class GeneralHelper
         } elseif ($period == "this month") {
             // This month
             $carbonDateFilter = [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()];
+        } elseif ($period == "last month") {
+            // Last month
+            $carbonDateFilter = [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()];
         } elseif ($period == "30 days") {
             // Last 30 days
             $carbonDateFilter = [Carbon::now()->subDays(30), Carbon::now()];
         } elseif ($period == "3 months") {
             // Last 3 months
             $carbonDateFilter = [Carbon::now()->subMonths(3)->startOfDay(), Carbon::now()->endOfDay()];
+        } elseif ($period == "last quarter") {
+            // Last month
+            $carbonDateFilter = [Carbon::now()->subQuarter()->startOfQuarter(), Carbon::now()->subQuarter()->endOfQuarter()];
         } elseif ($period == "this year") {
             $carbonDateFilter = [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
+        } elseif ($period == "last financial year") {
+            $start = $currentUserCompany->fiscal_year_start ? Carbon::createFromFormat('m-d', $currentUserCompany->fiscal_year_start, Carbon::now()->year)->subYear()->format("Y-m-d") : Carbon::now()->subYear()->startOfYear();
+            $end = $currentUserCompany->fiscal_year_end ? Carbon::createFromFormat('m-d', $currentUserCompany->fiscal_year_end, Carbon::now()->year)->subYear()->format("Y-m-d") : Carbon::now()->subYear()->endOfYear();
+
+            $carbonDateFilter = [$start, $end];
+        } elseif ($period && strpos($period, ',') !== false) {
+            $dates = explode('|', $period);
+            $carbonDateFilter = [Carbon::parse(trim($dates[0])), Carbon::parse(trim($dates[1]))];
         } elseif (preg_match('/^\d{4}$/', $period)) {
             // If period is a specific year (e.g., 2024, 2025, etc.)
             $carbonDateFilter = [
@@ -135,5 +212,103 @@ class GeneralHelper
         }
 
         return $carbonDateFilter;
+    }
+
+
+    public static function parseDateFilter($dateInput, $periodType)
+    {
+        $carbonDate = Carbon::parse($dateInput);
+
+        // Possible period_type values: specific_date, this_month, last_month, this_quarter, last_quarter, 
+        //     this_year_to_current_date, this_quarter_to_current_date, this_month_to_current_date, 
+        //     quarter_end, year_end, financial_year_end, default
+
+        switch ($periodType) {
+            case 'specific_date':
+                return [
+                    'start_date' => $carbonDate->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'custom_range':
+                if (!isset($dateInput['start_date']) || !isset($dateInput['end_date'])) {
+                    throw new \Exception('Start date and end date are required for custom_range period type.');
+                }
+                return [
+                    'start_date' => Carbon::parse($dateInput['start_date'])->toDateString(),
+                    'end_date' => Carbon::parse($dateInput['end_date'])->toDateString()
+                ];
+
+            case 'this_month':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->copy()->endOfMonth()->toDateString()
+                ];
+
+            case 'last_month':
+                return [
+                    'start_date' => $carbonDate->copy()->subMonth()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->copy()->subMonth()->endOfMonth()->toDateString()
+                ];
+
+            case 'this_quarter':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->copy()->endOfQuarter()->toDateString()
+                ];
+
+            case 'last_quarter':
+                return [
+                    'start_date' => $carbonDate->copy()->subQuarter()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->copy()->subQuarter()->endOfQuarter()->toDateString()
+                ];
+
+            case 'this_year_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'this_quarter_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'this_month_to_current_date':
+                return [
+                    'start_date' => $carbonDate->copy()->startOfMonth()->toDateString(),
+                    'end_date' => $carbonDate->toDateString()
+                ];
+
+            case 'quarter_end':
+                return [
+                    'start_date' => $carbonDate->startOfQuarter()->toDateString(),
+                    'end_date' => $carbonDate->endOfQuarter()->toDateString()
+                ];
+
+            case 'year_end':
+                return [
+                    'start_date' => $carbonDate->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->endOfYear()->toDateString()
+                ];
+
+            case 'financial_year_end':
+                // Assuming financial year ends March 31 (adjust as needed)
+                $financialYearEnd = $carbonDate->month < 4
+                    ? Carbon::create($carbonDate->year - 1, 3, 31)
+                    : Carbon::create($carbonDate->year, 3, 31);
+
+                return [
+                    'start_date' => $financialYearEnd->copy()->subYear()->addDay()->toDateString(),
+                    'end_date' => $financialYearEnd->toDateString()
+                ];
+
+            default:
+                return [
+                    'start_date' => $carbonDate->startOfYear()->toDateString(),
+                    'end_date' => $carbonDate->endOfYear()->toDateString()
+                ];
+        }
     }
 }

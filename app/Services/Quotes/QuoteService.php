@@ -129,14 +129,16 @@ class QuoteService
 
     public function updateOrCreate($request)
     {
+        $customer = Customer::find($request['customer_id']);
         $record = Quote::updateOrCreate(
             [
                 "id" => $request["id"] ?? null
             ],
             [
                 ...$request,
+                'currency_id' => $customer->currency_id,
                 'quote_date' => $request['quote_date'] ?? now(),
-                'quoteID' => $this->generateQuoteId(),
+                'quoteID' => $request['quoteID'] ?? $this->generateQuoteId(),
                 'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
                 'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
             ]
@@ -148,7 +150,7 @@ class QuoteService
             $record->addLineItems($request['line_items']);
         }
 
-        if ($request['save_status'] == 'send') {
+        if (isset($request['save_status']) && $request['save_status'] == 'send') {
             $this->sharedActionServices->emailEntity($record);
         }
 

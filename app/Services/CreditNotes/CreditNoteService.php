@@ -69,10 +69,13 @@ class CreditNoteService
 
     public function create($request)
     {
+        $customer = Customer::find($request['customer_id']);
+
         $record = CreditNote::create([
             ...$request,
             'issue_date' => $request['issue_date'] ?? now(),
-            'referenceID' => $this->generateRefId(),
+            'currency_id' => $customer->currency_id,
+            'referenceID' => $request['referenceID'] ?? $this->generateRefId(),
             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
             'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
         ]);
@@ -82,10 +85,12 @@ class CreditNoteService
                 ...$value,
                 'credit_amount_total' => $value['credit_amount']
             ]);
-            $creditNoteInvoice->lineItem()->update([
-                'credit_amount' => $value['credit_amount'],
-                'full_credit' => $value['credit_in_full']
-            ]);
+            $creditNoteInvoice->lineItem()
+                ->where('id', $value['line_item_id'])
+                ->update([
+                    'credit_amount' => $value['credit_amount'],
+                    'full_credit' => $value['credit_in_full']
+                ]);
         }
 
         if ($request['save_status'] == 'send') {
@@ -173,10 +178,12 @@ class CreditNoteService
                 ]);
             }
 
-            $creditNoteInvoice->lineItem()->update([
-                'credit_amount' => $value['credit_amount'],
-                'full_credit' => $value['credit_in_full']
-            ]);
+            $creditNoteInvoice->lineItem()
+                ->where('id', $value['line_item_id'])
+                ->update([
+                    'credit_amount' => $value['credit_amount'],
+                    'full_credit' => $value['credit_in_full']
+                ]);
         }
 
         if ($request['save_status'] == 'send') {

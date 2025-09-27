@@ -16,7 +16,7 @@ class AccountTemplate implements FromCollection, WithHeadings
     {
         return collect([
             [
-                'account_sub_category_ref_code' => 102001,
+                'account_sub_category_name' => "Accounts Payable",
                 'name' => 'SayLita',
                 'description' => 'Salita Account'
             ]
@@ -25,6 +25,6 @@ class AccountTemplate implements FromCollection, WithHeadings
 
     public function headings(): array
     {
-        return array('Account SubCategory Reference Code', 'Name', 'Description');
+        return array('Account SubCategory Name', 'Name', 'Description');
     }
 }

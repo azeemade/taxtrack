@@ -15,4 +15,9 @@ class FinanceAccountTransaction extends Model
     {
         return $this->belongsTo(FinanceChartOfAccount::class, 'account_id');
     }
+
+    public function financeTransactionGroup()
+    {
+        return $this->belongsTo(FinanceAccountTransactionGroup::class, 'trans_group_id');
+    }
 }

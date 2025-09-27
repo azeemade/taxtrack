@@ -16,6 +16,11 @@ class BudgetPeriod extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'amount' => 'float',
+        'year' => 'string',
+    ];
+
     public function company()
     {
         return $this->belongsTo(Company::class);

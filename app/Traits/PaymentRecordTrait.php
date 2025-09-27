@@ -7,6 +7,7 @@ use App\Models\PaymentRecord;
 trait PaymentRecordTrait
 {
     protected $appends = ['amount_due', 'total_amount_paid'];
+
     public function paymentRecords()
     {
         return $this->morphMany(PaymentRecord::class, 'recordable');

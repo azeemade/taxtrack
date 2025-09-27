@@ -48,7 +48,7 @@ class DashboardController extends Controller
     {
         try {
             $currentUser = Auth::user();
-            $currencySymbol = $currentUser->company->currencies->first()->symbol;
+            // $currencySymbol = $currentUser->company->currencies->first()->symbol;
             $year = $request->date_filter ?
                 [Carbon::createFromDate($request->date_filter, 1, 1), Carbon::createFromDate($request->date_filter, 12, 31)] :
                 [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
@@ -62,19 +62,19 @@ class DashboardController extends Controller
             $records = [
                 "cash_at_year_start" => [
                     "name" => "Cash as at " . $year[0]->format("d/m/Y"),
-                    "value" => $currencySymbol . "0.00"
+                    "value" => "0.00"
                 ],
                 "cash_at_year_end" => [
                     "name" => "Cash as at " . $year[1]->format("d/m/Y"),
-                    "value" => $currencySymbol . "0.00"
+                    "value" => "0.00"
                 ],
                 "incoming" => [
                     "name" => "Incoming",
-                    "value" => $currencySymbol . "0.00"
+                    "value" => "0.00"
                 ],
                 "outgoing" => [
                     "name" => "Outgoing",
-                    "value" => $currencySymbol . "0.00"
+                    "value" => "0.00"
                 ],
                 "chart_data" => $chartData
             ];
@@ -93,7 +93,7 @@ class DashboardController extends Controller
     {
         try {
             $currentUser = Auth::user();
-            $currencySymbol = $currentUser->company->currencies->first()->symbol;
+            // $currencySymbol = $currentUser->company->currencies->first()->symbol;
             $year = $request->date_filter ?
                 [Carbon::createFromDate($request->date_filter, 1, 1), Carbon::createFromDate($request->date_filter, 12, 31)] :
                 [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
@@ -130,15 +130,15 @@ class DashboardController extends Controller
             $records = [
                 "total_sales_invoice_value" => [
                     "name" => "Total Sales Invoice Value",
-                    "value" => $currencySymbol . (clone $invoices)->sum('invoice_value')
+                    "value" => (clone $invoices)->sum('invoice_value')
                 ],
                 "current_sales_invoice" => [
                     "name" => "Current Sales Invoice",
-                    "value" => $currencySymbol . (clone $currentSales)->sum('invoice_value')
+                    "value" => (clone $currentSales)->sum('invoice_value')
                 ],
                 "overdue_sales_invoice" => [
                     "name" => "Overdue Sales Invoice",
-                    "value" => $currencySymbol . (clone $overdueSales)->sum('invoice_value')
+                    "value" => (clone $overdueSales)->sum('invoice_value')
                 ],
                 "chart_data" => $chartData,
                 "outstanding_payment" => $customers->filter(function ($customer) {
@@ -150,7 +150,7 @@ class DashboardController extends Controller
                         fn($customer) =>
                         [
                             "name" => $customer->company_name,
-                            "amount_due" => $currencySymbol . $currencySymbol . $customer->invoices->sum('amount_due')
+                            "amount_due" => $customer->invoices->sum('amount_due')
                         ]
                     ),
                 "overdue_receivables" => $customers->filter(function ($customer) {
@@ -162,7 +162,7 @@ class DashboardController extends Controller
                         fn($customer) =>
                         [
                             "name" => $customer->company_name,
-                            "amount_due" => $currencySymbol . $currencySymbol . $customer->invoices->sum('amount_due')
+                            "amount_due" => $customer->invoices->sum('amount_due')
                         ]
                     ),
             ];
@@ -181,7 +181,7 @@ class DashboardController extends Controller
     {
         try {
             $currentUser = Auth::user();
-            $currencySymbol = $currentUser->company->currencies->first()->symbol;
+            // $currencySymbol = $currentUser->company->currencies->first()->symbol;
             $year = $request->date_filter ?
                 [Carbon::createFromDate($request->date_filter, 1, 1), Carbon::createFromDate($request->date_filter, 12, 31)] :
                 [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
@@ -218,15 +218,15 @@ class DashboardController extends Controller
             $records = [
                 "total_bills_value" => [
                     "name" => "Total Bills Value",
-                    "value" => $currencySymbol . (clone $bills)->sum('vendor_bill_total')
+                    "value" => (clone $bills)->sum('vendor_bill_total')
                 ],
                 "current_bills" => [
                     "name" => "Current Bills",
-                    "value" => $currencySymbol . (clone $currentBills)->sum('vendor_bill_total')
+                    "value" => (clone $currentBills)->sum('vendor_bill_total')
                 ],
                 "overdue_bills" => [
                     "name" => "Overdue Bills",
-                    "value" => $currencySymbol . (clone $overdueBills)->sum('vendor_bill_total')
+                    "value" => (clone $overdueBills)->sum('vendor_bill_total')
                 ],
                 "chart_data" => $chartData,
                 "unpaid_suppliers" => $suppliers->filter(function ($supplier) {
@@ -238,7 +238,7 @@ class DashboardController extends Controller
                         fn($supplier) =>
                         [
                             "name" => $supplier->vendor_name,
-                            "amount_due" => $currencySymbol . $supplier->vendorBills->sum('amount_due')
+                            "amount_due" => $supplier->vendorBills->sum('amount_due')
                         ]
                     )->values()->toArray(),
                 "overdue_payments" => $suppliers->filter(function ($supplier) {
@@ -250,7 +250,7 @@ class DashboardController extends Controller
                         fn($supplier) =>
                         [
                             "name" => $supplier->vendor_name,
-                            "amount_due" => $currencySymbol . $supplier->vendorBills->sum('amount_due')
+                            "amount_due" => $supplier->vendorBills->sum('amount_due')
                         ]
                     )->values()->toArray(),
             ];
@@ -269,7 +269,7 @@ class DashboardController extends Controller
     {
         try {
             $currentUser = Auth::user();
-            $currencySymbol = $currentUser->company->currencies->first()->symbol;
+            // $currencySymbol = $currentUser->company->currencies->first()->symbol;
             $year = $request->date_filter ?
                 [Carbon::createFromDate($request->date_filter, 1, 1), Carbon::createFromDate($request->date_filter, 12, 31)] :
                 [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
@@ -295,11 +295,11 @@ class DashboardController extends Controller
             $records = [
                 "total_income" => [
                     "name" => "Total Income",
-                    "value" => $currencySymbol . (clone $expenses)->sum('amount_paid')
+                    "value" => (clone $expenses)->sum('amount_paid')
                 ],
                 "total_expenses" => [
                     "name" => "Total Expenses",
-                    "value" => $currencySymbol . (clone $income)->sum('amount_paid')
+                    "value" => (clone $income)->sum('amount_paid')
                 ],
                 "chart_data" => $chartData,
             ];
@@ -318,7 +318,7 @@ class DashboardController extends Controller
     {
         try {
             $currentUser = Auth::user();
-            $currencySymbol = $currentUser->company->currencies->first()->symbol;
+            // $currencySymbol = $currentUser->company->currencies->first()->symbol;
             $year = $request->date_filter ?
                 [Carbon::createFromDate($request->date_filter, 1, 1), Carbon::createFromDate($request->date_filter, 12, 31)] :
                 [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
