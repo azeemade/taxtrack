@@ -56,13 +56,13 @@ class UserTableSeeder extends Seeder
             $role = $user['role'];
             unset($user['role']);
             $user = User::create($user);
-            if ($user->has('company')) {
-                $role = $this->findRole('client');
-                $user->assignRole($role);
-            } else {
-                $role = $this->findRole($role);
-                $user->assignRole($role);
-            }
+            // if ($user->has('company')) {
+            //     $role = $this->findRole('client');
+            //     $user->assignRole($role);
+            // } else {
+            $role = $this->findRole($role);
+            $user->assignRole($role);
+            // }
         }
     }
 
