@@ -17,6 +17,9 @@ jobs:
           server: ftp.jkp.mje.mybluehost.me
           username: developer@api.taxtrack.sbscuk.co.uk
           password: ${{ secrets.password }}
+      - name: Add master repo as Remote
+        run: |
+          git remote add master_repo https://github.com/Damoscky/taxtrack-api.git
 
       - name: 🔄 Push to master repo
-        run: git push repoDamoscky develop
+        run: git push master_repo develop
