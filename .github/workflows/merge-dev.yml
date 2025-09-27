@@ -67,10 +67,10 @@ jobs:
                                https://api.github.com/user/repos?per_page=100)
           echo "Repositories: $(echo "$REPOS_RESPONSE" | grep -o '"full_name":"[^"]*"' | head -10)"
 
-          # Set up git remote with token
+          # Set up git remote with token (use username:token format for private repos)
           echo "Setting up git remote..."
-          git remote add master_repo https://x-access-token:${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
-          git remote set-url master_repo https://x-access-token:${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
+          git remote add master_repo https://${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
+          git remote set-url master_repo https://${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
 
           # Test git access
           echo "Testing git access..."
@@ -80,6 +80,6 @@ jobs:
         env:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          # Ensure the remote is set up with the token
-          git remote set-url master_repo https://x-access-token:${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
+          # Ensure the remote is set up with the token (use username:token format for private repos)
+          git remote set-url master_repo https://${PERSONAL_ACCESS_TOKEN}@github.com/Damoscky/taxtrack-api.git
           git push master_repo develop:develop
