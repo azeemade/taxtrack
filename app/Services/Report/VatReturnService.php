@@ -10,9 +10,6 @@ use Illuminate\Support\Facades\DB;
 
 class VatReturnService
 {
-    protected $standardVatRate = 0.20; // 20% Standard VAT rate
-    protected $flatRatePercentage = 0.075; // 7.5% Flat Rate (configurable)
-
     /**
      * Generate Flat Rate VAT Return for a given quarter.
      *
@@ -22,7 +19,7 @@ class VatReturnService
      * @param string $vatNumber
      * @return array
      */
-    public function generateFlatRateVatReturn(string $startDate, string $endDate, string $companyId, ?string $vatNumber = null): array
+    public function generateFlatRateVatReturn(string $startDate, string $endDate, string $companyId, ?string $vatNumber = null, ?string $vatType = null): array
     {
         // Convert dates to Carbon for consistency
         $start = Carbon::parse($startDate)->startOfDay();
@@ -41,7 +38,7 @@ class VatReturnService
             ->sum('finance_account_entries.amount');
 
         // line 1: VAT due on sales and other outputs
-        $vatDueOnSales = $grossSales * $this->flatRatePercentage;
+        $vatDueOnSales = $grossSales * $vatType;
 
         // line 2: VAT on EC acquisitions (assumed 0)
         $vatEcAcquisitions = 0.0;
@@ -66,7 +63,7 @@ class VatReturnService
             'company_name' => $companyName,
             'vat_number' => $vatNumber,
             'quarter_ending' => $end->format('d.m.y'),
-            'flat_rate_percentage' => $this->flatRatePercentage * 100,
+            'flat_rate_percentage' => $vatType * 100,
             'lines' => [
                 // 'line_1' => number_format($vatDueOnSales, 2, '.', ''),
                 // 'line_2' => number_format($vatEcAcquisitions, 2, '.', ''),
@@ -127,7 +124,7 @@ class VatReturnService
      * @param string $vatNumber
      * @return array
      */
-    public function generateStandardRateVatReturn(string $startDate, string $endDate, string $companyId, ?string $vatNumber = null): array
+    public function generateStandardRateVatReturn(string $startDate, string $endDate, string $companyId, ?string $vatNumber = null, ?int $vatRate = null): array
     {
         // Convert dates to Carbon for consistency
         $start = Carbon::parse($startDate)->startOfDay();
@@ -189,7 +186,7 @@ class VatReturnService
             'company_name' => $companyName,
             'vat_number' => $vatNumber,
             'quarter_ending' => $end->format('d.m.y'),
-            'vat_rate' => $this->standardVatRate * 100,
+            'vat_rate' => $vatRate * 100,
             'lines' => [
                 // 'line_1' => number_format($vatDueOnSales, 2, '.', ''),
                 // 'line_2' => number_format($vatEcAcquisitions, 2, '.', ''),
