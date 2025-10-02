@@ -22,7 +22,7 @@ class CreateRefundRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reason' => 'required|array',
+            'reason' => 'required|string',
             'additional_information' => 'nullable|string|max:250'
         ];
     }

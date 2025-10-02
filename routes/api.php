@@ -186,6 +186,13 @@ Route::group([
                         "namespace" => "PurchaseInvoice"
                     ], function () {
                         Route::apiResource('invoices', 'InvoiceController')
+                            ->names([
+                                'index' => 'purchase_invoices.index',
+                                'store' => 'purchase_invoices.store',
+                                'show' => 'purchase_invoices.show',
+                                'update' => 'purchase_invoices.update',
+                                'destroy' => 'purchase_invoices.destroy',
+                            ])
                             ->missing(function () {
                                 return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                             });
@@ -596,6 +603,7 @@ Route::group([
         Route::get('/user/{id}/companies', 'GuestController@getUserCompanies');
         Route::get('/company/{id}/roles', 'GuestController@getCompanyRoles');
         Route::get('/error-logs', 'GuestController@errorLogs');
+        Route::post('/check-mail-server', 'GuestController@checkMailServer');
         Route::get('/card-brands', 'GuestController@cardBrands');
         Route::get('/all-banks', 'GuestController@allBanks');
         Route::get('/all-email-templates', 'GuestController@allEmailTemplate');

@@ -34,6 +34,7 @@ return new class extends Migration
             $table->json('social_media')->nullable();
             $table->string('tax_id')->nullable();
             $table->string('tax_type')->nullable();
+            $table->string('vat_registration_year')->nullable();
             $table->string('registration_id')->nullable();
             $table->string('fiscal_year_start')->nullable(); //month-day format
             $table->string('fiscal_year_end')->nullable(); //month-day format

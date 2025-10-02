@@ -11,8 +11,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;'); // Disable foreign key checks
-
         Schema::create('credit_note_invoices', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->decimal('credit_amount_total', 15, 2)->default(0.00);
@@ -32,8 +30,6 @@ return new class extends Migration
 
             $table->timestamps();
         });
-
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;'); // Re-enable foreign key checks
     }
 
     /**

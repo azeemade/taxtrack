@@ -29,6 +29,7 @@ class AddCompanyRequest extends FormRequest
             'companies.*.industry' => 'required|string',
             'companies.*.tax_id' => 'nullable|string',
             'companies.*.tax_type' => 'nullable|string',
+            'companies.*.vat_registration_year' => 'nullable|string',
             'companies.*.registration_id' => 'nullable|string',
             'companies.*.fiscal_year_start' => 'nullable|date_format:m-d',
             'companies.*.fiscal_year_end' => 'nullable|date_format:m-d',

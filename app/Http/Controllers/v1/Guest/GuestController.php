@@ -20,6 +20,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 use Nnjeim\World\Models\Currency;
 use Spatie\Permission\Models\Permission;
 
@@ -60,7 +62,8 @@ class GuestController extends Controller
                 'Non-Profit and Social Services',
                 'Government and Public Administration',
                 'Sales and Marketing',
-                'Human Resources and Recruitment'
+                'Human Resources and Recruitment',
+                'Others'
             ];
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
@@ -285,6 +288,35 @@ class GuestController extends Controller
             return JsonResponser::send(true, $error->getMessage(), null, $error->getCode());
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal server error', null, 500, $th);
+        }
+    }
+
+
+    public function checkMailServer(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return JsonResponser::send(true, 'Validation Error', $validator->errors(), 400);
+        }
+
+        $data = [
+            'title' => 'Mail Server Check',
+            'body' => 'This is a test mail to check if the mail server is up and running',
+        ];
+
+        try {
+            Mail::raw($data['body'], function ($message) use ($request, $data) {
+                $message->to($request->email)
+                    ->subject($data['title'])
+                    ->from(env('MAIL_FROM_ADDRESS'), 'Email Support');
+            });
+
+            return JsonResponser::send(false, 'Mail sent successfully', null);
+        } catch (\Throwable $e) {
+            return JsonResponser::send(true, 'Mail server is down', null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }
