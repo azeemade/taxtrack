@@ -2,6 +2,7 @@
 
 namespace App\Helpers\Posting;
 
+use App\Models\FinanceChartOfAccount;
 use Illuminate\Support\Facades\DB;
 
 class CoaProvisionerFromConfig
@@ -82,9 +83,9 @@ class CoaProvisionerFromConfig
                     'currency'                => $acc['currency'] ?? null,
                     'reference_code'          => $acc['reference_code'] ?? $acc['name'],
                     'description'             => $acc['description'] ?? $acc['name'],
-                    'is_active'               => true,
-                    'is_default'              => true,   // metadata only; not read from DB
-                    'is_hidden'               => false,
+                    'is_active'               => $acc['is_active'] ?? 'true',
+                    'is_default'              =>$acc['is_default'] ?? 'true',
+                    'is_hidden'               => $acc['is_hidden'] ?? 'false',
                     'updated_at'              => now(),
                     'deleted_at'              => null,
                     'company_id'              => $companyId,

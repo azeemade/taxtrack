@@ -361,6 +361,11 @@ class RegisterController extends Controller
 
             foreach ($request->companies as $key => $company) {
                 $company = $this->companyService->create($company, $id);
+
+                // ProcessCompanyOnboarding::dispatch($company);
+                (new CoaProvisionerFromConfig())
+                    ->provisionForCompany($company->id, $id);
+
                 if ($key === array_key_first($request->companies)) {
                     $user->update([
                         "current_company_id" => $company->id
@@ -392,14 +397,6 @@ class RegisterController extends Controller
                     'save_card' => $company['save_card'] ?? false,
                     'action' => $company['action'] ?? 'subscribe',
                 ]);
-
-
-                // ProcessCompanyOnboarding::dispatch($company);
-
-                (new CoaProvisionerFromConfig())
-                    ->provisionForCompany($company->id, $id);
-
-                    //ProvisionCoaForCompany::dispatch($companyId, $editedBy)->onQueue('high-priority');
             }
 
             foreach ($request->users as $user) {

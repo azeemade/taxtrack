@@ -50,6 +50,7 @@ class AuthController extends Controller
 
             $data = [
                 'user' => $user->current_company_id ? new StaffProfileResource($user) : $user,
+                // 'user' => $user,
                 'token' => $token,
                 'type' => 'bearer',
             ];
