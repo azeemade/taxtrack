@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Nnjeim\World\Models\Country;
 use Nnjeim\World\Models\Currency;
 use Spatie\Permission\Models\Permission;
 
@@ -187,7 +188,22 @@ class GuestController extends Controller
     public function currencies()
     {
         try {
-            $records = Currency::all()->unique('code')->values();
+            $records = Currency::whereIn('code', ['USD', 'EUR', 'GBP'])->get()->unique('code')->values();
+
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function countries()
+    {
+        try {
+            $records = Country::where('status', 1)->get();
 
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
