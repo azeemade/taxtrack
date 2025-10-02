@@ -82,7 +82,12 @@ class CustomerService
             'currency_id',
             'customer_logo',
             'is_active',
-            'terms_and_conditions'
+            'terms_and_conditions',
+            'industry',
+            'vat_number',
+            'vat_date',
+            'tax_type',
+            'payment_term'
         )
             ->with(['currency:id,name,symbol', 'category:id,name', 'contactPersons'])
             ->find($id);
