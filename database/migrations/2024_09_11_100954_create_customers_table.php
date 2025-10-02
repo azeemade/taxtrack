@@ -35,6 +35,7 @@ return new class extends Migration
             $table->string('address')->nullable();
             $table->string('zip_code')->nullable();
             $table->mediumText('special_instruction')->nullable();
+            $table->mediumText('terms_and_conditions')->nullable();
             $table->mediumText('customer_logo')->nullable();
             $table->mediumText('statement_document_link')->nullable();
             $table->boolean('is_active')->default(true);

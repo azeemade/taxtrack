@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Nnjeim\World\Models\Currency;
 use Spatie\Permission\Models\Permission;
 
 class GuestController extends Controller
@@ -170,6 +171,21 @@ class GuestController extends Controller
     {
         try {
             $records = CardBrand::get();
+
+            return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal server error', null, Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function currencies()
+    {
+        try {
+            $records = Currency::all()->unique('code')->values();
+
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {

@@ -11,6 +11,7 @@ use App\Http\Requests\Auth\CompanyUserRequest;
 use App\Http\Requests\Auth\CreateBasicInformationRequest;
 use App\Http\Requests\Auth\CreateOnboardingRoleRequest;
 use App\Http\Requests\Auth\InviteUsersRequest;
+use App\Http\Resources\CompanyHouseCompanyResource;
 use App\Jobs\Company\ProcessCompanyOnboarding;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -19,6 +20,7 @@ use App\Responser\JsonResponser;
 use App\Services\Company\CompanyService;
 use App\Services\ManageSubscriptionServices\CompanySubscriptionService;
 use App\Services\RoleServices\RoleService;
+use App\Services\ThirdPartyApi\CompanyHouseApi;
 use App\Services\UserServices\UserService;
 use App\Traits\VerificationTrait;
 use Illuminate\Http\Request;
@@ -251,6 +253,28 @@ class RegisterController extends Controller
 
                 $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
                 $company->currencies()->attach($user->currency_id);
+
+                if (isset($company['subscription_plan_id']) && $company['subscription_plan_id']) {
+                    $planId = $company['subscription_plan_id'];
+                    $free = false;
+                    $duration = $company['duration'];
+                } else {
+                    $freePlan = SubscriptionPlan::where('is_free', true)->first();
+                    $planId = $freePlan->id;
+                    $free = true;
+                    $duration = $freePlan->duration > 30 ? 'yearly' : 'monthly';
+                }
+                $this->companySubscriptionService->subscribeToPlan([
+                    'user_id' => $id,
+                    'company_id' => $company->id,
+                    'subscription_plan_id' => $planId,
+                    'is_free' => $free,
+                    'duration' => $duration,
+                    'additional_users_count' => $company['additional_users_count'] ?? 0,
+                    'provider_payment_method_id' => $company['provider_payment_method_id'] ?? null,
+                    'save_card' => $company['save_card'] ?? false,
+                    'action' => $company['action'] ?? 'subscribe',
+                ]);
             }
 
 
@@ -389,6 +413,18 @@ class RegisterController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
+        }
+    }
+
+    public function companyCheck(Request $request)
+    {
+        try {
+            $response = CompanyHouseApi::companySearch($request->query('q'), $request->query('limit'), $request->query('offset'));
+            return JsonResponser::send(false, 'Company search successful', CompanyHouseCompanyResource::collection($response['items']));
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }

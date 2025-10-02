@@ -27,6 +27,7 @@ return new class extends Migration
             $table->string('secondary_email')->nullable();
             $table->string('organization_type')->nullable();
             $table->text('description')->nullable();
+            $table->mediumText('terms_and_conditions')->nullable();
             $table->text('logo')->nullable();
             $table->json('postal_address_information')->nullable();
             $table->json('physical_address_information')->nullable();

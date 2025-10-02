@@ -9,6 +9,12 @@ use App\Services\Quotes\QuoteService;
 
 class QuoteBulkUpload extends BulkUploadAbstract
 {
+    protected QuoteService $quoteService;
+    public function __construct()
+    {
+        $this->quoteService = app(QuoteService::class);
+    }
+
     public function getValidationRules(): array
     {
         return [
@@ -58,7 +64,7 @@ class QuoteBulkUpload extends BulkUploadAbstract
         return [
             [
                 '2024-01-15',
-                'QUO-001',
+                'QUO-045',
                 'Thank you for your business',
                 'Consulting Services',
                 'Jon Doe',
@@ -94,14 +100,6 @@ class QuoteBulkUpload extends BulkUploadAbstract
                 return null;
             }
 
-            // Calculate totals (similar to InvoiceBulkUpload)
-            $subtotal = $validatedData['item_unit_price'] * ($validatedData['item_quantity'] ?? 1);
-
-            $discountAmount = $this->calculateDiscount($subtotal, $validatedData);
-            $discountedSubtotal = $subtotal - $discountAmount;
-            $taxAmount = $this->calculateTax($discountedSubtotal, $validatedData);
-            $total = $discountedSubtotal + $taxAmount;
-
             // Check for duplicate quote number
             $existingQuote = Quote::where('company_id', $this->getCurrentCompanyId())
                 ->where('quoteID', $validatedData['quote_number'])
@@ -110,6 +108,21 @@ class QuoteBulkUpload extends BulkUploadAbstract
             if ($existingQuote) {
                 $this->addWarning("Row {$rowNumber}: Quote number '{$validatedData['quote_number']}' already exists. The value will be updated");
             }
+
+            // Calculate totals properly
+            $unitPrice = $validatedData['item_unit_price'];
+            $quantity = $validatedData['item_quantity'] ?? 1;
+            $discountPercent = $validatedData['item_discount'] ?? 0;
+            $vatPercent = $validatedData['item_vat'] ?? 0;
+
+            // Calculate line item total using QuoteService methods
+            $totalUnitPrice = $this->quoteService->calculateLineItemTotalUnitPrice($unitPrice, $quantity);
+            $lineItemTotal = $this->quoteService->calculateLineItemTotal($totalUnitPrice, $discountPercent, $vatPercent);
+
+            $subtotal = $lineItemTotal + ($existingQuote?->lineItems->sum('amount') ?? 0);
+            $additionalCharge = $validatedData['additional_charge'] ?? 0;
+            $total = $this->quoteService->calculateQuoteTotal($subtotal, 0, $additionalCharge);
+
 
             $currency = $this->findCurrency($validatedData['currency']);
 
@@ -120,19 +133,20 @@ class QuoteBulkUpload extends BulkUploadAbstract
                 $itemCategory = $this->findCategory($validatedData['item_category'], 'line_items');
             }
 
-            $quoteService = app(QuoteService::class);
-
             // Prepare quote data
             $quoteData = [
+                'id' => $existingQuote->id ?? null, // Pass existing ID for updates
                 'quote_date' => \Carbon\Carbon::parse($validatedData['issue_date'])->format('Y-m-d H:i:s'),
-                'additional_referenceID' => $quoteService->generateQuoteId(),
+                'additional_referenceID' => $this->quoteService->generateQuoteId(),
                 'quoteID' => $validatedData['quote_number'],
                 'terms_and_conditions' => $validatedData['terms_and_conditions'],
                 'customer_note' => $validatedData['customer_note'],
                 'sub_total' => $subtotal,
-                'additional_charge' => $validatedData['additional_charge'] ?? 0,
+                'shipping_charge' => 0, // Default to 0 if not provided
+                'additional_charge' => $additionalCharge,
                 'quote_total' => $total,
-                'status' => $validatedData['status'] ?? 'draft',
+                'save_status' => $validatedData['status'] ?? 'draft',
+                'share_status' => 'not_shared', // Default share status
                 'category_id' => $category->id ?? null,
                 'currency_id' => $currency->id ?? $this->getCurrentCompanyCurrency()->id,
                 'created_by' => $this->getCurrentUserId(),
@@ -141,11 +155,11 @@ class QuoteBulkUpload extends BulkUploadAbstract
             ];
             $lineItemData = [
                 'item_details' => $validatedData['item_description'] ?? 'Default Item',
-                'quantity' => $validatedData['item_quantity'] ?? 1,
-                'price' => $validatedData['item_unit_price'] ?? 0,
-                'discount' => $discountAmount,
-                'vat' => $taxAmount,
-                'amount' => $subtotal,
+                'quantity' => $quantity,
+                'price' => $unitPrice,
+                'discount' => $discountPercent, // Store percentage, not amount
+                'vat' => $vatPercent, // Store percentage, not amount
+                'amount' => $lineItemTotal,
                 'category_id' => $itemCategory->id ?? null,
                 'created_by' => $this->getCurrentUserId(),
                 'company_id' => $this->getCurrentCompanyId()
@@ -153,7 +167,7 @@ class QuoteBulkUpload extends BulkUploadAbstract
 
             return [
                 'quote' => $quoteData,
-                'line_items' => [$lineItemData],
+                'line_items' => array_merge($existingQuote?->lineItems->isNotEmpty() ? $existingQuote->lineItems->toArray() : [], [$lineItemData]),
             ];
         } catch (\Exception $e) {
             $this->addError("Row {$rowNumber}: " . $e->getMessage());
@@ -190,23 +204,6 @@ class QuoteBulkUpload extends BulkUploadAbstract
         return true;
     }
 
-    /**
-     * Calculate discount amount
-     */
-    protected function calculateDiscount(float $subtotal, array $data): float
-    {
-        $discount = $data['item_discount'] ?? 0;
-        return ($subtotal * $discount) / 100;
-    }
-
-    /**
-     * Calculate tax amount
-     */
-    protected function calculateTax(float $subtotal, array $data): float
-    {
-        $taxRate = $data['item_vat'] ?? 0;
-        return ($subtotal * $taxRate) / 100;
-    }
 
     /**
      * Create complex quote record with line items
@@ -221,9 +218,15 @@ class QuoteBulkUpload extends BulkUploadAbstract
         }
 
         try {
-            // Create the quote first
-            $quote = Quote::create($data['quote']);
+            // Prepare data for QuoteService updateOrCreate method
+            $quoteData = $data['quote'];
+            $lineItems = $data['line_items'];
 
+            // Add line items to quote data for QuoteService to handle
+            $quoteData['line_items'] = $lineItems;
+
+            // Use QuoteService as single source of truth for quote creation
+            $quote = $this->quoteService->updateOrCreate($quoteData);
             return $quote;
         } catch (\Exception $e) {
             $this->addError("Failed to create quote: " . $e->getMessage());
@@ -231,23 +234,23 @@ class QuoteBulkUpload extends BulkUploadAbstract
         }
     }
 
-    /**
-     * Perform post-creation operations for quotes
-     * This includes adding line items and other operations
-     * 
-     * @param \App\Models\Quote $quote
-     * @param array $data
-     * @return void
-     */
-    protected function performPostCreationOperations($quote, array $data): void
-    {
-        try {
-            // Add line items to the quote
-            if (isset($data['line_items']) && is_array($data['line_items'])) {
-                $quote->addLineItems($data['line_items']);
-            }
-        } catch (\Exception $e) {
-            $this->addError("Failed to perform post-creation operations for quote {$quote->quoteID}: " . $e->getMessage());
-        }
-    }
+    // /**
+    //  * Perform post-creation operations for quotes
+    //  * This includes adding line items and other operations
+    //  * 
+    //  * @param \App\Models\Quote $quote
+    //  * @param array $data
+    //  * @return void
+    //  */
+    // protected function performPostCreationOperations($quote, array $data): void
+    // {
+    //     try {
+    //         // Add line items to the quote
+    //         if (isset($data['line_items']) && is_array($data['line_items'])) {
+    //             $quote->addLineItems($data['line_items']);
+    //         }
+    //     } catch (\Exception $e) {
+    //         $this->addError("Failed to perform post-creation operations for quote {$quote->quoteID}: " . $e->getMessage());
+    //     }
+    // }
 }

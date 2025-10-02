@@ -32,20 +32,24 @@ class InvoiceService
 
     public function updateOrCreate($request)
     {
+        $customer = Customer::find($request['customer_id']);
         $record = Invoice::updateOrCreate(
             [
                 "id" => $request["id"] ?? null
             ],
             [
                 ...$request,
+                'currency_id' => $customer->currency_id,
                 'quote_date' => $request['quote_date'] ?? now(),
                 'referenceID' => $this->generateRefId(),
-                'invoiceID' => $this->generateInvoiceId(),
+                'invoiceID' => $request['invoiceID'] ?? $this->generateInvoiceId(),
                 'is_recurring' => $request['save_status'] == 'recur' ? true : false,
                 'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
                 'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
             ]
         );
+
+        $record->customer->decrement('current_balance', $record->invoice_value);
 
         if (isset($request['quote_id']) && $request['quote_id']) {
             $quote = Quote::find($request['quote_id']);
@@ -62,7 +66,7 @@ class InvoiceService
             $record->addLineItems($request['line_items']);
         }
 
-        if ($request['save_status'] == 'send') {
+        if (isset($request['save_status']) && $request['save_status'] == 'send') {
             $this->sharedActionServices->emailEntity($record);
         }
 
@@ -160,10 +164,10 @@ class InvoiceService
             });
 
         return [
-            'total_invoice_value' => (clone $records)->sum('invoice_value'),
+            'total_invoice_value' => (clone $records)->whereIn('status', [FinancialDocumentStatusEnums::ISSUED->value, FinancialDocumentStatusEnums::OVERDUE->value])->sum('invoice_value'),
             'total_invoice_amount_due' => (clone $records)->where('status', FinancialDocumentStatusEnums::OVERDUE)->sum('invoice_value'),
-            'total_invoice_paid' => (clone $records)->get()->sum('total_amount_paid'),
-            'total_invoice_due_today' => (clone $records)->whereDay('due_date', now()->day)->sum('invoice_value'),
+            'total_invoice_paid' => (clone $records)->get()->whereIn('status', [FinancialDocumentStatusEnums::ISSUED->value, FinancialDocumentStatusEnums::OVERDUE->value])->sum('total_amount_paid'),
+            'total_invoice_due_today' => (clone $records)->whereDay('due_date', now()->day)->whereIn('status', [FinancialDocumentStatusEnums::ISSUED->value, FinancialDocumentStatusEnums::OVERDUE->value])->sum('invoice_value'),
         ];
     }
 

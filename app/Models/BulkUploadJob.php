@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class BulkUploadJob extends Model
 {
@@ -179,5 +182,123 @@ class BulkUploadJob extends Model
         }
 
         return round(($failed / $processed) * 100, 2);
+    }
+
+    /**
+     * Scope for jobs older than specified hours
+     */
+    public function scopeOlderThan($query, int $hours)
+    {
+        $cutoffTime = Carbon::now()->subHours($hours);
+        return $query->where('created_at', '<', $cutoffTime);
+    }
+
+    /**
+     * Scope for completed or failed jobs older than specified hours
+     */
+    public function scopeCompletedOrFailedOlderThan($query, int $hours)
+    {
+        $cutoffTime = Carbon::now()->subHours($hours);
+        return $query->whereIn('status', ['completed', 'failed'])
+            ->where('created_at', '<', $cutoffTime);
+    }
+
+    /**
+     * Clean up files associated with this job
+     */
+    public function cleanupFiles(): bool
+    {
+        $success = true;
+
+        try {
+            // Clean up uploaded file
+            if ($this->file_path && Storage::exists($this->file_path)) {
+                if (!Storage::delete($this->file_path)) {
+                    Log::warning('Failed to delete bulk upload file', [
+                        'job_id' => $this->id,
+                        'file_path' => $this->file_path
+                    ]);
+                    $success = false;
+                }
+            }
+
+            // Clean up error report from Cloudinary if exists
+            if ($this->error_report_path) {
+                try {
+                    $cloudinaryService = app(\App\Services\CloudinaryErrorReportService::class);
+                    $cloudinaryService->deleteErrorReport($this->error_report_path);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to delete error report from Cloudinary', [
+                        'job_id' => $this->id,
+                        'error_report_path' => $this->error_report_path,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Don't mark as failure since this is external service
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error during bulk upload job file cleanup', [
+                'job_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            $success = false;
+        }
+
+        return $success;
+    }
+
+    /**
+     * Static method to clean up old jobs and their files
+     */
+    public static function cleanupOldJobs(int $hours = 5): array
+    {
+        $cutoffTime = Carbon::now()->subHours($hours);
+        $deletedJobs = 0;
+        $deletedFiles = 0;
+        $errors = 0;
+
+        try {
+            // Get old completed or failed jobs
+            $oldJobs = self::completedOrFailedOlderThan($hours)->get();
+
+            foreach ($oldJobs as $job) {
+                try {
+                    // Clean up files first
+                    if ($job->cleanupFiles()) {
+                        $deletedFiles++;
+                    }
+
+                    // Delete the job record
+                    $job->delete();
+                    $deletedJobs++;
+                } catch (\Exception $e) {
+                    $errors++;
+                    Log::error('Failed to cleanup old bulk upload job', [
+                        'job_id' => $job->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            Log::info('Old bulk upload jobs cleanup completed', [
+                'deleted_jobs' => $deletedJobs,
+                'deleted_files' => $deletedFiles,
+                'errors' => $errors,
+                'cutoff_hours' => $hours,
+                'cutoff_time' => $cutoffTime->toISOString()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Bulk upload jobs cleanup failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $errors++;
+        }
+
+        return [
+            'deleted_jobs' => $deletedJobs,
+            'deleted_files' => $deletedFiles,
+            'errors' => $errors
+        ];
     }
 }

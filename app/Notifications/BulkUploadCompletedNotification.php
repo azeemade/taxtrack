@@ -61,7 +61,7 @@ class BulkUploadCompletedNotification extends Notification implements ShouldQueu
                 ->line('Error: ' . ($this->bulkUploadJob->error_message ?? 'Unknown error'))
                 ->action('View Details', url('/bulk-uploads/' . $this->bulkUploadJob->id))
                 ->line('Please check the file format and try again.')
-                ->salutation('Best regards, TaxTrack Team');
+                ->salutation('Best regards, BookCalc Team');
         }
 
         $successCount = $this->statistics['successful_rows'] ?? 0;
@@ -89,7 +89,7 @@ class BulkUploadCompletedNotification extends Notification implements ShouldQueu
                 ->action('Download Error Report', $this->getErrorReportUrl());
         }
 
-        return $message->salutation('Best regards, TaxTrack Team');
+        return $message->salutation('Best regards, BookCalc Team');
     }
 
     /**

@@ -13,7 +13,7 @@ use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 
-class DynamicBulkUploadImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure, WithBatchInserts, WithChunkReading
+class DynamicBulkUploadImport implements ToModel, WithHeadingRow, SkipsOnFailure, WithBatchInserts, WithChunkReading
 {
     use Importable, SkipsFailures;
 
@@ -37,10 +37,19 @@ class DynamicBulkUploadImport implements ToModel, WithHeadingRow, WithValidation
 
     /**
      * Get validation rules from the bulk upload handler
+     * Convert the rules to work with heading row format
      */
     public function rules(): array
     {
-        return $this->bulkUploadHandler->getValidationRules();
+        $rules = $this->bulkUploadHandler->getValidationRules();
+
+        // Convert the rules to work with heading row format
+        $headingRules = [];
+        foreach ($rules as $key => $rule) {
+            $headingRules[$key] = $rule;
+        }
+
+        return $headingRules;
     }
 
     /**

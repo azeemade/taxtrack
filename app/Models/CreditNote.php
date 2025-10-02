@@ -64,7 +64,7 @@ class CreditNote extends Model
                 'name' => $this->customer->company_name,
                 'address' => $this->customer->address,
                 'email' => $this->customer->email,
-                'currency' => $this->customer->currency->symbol,
+                'currency' => $this->customer->currency->code,
             ],
             'issued_date' => $this->issue_date,
             'due_date' => null,
@@ -72,8 +72,8 @@ class CreditNote extends Model
             'line_items' => $this->lineItems->map(function ($item) {
                 return [
                     'list_item' => $item->item_details,
-                    'price' => $item->documentable->currency->symbol . $item->price,
-                    'credit_amount' => $item->documentable->currency->symbol . $item->credit_amount,
+                    'price' => $item->documentable->currency->code . $item->price,
+                    'credit_amount' => $item->documentable->currency->code . $item->credit_amount,
                 ];
             }),
             'sub_total' => $this->creditNoteInvoices()->sum('credit_amount_total'),

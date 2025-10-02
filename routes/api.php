@@ -38,6 +38,7 @@ Route::group([
         ], function () {
             Route::post('/user-check', 'RegisterController@userCheck');
             Route::post('/basic-information', 'RegisterController@basicInformation');
+            Route::get('/company-check', 'RegisterController@companyCheck');
             Route::post('/verify-token', 'RegisterController@verifyToken');
             Route::post('/resend-token', 'RegisterController@resendToken');
             Route::post('/add-company/{id}', 'RegisterController@addCompany');
@@ -379,7 +380,6 @@ Route::group([
                             Route::post('/operating-expenses', [BusinessSnapshotController::class, 'getOperatingExpensesReport']);
                             Route::post('/average-time', [BusinessSnapshotController::class, 'getAverageTime']);
                             Route::post('/business-snapshot-summary', [BusinessSnapshotController::class, 'businessSnapshotSummary']);
-                            
                         });
 
                         Route::group(['prefix' => 'business-performance', "namespace" => "FinancialPerformance"], function () {
@@ -588,6 +588,7 @@ Route::group([
         'prefix' => 'guests',
         "namespace" => "Guest"
     ], function () {
+        Route::get('/currencies', 'GuestController@currencies');
         Route::get('/categories', 'GuestController@categories');
         Route::get('/industries', 'GuestController@industries');
         Route::get('/permissions', 'GuestController@allPermissions');

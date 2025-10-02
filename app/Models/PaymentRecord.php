@@ -35,7 +35,7 @@ class PaymentRecord extends Model
                 'name' => $this->recordable->vendor->vendor_name,
                 'address' => $this->recordable->vendor->primary_address,
                 'email' => $this->recordable->vendor->primary_email,
-                'currency' => $this->recordable->vendor->currency->symbol,
+                'currency' => $this->recordable->vendor->currency->code,
             ],
             'issued_date' => $this->paid_on,
             'due_date' => null,
@@ -44,8 +44,10 @@ class PaymentRecord extends Model
                 return [
                     'description' => $item->item_details,
                     'quantity' => $item->quantity,
-                    'price' => $this->recordable->vendor->currency->symbol . $item->price,
-                    'amount' => $this->recordable->vendor->currency->symbol . $item->amount,
+                    'vat' => $item->vat > 0 ? $item->vat . '%' : null,
+                    'discount' => $item->discount > 0 ? $item->discount . '%' : null,
+                    'price' => $this->recordable->vendor->currency->code . $item->price,
+                    'amount' => $this->recordable->vendor->currency->code . $item->amount,
                 ];
             }),
             'sub_total' => $this->amount_paid,

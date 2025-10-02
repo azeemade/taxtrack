@@ -69,10 +69,13 @@ class CreditNoteService
 
     public function create($request)
     {
+        $customer = Customer::find($request['customer_id']);
+
         $record = CreditNote::create([
             ...$request,
             'issue_date' => $request['issue_date'] ?? now(),
-            'referenceID' => $this->generateRefId(),
+            'currency_id' => $customer->currency_id,
+            'referenceID' => $request['referenceID'] ?? $this->generateRefId(),
             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
             'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
         ]);

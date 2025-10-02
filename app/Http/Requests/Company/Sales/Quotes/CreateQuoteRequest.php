@@ -32,12 +32,12 @@ class CreateQuoteRequest extends FormRequest
     {
         return [
             'customer_id' => 'required|integer|exists:customers,id',
-            'currency_id' => [
-                'required',
-                'integer',
-                'exists:currencies,id',
-                $this->validateCustomerCurrency()
-            ],
+            // 'currency_id' => [
+            //     'required',
+            //     'integer',
+            //     'exists:currencies,id',
+            //     $this->validateCustomerCurrency()
+            // ],
             'quote_date' => 'nullable|string|date:Y-m-d',
             'additional_referenceID' => 'nullable|string|max:20',
             'terms_and_conditions' => 'nullable|string|max:250',
@@ -91,18 +91,18 @@ class CreateQuoteRequest extends FormRequest
     /**
      * Validate the customer's currency.
      */
-    private function validateCustomerCurrency(): \Closure
-    {
-        return function ($attribute, $value, $fail) {
-            $customerCurrency = Customer::where('currency_id', $value)
-                ->where('id', $this->input('customer_id'))
-                ->exists();
+    // private function validateCustomerCurrency(): \Closure
+    // {
+    //     return function ($attribute, $value, $fail) {
+    //         $customerCurrency = Customer::where('currency_id', $value)
+    //             ->where('id', $this->input('customer_id'))
+    //             ->exists();
 
-            if (!$customerCurrency) {
-                $fail('Invalid customer currency selected');
-            }
-        };
-    }
+    //         if (!$customerCurrency) {
+    //             $fail('Invalid customer currency selected');
+    //         }
+    //     };
+    // }
 
     /**
      * Validate the customer's sub total.

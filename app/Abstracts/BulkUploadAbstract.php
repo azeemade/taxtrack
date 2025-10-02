@@ -5,7 +5,9 @@ namespace App\Abstracts;
 use App\Contracts\BulkUploadContract;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\Vendor;
 use App\Services\Customer\CustomerService;
+use App\Services\Supplier\SupplierService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -334,13 +336,13 @@ abstract class BulkUploadAbstract implements BulkUploadContract
         $modelClass = $this->getModelClass();
 
         // If data contains the main model data directly
-        if (isset($data['invoice']) || isset($data['quote']) || isset($data['customer'])) {
-            // Handle complex data structures like invoices with line items
-            return $this->createComplexRecord($data);
-        }
+        // if (isset($data['invoice']) || isset($data['quote']) || isset($data['customer'])) {
+        // Handle complex data structures like invoices with line items
+        return $this->createComplexRecord($data);
+        // }
 
         // Handle simple data structures
-        return $modelClass::create($data);
+        // return $modelClass::create($data);
     }
 
     /**
@@ -426,6 +428,67 @@ abstract class BulkUploadAbstract implements BulkUploadContract
             return $customer;
         } catch (\Exception $e) {
             $this->addError("Row {$rowNumber}: Failed to create customer '{$data['customer_name']}': " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Find or create supplier
+     */
+    protected function findOrCreateSupplier(array $data, int $rowNumber): ?Vendor
+    
+    {
+        $companyId = $this->getCurrentCompanyId();
+
+        // Try to find by email first
+        if (!empty($data['supplier_contact'])) {
+            $supplier = Vendor::where('company_id', $companyId)
+                ->where(function ($query) use ($data) {
+                    $query->where('primary_email', $data['supplier_contact'])
+                        ->orWhere('primary_phone_number', $data['supplier_contact']);
+                })
+                ->first();
+
+            if ($supplier) {
+                return $supplier;
+            }
+        }
+
+        // Try to find by name
+        $supplier = Vendor::where('company_id', $companyId)
+            ->where('vendor_name', $data['supplier_name'])
+            ->first();
+
+        if ($supplier) {
+            return $supplier;
+        }
+
+        // Create new customer if not found
+        try {
+            $email = null;
+            $phoneNumber = null;
+            if (filter_var($data['supplier_contact'], FILTER_VALIDATE_EMAIL)) {
+                $email = $data['supplier_contact'];
+            } else {
+                $phoneNumber = $data['supplier_contact'];
+            }
+            $supplierService = app(SupplierService::class);
+            $customer = Vendor::create([
+                'vendor_name' => $data['supplier_name'],
+                'referenceID' => $supplierService->generateSupplierReference(),
+                'primary_phone_number' => $phoneNumber,
+                'primary_email' => $email,
+                'vendor_type' => 'individual',
+                'business_type' => 'proprietorship',
+                'currency_id' => $this->getCurrentCompanyCurrency()->id,
+                'company_id' => $companyId,
+                'created_by' => $this->getCurrentUserId()
+            ]);
+
+            $this->addWarning("Row {$rowNumber}: Created new supplier '{$data['supplier_name']}'");
+            return $customer;
+        } catch (\Exception $e) {
+            $this->addError("Row {$rowNumber}: Failed to create supplier '{$data['supplier_name']}': " . $e->getMessage());
             return null;
         }
     }

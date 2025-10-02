@@ -4,6 +4,7 @@ namespace App\Http\Requests\Company\Sales\Customer;
 
 use App\Models\CompanyContactPerson;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class CreateIndividualRequest extends FormRequest
 {
@@ -40,8 +41,9 @@ class CreateIndividualRequest extends FormRequest
             "primary_address" => 'nullable|string',
             "secondary_address" => 'nullable|string',
             "zip_code" => 'nullable|string',
+            "terms_and_conditions" => 'nullable|string',
             "contact_person_id" => ['sometimes', 'required', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
-                $person = CompanyContactPerson::where('company_id', auth()->user()?->company?->id)
+                $person = CompanyContactPerson::where('company_id', Auth::user()?->company?->id)
                     ->where('id', $value)
                     ->first();
                 if (!$person) {

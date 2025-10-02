@@ -15,6 +15,12 @@ use Nnjeim\World\Models\Currency;
 class InvoiceBulkUpload extends BulkUploadAbstract
 {
 
+    protected $invoiceService;
+    public function __construct()
+    {
+        $this->invoiceService = app(InvoiceService::class);
+    }
+
     public function getValidationRules(): array
     {
         return [
@@ -107,17 +113,21 @@ class InvoiceBulkUpload extends BulkUploadAbstract
                 return null;
             }
 
-            // Calculate totals
-            $subtotal = $validatedData['item_unit_price'] * ($validatedData['item_quantity'] ?? 1);
-
-            $discountAmount = $this->calculateDiscount($subtotal, $validatedData);
-            $discountedSubtotal = $subtotal - $discountAmount;
-            $taxAmount = $this->calculateTax($discountedSubtotal, $validatedData);
-            $total = $discountedSubtotal + $taxAmount;
-
-            // Check for duplicate invoice number
-            $existingInvoice = Invoice::where('invoiceID', $validatedData['invoice_number'])
+            $existingInvoice = Invoice::where('company_id', $this->getCurrentCompanyId())
+                ->where('invoiceID', $validatedData['invoice_number'])
                 ->first();
+
+            // Calculate totals
+            $unitPrice = $validatedData['item_unit_price'];
+            $quantity = $validatedData['item_quantity'] ?? 1;
+            $discountPercent = $validatedData['item_discount'] ?? 0;
+            $vatPercent = $validatedData['item_vat'] ?? 0;
+
+            $totalUnitPrice = $this->invoiceService->calculateLineItemTotalUnitPrice($unitPrice, $quantity);
+            $lineItemTotal = $this->invoiceService->calculateLineItemTotal($totalUnitPrice, $discountPercent, $vatPercent);
+            $subtotal = $lineItemTotal + ($existingInvoice?->lineItems->sum('amount') ?? 0);
+
+            $total = $subtotal + $validatedData['additional_charge'];
 
             if ($existingInvoice) {
                 $this->addWarning("Row {$rowNumber}: Invoice number '{$validatedData['invoice_number']}' already exists. The value will be updated");
@@ -142,19 +152,18 @@ class InvoiceBulkUpload extends BulkUploadAbstract
                 $itemCategory = $this->findCategory($validatedData['item_category'], 'line_items');
             }
 
-            $invoiceService = app(InvoiceService::class);
-
 
             // Prepare invoice data
             $invoiceData = [
+                'id' => $existingInvoice->id ?? null,
                 'invoiceID' => $validatedData['invoice_number'],
-                'referenceID' => $invoiceService->generateRefId(),
-                'additional_referenceID' => $invoiceService->generateRefId(),
+                'referenceID' => $this->invoiceService->generateRefId(),
+                'additional_referenceID' => $this->invoiceService->generateRefId(),
                 'start_date' => Carbon::parse($validatedData['issue_date'])->format('Y-m-d'),
                 'due_date' => Carbon::parse($validatedData['due_date'])->format('Y-m-d'),
                 'terms_and_conditions' => $validatedData['terms_and_conditions'],
                 'customer_note' => $validatedData['customer_notes'],
-                'status' => $validatedData['status'] ?? 'draft',
+                'save_status' => $validatedData['status'] ?? 'draft',
                 'sub_total' => $subtotal,
                 'additional_charge' => $validatedData['additional_charge'] ?? 0,
                 'invoice_value' => $total,
@@ -172,9 +181,9 @@ class InvoiceBulkUpload extends BulkUploadAbstract
                 'item_details' => $validatedData['item_description'] ?? 'Default Item',
                 'quantity' => $validatedData['item_quantity'] ?? 1,
                 'price' => $validatedData['item_unit_price'] ?? 0,
-                'discount' => $discountAmount,
-                'vat' => $taxAmount,
-                'amount' => $subtotal,
+                'discount' => $discountPercent,
+                'vat' => $vatPercent,
+                'amount' => $lineItemTotal,
                 'category_id' => $itemCategory->id ?? null,
                 'created_by' => $this->getCurrentUserId(),
                 'company_id' => $this->getCurrentCompanyId()
@@ -182,7 +191,7 @@ class InvoiceBulkUpload extends BulkUploadAbstract
 
             return [
                 'invoice' => $invoiceData,
-                'line_items' => [$lineItemData],
+                'line_items' => array_merge($existingInvoice?->lineItems->isNotEmpty() ? $existingInvoice->lineItems->toArray() : [], [$lineItemData]),
             ];
         } catch (\Exception $e) {
             $this->addError("Row {$rowNumber}: " . $e->getMessage());
@@ -256,7 +265,9 @@ class InvoiceBulkUpload extends BulkUploadAbstract
 
         try {
             // Create the invoice first
-            $invoice = Invoice::create($data['invoice']);
+            $invoiceData = $data['invoice'];
+            $invoiceData['line_items'] = $data['line_items'];
+            $invoice = $this->invoiceService->updateOrCreate($invoiceData);
 
             return $invoice;
         } catch (\Exception $e) {
@@ -269,29 +280,29 @@ class InvoiceBulkUpload extends BulkUploadAbstract
      * Perform post-creation operations for invoices
      * This includes adding line items and other operations similar to InvoiceService::updateOrCreate
      * 
-     * @param \App\Models\Invoice $invoice
-     * @param array $data
-     * @return void
-     */
-    protected function performPostCreationOperations($invoice, array $data): void
-    {
-        try {
-            // Add line items to the invoice
-            if (isset($data['line_items']) && is_array($data['line_items'])) {
-                $invoice->addLineItems($data['line_items']);
-            }
+    //  * @param \App\Models\Invoice $invoice
+    //  * @param array $data
+    //  * @return void
+    //  */
+    // protected function performPostCreationOperations($invoice, array $data): void
+    // {
+    //     try {
+    //         // Add line items to the invoice
+    //         if (isset($data['line_items']) && is_array($data['line_items'])) {
+    //             $invoice->addLineItems($data['line_items']);
+    //         }
 
-            // Update quote status if this invoice was created from a quote
-            if (isset($data['invoice']['quote_id']) && $data['invoice']['quote_id']) {
-                $quote = Quote::find($data['invoice']['quote_id']);
-                if ($quote) {
-                    $quote->update([
-                        'status' => \App\Enums\FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
-                    ]);
-                }
-            }
-        } catch (\Exception $e) {
-            $this->addError("Failed to perform post-creation operations for invoice {$invoice->invoiceID}: " . $e->getMessage());
-        }
-    }
+    //         // Update quote status if this invoice was created from a quote
+    //         if (isset($data['invoice']['quote_id']) && $data['invoice']['quote_id']) {
+    //             $quote = Quote::find($data['invoice']['quote_id']);
+    //             if ($quote) {
+    //                 $quote->update([
+    //                     'status' => \App\Enums\FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
+    //                 ]);
+    //             }
+    //         }
+    //     } catch (\Exception $e) {
+    //         $this->addError("Failed to perform post-creation operations for invoice {$invoice->invoiceID}: " . $e->getMessage());
+    //     }
+    // }
 }
