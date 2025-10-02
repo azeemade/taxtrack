@@ -41,6 +41,9 @@ class CreateIndividualRequest extends FormRequest
             "primary_address" => 'nullable|string',
             "secondary_address" => 'nullable|string',
             "zip_code" => 'nullable|string',
+            "vat_number" => 'nullable|string',
+            "vat_date" => 'nullable|string',
+            "tax_type" => 'nullable|string',
             "terms_and_conditions" => 'nullable|string',
             "contact_person_id" => ['sometimes', 'required', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
                 $person = CompanyContactPerson::where('company_id', Auth::user()?->company?->id)

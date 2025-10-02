@@ -31,7 +31,7 @@ class CompanyUserRequest extends FormRequest
             'companies.*.industry' => 'required|string||max:250',
             'companies.*.tax_id' => 'nullable|string|max:20',
             'companies.*.tax_type' => 'nullable|string',
-            'companies.*.vat_registration_year' => 'nullable|string',
+            'companies.*.vat_date' => 'nullable|string',
             'companies.*.registration_id' => 'nullable|string||max:20',
             'companies.*.fiscal_year_start' => 'nullable|date_format:m-d',
             'companies.*.fiscal_year_end' => 'nullable|date_format:m-d',
