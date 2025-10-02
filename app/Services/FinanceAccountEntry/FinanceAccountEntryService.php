@@ -3,6 +3,7 @@
 namespace App\Services\FinanceAccountEntry;
 
 use App\Models\FinanceAccountEntry;
+use App\Models\FinanceBankStatement;
 use App\Models\FinanceChartOfAccount;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
@@ -85,6 +86,80 @@ class FinanceAccountEntryService
         } catch (\Throwable $th) {
             throw new \Exception("Failed to calculate system totals: " . $th->getMessage());
         }
+    }
+
+    public function getBankStatementBalanceAndFlow(
+        ?string $startDate = null,
+        ?string $endDate   = null,
+        ?int $accountId    = null
+    ): array {
+        $user = auth()->user();
+
+        // Base scope
+        $base = FinanceBankStatement::query()
+            ->where('company_id', $user->current_company_id)
+            ->when($accountId, fn($q) => $q->where('account_id', $accountId));
+
+        // --- Opening balance (as-of just before $startDate)
+        // If you store running "balance" after each transaction, then
+        // the opening = latest balance where transaction_date < startDate.
+        $opening = 0.0;
+        if ($startDate) {
+            $openingRow = (clone $base)
+                ->whereDate('transaction_date', '<', $startDate)
+                ->orderBy('transaction_date', 'desc')
+                ->orderBy('id', 'desc')
+                ->select('balance')
+                ->first();
+            $opening = (float) optional($openingRow)->balance ?? 0.0;
+        }
+
+        // --- Period flows (inclusive range)
+        $period = (clone $base)
+            ->when($startDate, fn($q) => $q->whereDate('transaction_date', '>=', $startDate))
+            ->when($endDate,   fn($q) => $q->whereDate('transaction_date', '<=', $endDate))
+            ->selectRaw("
+                COALESCE(SUM(lodgments),  0) AS inflow,
+                COALESCE(SUM(withdrawals), 0) AS outflow
+            ")
+            ->first();
+
+        $inflow  = (float) ($period->inflow  ?? 0);
+        $outflow = (float) ($period->outflow ?? 0);
+
+        // --- Closing balance
+        // Prefer the statement's own closing if we have a line <= endDate;
+        // otherwise fall back to opening + inflow - outflow.
+        $closing = $opening + ($inflow - $outflow);
+        if ($endDate) {
+            $closingRow = (clone $base)
+                ->whereDate('transaction_date', '<=', $endDate)
+                ->orderBy('transaction_date', 'desc')
+                ->orderBy('id', 'desc')
+                ->select('balance')
+                ->first();
+
+            if ($closingRow) {
+                $closing = (float) $closingRow->balance;
+            }
+        } else {
+            // no endDate => take latest known statement balance
+            $latestRow = (clone $base)
+                ->orderBy('transaction_date', 'desc')
+                ->orderBy('id', 'desc')
+                ->select('balance')
+                ->first();
+            if ($latestRow) {
+                $closing = (float) $latestRow->balance;
+            }
+        }
+
+        return [
+            'opening_balance' => $opening,
+            'total_inflow'    => $inflow,
+            'total_outflow'   => $outflow,
+            'closing_balance' => $closing,
+        ];
     }
 
     /**

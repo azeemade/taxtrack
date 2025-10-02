@@ -4,6 +4,8 @@ namespace App\Http\Controllers\v1\Company\Sales\SalesInvoice;
 
 use App\Enums\FinancialDocumentStatusEnums;
 use App\Exceptions\BadRequestException;
+use App\Helpers\Posting\InvoiceAdjustments;
+use App\Helpers\Posting\PaymentPosting;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\CreateBadDebtRequest;
 use App\Http\Requests\Company\Purchase\Payment\RecordPaymentRequest;
@@ -99,8 +101,17 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
+<<<<<<< HEAD
+            $record = $this->paymentRecordService->modify($request->validated());
+
+
+            // Idempotent: creates/updates the SAME journal for this payment record
+            (new PaymentPosting())
+                ->syncForPaymentRecord($record);
+=======
             $record = $this->paymentRecordService->modify([...$request->validated(), 'model' => 'invoices', 'model_id' => $id]);
             $record->recordable->customer->increment('current_balance', $record->amount_paid);
+>>>>>>> 9f937af774c68049b320413f650ae7951f2e31d9
 
             DB::commit();
             return JsonResponser::send(false, 'Invoice issued successfully', $record, Response::HTTP_OK);
@@ -156,6 +167,11 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
             $invoice->badDebt()->create($request->validated());
+
+            //Post Bad Debt - Account Entries
+            (new InvoiceAdjustments())
+                ->postBadDebt($invoice, (float)$request->input('amount'), $request->input('note'));
+
             DB::commit();
             return JsonResponser::send(false, 'Customer invoice has been successfully written off', null, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -177,6 +193,10 @@ class InvoiceController extends Controller
             $invoice->update([
                 'status' => FinancialDocumentStatusEnums::VOID
             ]);
+
+            //Void Invoice - Account Entries
+            (new InvoiceAdjustments())->voidInvoice($invoice);
+
             DB::commit();
             return JsonResponser::send(false, 'Customer invoice has been voided successfully', null, Response::HTTP_OK);
         } catch (BadRequestException $e) {
