@@ -62,7 +62,8 @@ class GuestController extends Controller
                 'Non-Profit and Social Services',
                 'Government and Public Administration',
                 'Sales and Marketing',
-                'Human Resources and Recruitment'
+                'Human Resources and Recruitment',
+                'Others'
             ];
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
