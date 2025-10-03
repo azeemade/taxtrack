@@ -61,10 +61,10 @@ class VATReturnController extends Controller
             $startDate = $request->start_date ?? now()->startOfYear()->toDateString();
             $endDate = $request->end_date ?? now()->endOfYear()->toDateString();
 
-            if (auth()->user()->company->tax_type == 'standard') {
-                $records = $this->vATReturnService->generateStandardRateVatReturn($startDate, $endDate, $userCompanyId, $vatNumber);
+            if (auth()->user()->company->tax_type == 'standard' || auth()->user()->company->tax_type == "standard type") {
+                $records = $this->vATReturnService->generateStandardRateVatReturn($startDate, $endDate, $userCompanyId, $vatNumber, 20);
             } else {
-                $records = $this->vATReturnService->generateFlatRateVatReturn($startDate, $endDate, $userCompanyId, $vatNumber);
+                $records = $this->vATReturnService->generateFlatRateVatReturn($startDate, $endDate, $userCompanyId, $vatNumber, auth()->user()->company->tax_type);
             }
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
