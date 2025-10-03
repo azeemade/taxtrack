@@ -372,8 +372,8 @@ class RegisterController extends Controller
                 if ($key === array_key_first($request->companies)) {
                     $country = \Nnjeim\World\Models\Country::find($companyData['country_id']);
                     $user->update([
-                        "currency_id" => $country->currency->id,
-                        "country_id" => $country->id,
+                        "currency_id" => $user->currency_id ?? $country->currency->id,
+                        "country_id" => $user->country_id ?? $country->id,
                         "current_company_id" => $company->id
                     ]);
                 }
