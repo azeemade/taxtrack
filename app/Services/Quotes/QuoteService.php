@@ -144,7 +144,7 @@ class QuoteService
             [
                 ...$request,
                 'quote_date'   => $request['quote_date'] ?? now(),
-                'quoteID'      => $this->generateQuoteId(),
+                'quoteID'      => $request['quoteID'] ?? $this->generateQuoteId(),
                 'share_status' => ($request['save_status'] == 'send')
                     ? ShareStatusEnums::SHARED->value
                     : ShareStatusEnums::NOT_SHARED->value,
@@ -163,10 +163,6 @@ class QuoteService
             $record->addLineItems($request['line_items']);
         }
 
-        // 4) Email quote if requested
-        if (($request['save_status'] ?? null) === 'send') {
-            $this->sharedActionServices->emailEntity($record);
-        }
 
         // 5) If we JUST transitioned to "converted-to-invoice", create/find invoice and POST accounting
         $nowStatus = $record->status;
@@ -210,6 +206,7 @@ class QuoteService
                     ->syncInvoiceJournal($invoice, (int) $invoice->company_id, (int) ($invoice->created_by ?? null));
             }
 
+            // 4) Email quote if requested
             if (isset($request['save_status']) && $request['save_status'] == 'send') {
                 $this->sharedActionServices->emailEntity($record);
             }
@@ -227,33 +224,6 @@ class QuoteService
 
 
 
-    // public function updateOrCreate($request)
-    // {
-    //     $record = Quote::updateOrCreate(
-    //         [
-    //             "id" => $request["id"] ?? null
-    //         ],
-    //         [
-    //             ...$request,
-    //             'quote_date' => $request['quote_date'] ?? now(),
-    //             'quoteID' => $this->generateQuoteId(),
-    //             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-    //             'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
-    //         ]
-    //     );
-
-    //     if (isset($request["id"]) && $request["id"]) {
-    //         $record->editLineItems($request['line_items']);
-    //     } else {
-    //         $record->addLineItems($request['line_items']);
-    //     }
-
-    //     if ($request['save_status'] == 'send') {
-    //         $this->sharedActionServices->emailEntity($record);
-    //     }
-
-    //     return $record;
-    // }
 
     public function export($records, $exportType)
     {

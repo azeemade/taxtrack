@@ -39,8 +39,8 @@ class CreateBasicInformationRequest extends FormRequest
                 }
             ],
             'phone_number' => 'required|string',
-            'country_id' => 'required|integer|exists:countries,id',
-            'currency_id' => 'required|integer|exists:countries,id',
+            'country_id' => 'nullable|integer|exists:countries,id',
+            'currency_id' => 'nullable|integer|exists:countries,id',
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ];
     }

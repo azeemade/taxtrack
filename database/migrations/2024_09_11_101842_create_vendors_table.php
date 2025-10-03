@@ -28,6 +28,8 @@ return new class extends Migration
             $table->string('zip_code')->nullable();
             $table->string('business_registration_number')->nullable();
             $table->string('vat_number')->nullable();
+            $table->string('vat_date')->nullable();
+            $table->string('tax_type')->nullable();
             $table->string('industry')->nullable();
             $table->string('business_type')->nullable();
             $table->string('employee_count')->nullable();

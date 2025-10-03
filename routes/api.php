@@ -601,6 +601,7 @@ Route::group([
         "namespace" => "Guest"
     ], function () {
         Route::get('/currencies', 'GuestController@currencies');
+        Route::get('/countries', 'GuestController@countries');
         Route::get('/categories', 'GuestController@categories');
         Route::get('/industries', 'GuestController@industries');
         Route::get('/permissions', 'GuestController@allPermissions');

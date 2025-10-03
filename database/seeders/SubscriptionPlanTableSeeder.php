@@ -24,6 +24,7 @@ class SubscriptionPlanTableSeeder extends Seeder
             'primary_link' => '',
             'secondary_cta' => '',
             'secondary_link' => '',
+            'duration' => 180,
             'created_by' => 1,
             'is_active' => true,
             'is_free' => true,

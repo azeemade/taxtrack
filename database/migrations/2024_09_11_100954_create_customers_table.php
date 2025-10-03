@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('customerID');
             $table->string('business_registration_number')->nullable();
             $table->string('vat_number')->nullable();
+            $table->string('vat_date')->nullable();
+            $table->string('tax_type')->nullable();
             $table->unsignedBigInteger('category_id')->nullable();
             $table->string('customer_type')->comment('business, individual, organization');
             $table->string('business_type')->nullable()->comment('proprietorship, partnership, corporation');

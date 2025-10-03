@@ -26,24 +26,26 @@ class CreateOrganizationRequest extends FormRequest
         return [
             "company_name" => 'required|string|max:225',
             "primary_email" => 'required|string',
-            "primary_phone_number" => 'required|string',
+            "primary_phone_number" => 'nullable|string',
             "business_registration_number" => 'nullable|string',
             "vat_number" => 'nullable|string',
-            "industry" => 'required|string',
-            "business_type" => 'required|string|in:limited-liability-partnership,partnership,corporation,sole-proprietorship,limited-company',
+            "vat_date" => 'nullable|string',
+            "tax_type" => 'nullable|string',
+            "industry" => 'nullable|string',
+            "business_type" => 'nullable|string|in:limited-liability-partnership,partnership,corporation,sole-proprietorship,limited-company',
             "employee_count" => 'nullable|integer',
             "image" => 'nullable|string',
             "special_instruction" => 'nullable|string',
             "payment_term" => 'nullable|integer',
-            "currency_id" => 'required|integer',
+            "currency_id" => 'nullable|integer',
             "phone_ext" => 'nullable|string',
             "address" => 'nullable|string',
-            "country_id" => 'required|integer',
+            "country_id" => 'nullable|integer',
             "city_id" => 'nullable|integer',
             "state_id" => 'nullable|integer',
             "terms_and_conditions" => 'nullable|string',
             "contact_persons" => 'nullable|array',
-            "contact_persons.*.id" => ['sometimes', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
+            "contact_persons.*.id" => ['sometimes', 'nullable', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
                 $person = CompanyContactPerson::where('company_id', Auth::user()?->company?->id)
                     ->where('id', $value)
                     ->first();
@@ -51,10 +53,10 @@ class CreateOrganizationRequest extends FormRequest
                     $fail('Contact person not found.');
                 }
             }],
-            "contact_persons.*.full_name" => 'required|string',
+            "contact_persons.*.full_name" => 'nullable|string',
             "contact_persons.*.primary_email" => 'required|string',
             "contact_persons.*.secondary_email" => 'nullable|string',
-            "contact_persons.*.primary_phone_number" => 'required|string',
+            "contact_persons.*.primary_phone_number" => 'nullable|string',
             "contact_persons.*.secondary_phone_number" => 'nullable|string',
             "contact_persons.*.country_id" => 'required|integer',
             "contact_persons.*.post_code" => 'nullable|string',
