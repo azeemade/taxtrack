@@ -60,7 +60,7 @@ class CreateOrganizationRequest extends FormRequest
             "contact_persons.*.secondary_phone_number" => 'nullable|string',
             "contact_persons.*.country_id" => 'required|integer',
             "contact_persons.*.post_code" => 'nullable|string',
-            "contact_persons.*.primary_address" => 'required|string',
+            "contact_persons.*.primary_address" => 'nullable|string',
             "contact_persons.*.secondary_address" => 'nullable|string'
         ];
     }

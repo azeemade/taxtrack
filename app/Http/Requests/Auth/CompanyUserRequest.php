@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\Client;
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -56,8 +57,11 @@ class CompanyUserRequest extends FormRequest
                     foreach ($this->users as $user) {
                         $userCheck = User::where('email', $user['email'])
                             ->first();
-                        if ($userCheck) {
-                            $client = Client::whereIn('company_id', $user['company_id'])
+                        $companyField = $user['company'] ?? $user['company_id'];
+                        $company = Company::where('name', $companyField)
+                            ->orWhere('id', $companyField)->first();
+                        if ($userCheck && $company) {
+                            $client = Client::whereIn('company_id', $company->id)
                                 ->where('user_id', $userCheck['id'])
                                 ->first();
                             if ($client) {

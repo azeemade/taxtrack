@@ -337,6 +337,7 @@ class RegisterController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
+    
 
     public function completeOnboarding(CompanyUserRequest $request, $id)
     {
@@ -361,8 +362,8 @@ class RegisterController extends Controller
                 throw new BadRequestException("Multiple companies not allowed for small business", 400);
             }
 
-            foreach ($request->companies as $key => $company) {
-                $company = $this->companyService->create($company, $id);
+            foreach ($request->companies as $key => $companyData) {
+                $company = $this->companyService->create($companyData, $id);
 
                 // ProcessCompanyOnboarding::dispatch($company);
                 // (new CoaProvisionerFromConfig())
@@ -380,10 +381,10 @@ class RegisterController extends Controller
                 $company->currencies()->attach($user->currency_id);
                 $company->attachEmailTemplates();
 
-                if (isset($company['subscription_plan_id']) && $company['subscription_plan_id']) {
-                    $planId = $company['subscription_plan_id'];
+                if (isset($companyData['subscription_plan_id']) && $companyData['subscription_plan_id']) {
+                    $planId = $companyData['subscription_plan_id'];
                     $free = false;
-                    $duration = $company['duration'];
+                    $duration = $companyData['duration'];
                 } else {
                     $freePlan = SubscriptionPlan::where('is_free', true)->first();
                     $planId = $freePlan->id;
@@ -396,10 +397,10 @@ class RegisterController extends Controller
                     'subscription_plan_id' => $planId,
                     'is_free' => $free,
                     'duration' => $duration,
-                    'additional_users_count' => $company['additional_users_count'] ?? 0,
-                    'provider_payment_method_id' => $company['provider_payment_method_id'] ?? null,
-                    'save_card' => $company['save_card'] ?? false,
-                    'action' => $company['action'] ?? 'subscribe',
+                    'additional_users_count' => $companyData['additional_users_count'] ?? 0,
+                    'provider_payment_method_id' => $companyData['provider_payment_method_id'] ?? null,
+                    'save_card' => $companyData['save_card'] ?? false,
+                    'action' => $companyData['action'] ?? 'subscribe',
                 ]);
             }
 
