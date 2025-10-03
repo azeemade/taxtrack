@@ -366,8 +366,8 @@ class RegisterController extends Controller
                 $company = $this->companyService->create($companyData, $id);
 
                 // ProcessCompanyOnboarding::dispatch($company);
-                // (new CoaProvisionerFromConfig())
-                //     ->provisionForCompany($company->id, $id);
+                (new CoaProvisionerFromConfig())
+                    ->provisionForCompany($company->id, $id);
 
                 if ($key === array_key_first($request->companies)) {
                     $country = \Nnjeim\World\Models\Country::find($companyData['country_id']);
