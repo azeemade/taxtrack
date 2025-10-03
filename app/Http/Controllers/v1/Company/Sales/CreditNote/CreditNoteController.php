@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Company\Sales\CreditNote;
 
 use App\Exceptions\BadRequestException;
+use App\Helpers\Posting\CreditNoteMultipleLinePosting;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Sales\CreditNotes\CreateCreditNoteRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
@@ -48,6 +49,9 @@ class CreditNoteController extends Controller
 
             $record = $this->creditNoteService->create($request->validated());
 
+            (new CreditNoteMultipleLinePosting())
+                ->syncForCreditNote($record, (int)$record->company_id, (int)($record->created_by ?? null));
+
             DB::commit();
             return JsonResponser::send(false, 'Credit note issued successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -81,6 +85,10 @@ class CreditNoteController extends Controller
         try {
             DB::beginTransaction();
             $record = $this->creditNoteService->update([...$request->validated(), "id" => $id]);
+
+            (new CreditNoteMultipleLinePosting())
+                ->syncForCreditNote($record, (int)$record->company_id, (int)($record->created_by ?? null));
+
             DB::commit();
             return JsonResponser::send(false, 'Credit note updated successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {

@@ -32,7 +32,7 @@ return [
     ['id' => 30, 'account_type_id' => 1, 'account_category_id' => 2, 'name' => 'Bank Guarantees', 'slug' => 'bank-guarantees', 'ref_code' => '102004', 'description' => 'Bank Guarantees', 'is_default' => 'true', 'created_at' => '2023-10-11 14:54:24', 'updated_at' => '2023-10-11 14:54:24'],
     ['id' => 31, 'account_type_id' => 2, 'account_category_id' => 3, 'name' => 'Deferred Income', 'slug' => 'deferred-income', 'ref_code' => '203002', 'description' => 'Deferred Income', 'is_default' => 'true', 'created_at' => '2023-10-11 14:54:24', 'updated_at' => '2023-10-11 14:54:24'],
     ['id' => 32, 'account_type_id' => 2, 'account_category_id' => 3, 'name' => 'Deposit for shares', 'slug' => 'deposit-for-shares', 'ref_code' => '203004', 'description' => 'Deposit for shares', 'is_default' => 'true', 'created_at' => '2023-10-11 14:54:24', 'updated_at' => '2023-10-11 14:54:24'],
-    ['id' => 33, 'account_type_id' => 1, 'account_category_id' => 2, 'name' => 'Suspense and Clearing Accounts', 'slug' => 'dsuspense-clearing-accounts', 'ref_code' => '102099', 'description' => 'Temporary accounts for holding unresolved transactions during reconciliation.', 'is_default' => 'true', 'created_at' => '2023-10-11 14:54:24', 'updated_at' => '2023-10-11 14:54:24'],
+    ['id' => 33, 'account_type_id' => 1, 'account_category_id' => 2, 'name' => 'Suspense and Clearing Accounts', 'slug' => 'suspense-clearing-accounts', 'ref_code' => '102099', 'description' => 'Temporary accounts for holding unresolved transactions during reconciliation.', 'is_default' => 'true', 'created_at' => '2023-10-11 14:54:24', 'updated_at' => '2023-10-11 14:54:24'],
   ],
 
   // Company-scoped chart-of-accounts. Use sub-category *slug* for clarity.
