@@ -14,6 +14,8 @@ class StaffProfileResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $subscription = $this->getCurrentSubscriptionDetails();
+
         return [
             'id' => $this->uei_id,
             'name' => $this->name,
@@ -24,22 +26,42 @@ class StaffProfileResource extends JsonResource
             'onboarding_completed' => $this->onboarding_completed,
             'status' => $this->status,
             'can_login' => $this->can_login,
-            'subscription' => $this->getCurrentSubscriptionDetails()->only('id', 'subscribed_at', 'end_date', 'subscription_plan_id', 'plan_amount', 'amount_paid'),
-            'user_permissions' => $this->user_permissions->map(function ($permission) {
-                return $permission->only('id', 'name', 'app', 'module', 'submodule');
-            }),
-            'user_permissions_count' => $this->user_permissions_count,
-            'roles' => $this->roles->map(function ($role) {
-                return $role->only('id', 'name', 'status', 'slug', 'roleID');
-            }),
 
-            'company' => array_merge(
-                $this->company->toArray(),
-                [
-                    "tax_type" => $this->company->tax_type === 'standard' || !$this->company->tax_type ? config('system.standard_tax_rate_schema') : $this->company->tax_type,
-                    'current_currency' => $this->company->currentCurrency()
-                ]
-            ),
+            // prevent "only on null"
+            'subscription' => $subscription ? $subscription->only(
+                'id',
+                'subscribed_at',
+                'end_date',
+                'subscription_plan_id',
+                'plan_amount',
+                'amount_paid'
+            ) : null,
+
+            'user_permissions' => $this->user_permissions
+                ? $this->user_permissions->map(function ($permission) {
+                    return $permission->only('id', 'name', 'app', 'module', 'submodule');
+                })
+                : [],
+
+            'user_permissions_count' => $this->user_permissions_count ?? 0,
+
+            'roles' => $this->roles
+                ? $this->roles->map(function ($role) {
+                    return $role->only('id', 'name', 'status', 'slug', 'roleID');
+                })
+                : [],
+
+            'company' => $this->company
+                ? array_merge(
+                    $this->company->toArray(),
+                    [
+                        "tax_type" => $this->company->tax_type === 'standard' || !$this->company->tax_type
+                            ? config('system.standard_tax_rate_schema')
+                            : $this->company->tax_type,
+                        'current_currency' => $this->company->currentCurrency(),
+                    ]
+                )
+                : null,
         ];
     }
 }

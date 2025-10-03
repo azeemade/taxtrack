@@ -30,17 +30,29 @@ class BankAccountControllerRework extends Controller
      * Display a listing of the resource.
      */
 
-     public function stats(SharedFilterRequest $request)
+    public function stats(SharedFilterRequest $request)
     {
         try {
-            $bankStatementBalance = 0;
-            $systemBalance = $this->financeAccountEntryService->getSystemTotalBalanceAndFlow($request->start_date, $request->end_date);
+            // System (from GL entries)
+            $system = $this->financeAccountEntryService
+                ->getSystemTotalBalanceAndFlow($request->start_date, $request->end_date);
+
+            // Bank (from imported bank statement lines)
+            // Optional: pass $request->bank_account_id if you want a single bank; null = all banks
+            $bank = $this->financeAccountEntryService
+                ->getBankStatementBalanceAndFlow($request->start_date, $request->end_date, $request->bank_account_id ?? null);
 
             $data = [
-                'bank_statement_balance' => $bankStatementBalance,
-                'system_balance' => $systemBalance['total_system_balance'],
-                'total_inflow' => $systemBalance['total_inflow'],
-                'total_outflow' => $systemBalance['total_outflow'],
+                // BANK (closing balance at end_date = opening + inflow - outflow)
+                'bank_statement_balance' => $bank['closing_balance'],
+                'bank_opening_balance'   => $bank['opening_balance'],
+                'bank_total_inflow'      => $bank['total_inflow'],
+                'bank_total_outflow'     => $bank['total_outflow'],
+
+                // SYSTEM
+                'system_balance'         => $system['total_system_balance'],
+                'total_inflow'           => $system['total_inflow'],
+                'total_outflow'          => $system['total_outflow'],
             ];
 
             return JsonResponser::send(false, 'Record(s) found successfully', $data, Response::HTTP_OK);
@@ -50,6 +62,28 @@ class BankAccountControllerRework extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+
+    // public function stats(SharedFilterRequest $request)
+    // {
+    //     try {
+    //         $bankStatementBalance = 0;
+    //         $systemBalance = $this->financeAccountEntryService->getSystemTotalBalanceAndFlow($request->start_date, $request->end_date);
+
+    //         $data = [
+    //             'bank_statement_balance' => $bankStatementBalance,
+    //             'system_balance' => $systemBalance['total_system_balance'],
+    //             'total_inflow' => $systemBalance['total_inflow'],
+    //             'total_outflow' => $systemBalance['total_outflow'],
+    //         ];
+
+    //         return JsonResponser::send(false, 'Record(s) found successfully', $data, Response::HTTP_OK);
+    //     } catch (BadRequestException $e) {
+    //         return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+    //     } catch (\Throwable $th) {
+    //         return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+    //     }
+    // }
 
 
     public function index(SharedFilterRequest $request)

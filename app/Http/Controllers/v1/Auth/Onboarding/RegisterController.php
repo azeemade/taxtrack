@@ -4,6 +4,7 @@ namespace App\Http\Controllers\v1\Auth\Onboarding;
 
 use App\Enums\CustomerTypeEnums;
 use App\Exceptions\BadRequestException;
+use App\Helpers\Posting\CoaProvisionerFromConfig;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AddCompanyRequest;
 use App\Http\Requests\Auth\CompanyUserRequest;
@@ -362,6 +363,11 @@ class RegisterController extends Controller
 
             foreach ($request->companies as $key => $company) {
                 $company = $this->companyService->create($company, $id);
+
+                // ProcessCompanyOnboarding::dispatch($company);
+                (new CoaProvisionerFromConfig())
+                    ->provisionForCompany($company->id, $id);
+
                 if ($key === array_key_first($request->companies)) {
                     $user->update([
                         "current_company_id" => $company->id
@@ -393,9 +399,6 @@ class RegisterController extends Controller
                     'save_card' => $company['save_card'] ?? false,
                     'action' => $company['action'] ?? 'subscribe',
                 ]);
-
-
-                // ProcessCompanyOnboarding::dispatch($company);
             }
 
             foreach ($request->users as $user) {
