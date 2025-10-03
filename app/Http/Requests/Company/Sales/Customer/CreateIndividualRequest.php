@@ -25,7 +25,7 @@ class CreateIndividualRequest extends FormRequest
     {
         return [
             "full_name" => 'required|string|max:225',
-            "display_name" => 'required|string|max:225',
+            "display_name" => 'nullable|string|max:225',
             "salutation" => 'nullable|string|max:225',
             "category_id" => 'nullable|integer',
             "customer_type" => 'required|in:business,individual',
