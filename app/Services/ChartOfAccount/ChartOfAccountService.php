@@ -5,6 +5,7 @@ namespace App\Services\ChartOfAccount;
 use App\Exceptions\BadRequestException;
 use App\Exports\Accounting\ChartOfAccount\ChartOfAccountExport;
 use App\Helpers\FinanceAccountBalanceHelper;
+use App\Helpers\Posting\CoaProvisionerFromConfig;
 use App\Models\FinanceAccountCategory;
 use App\Models\FinanceAccountSubCategory;
 use App\Models\FinanceAccountType;
@@ -711,6 +712,27 @@ class ChartOfAccountService
                 ->get();
             return $records;
         } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function loadDefaultAccounts()
+    {
+        try {
+            DB::beginTransaction();
+
+            //delete all existing accounts where is_default is true.
+            //while importing, if the account is already exists, then update the account.
+            //if the account is not exists, then create the account.
+           
+
+            (new CoaProvisionerFromConfig())
+                    ->provisionForCompany(auth()->user()->current_company_id, auth()->user()->id);
+
+            DB::commit();
+
+        } catch (\Throwable $th) {
+            DB::rollBack();
             throw $th;
         }
     }

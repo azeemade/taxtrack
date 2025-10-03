@@ -9,7 +9,9 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Helpers\Posting\InvoicePosting;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Quote;
 use App\Services\Invoices\InvoiceService;
 use App\Services\SharedServices\SharedActionService;
@@ -127,35 +129,130 @@ class QuoteService
         ];
     }
 
+
     public function updateOrCreate($request)
     {
-        $customer = Customer::find($request['customer_id']);
+        // 1) Load previous status if editing (to detect transition)
+        $prevStatus = null;
+        if (!empty($request['id'])) {
+            $prevStatus = Quote::where('id', $request['id'])->value('status');
+        }
+
+        // 2) Upsert Quote (no accounting here)
         $record = Quote::updateOrCreate(
-            [
-                "id" => $request["id"] ?? null
-            ],
+            ["id" => $request["id"] ?? null],
             [
                 ...$request,
-                'currency_id' => $customer->currency_id,
-                'quote_date' => $request['quote_date'] ?? now(),
-                'quoteID' => $request['quoteID'] ?? $this->generateQuoteId(),
-                'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-                'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
+                'quote_date'   => $request['quote_date'] ?? now(),
+                'quoteID'      => $request['quoteID'] ?? $this->generateQuoteId(),
+                'share_status' => ($request['save_status'] == 'send')
+                    ? ShareStatusEnums::SHARED->value
+                    : ShareStatusEnums::NOT_SHARED->value,
+                'status'       => match ($request['save_status'] ?? null) {
+                    FinancialDocumentStatusEnums::DRAFT->value               => FinancialDocumentStatusEnums::DRAFT->value,
+                    FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value => FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value,
+                    default                                                 => GeneralEnums::PENDING->value
+                },
             ]
         );
 
-        if (isset($request["id"]) && $request["id"]) {
+        // 3) Line items
+        if (!empty($request["id"])) {
             $record->editLineItems($request['line_items']);
         } else {
             $record->addLineItems($request['line_items']);
         }
 
-        if (isset($request['save_status']) && $request['save_status'] == 'send') {
+        // 4) Email quote if requested
+        if (($request['save_status'] ?? null) === 'send') {
             $this->sharedActionServices->emailEntity($record);
+        }
+
+        // 5) If we JUST transitioned to "converted-to-invoice", create/find invoice and POST accounting
+        $nowStatus = $record->status;
+        if (
+            $nowStatus === FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value &&
+            $prevStatus !== FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
+        ) {
+            // a) Create/find a unique invoice linked to this quote (idempotent)
+            $invoice = Invoice::firstOrCreate(
+                ['quote_id' => $record->id],
+                [
+                    'company_id'    => $record->company_id,
+                    'customer_id'   => $record->customer_id,
+                    'currency_id'   => $record->currency_id,
+                    'created_by'    => $record->created_by,
+                    'invoice_date'  => now(),
+                    'invoiceID'     => $this->invoiceService->generateInvoiceId(),
+                    'status'        => FinancialDocumentStatusEnums::ISSUED->value, // posting at issue
+                    'share_status'  => ShareStatusEnums::NOT_SHARED->value,
+                    'sub_total'     => $record->sub_total ?? 0,
+                    'tax_total'     => $record->tax_total ?? 0,
+                    'discount_total' => $record->discount_total ?? 0,
+                    'shipping_charge'   => $record->shipping_charge ?? 0,
+                    'additional_charge' => $record->additional_charge ?? 0,
+                ]
+            );
+
+            // b) Copy quote line items to the invoice on first creation
+            if ($invoice->wasRecentlyCreated) {
+                foreach ($record->lineItems as $li) {
+                    $copy = $li->replicate();
+                    $copy->documentable_type = Invoice::class;
+                    $copy->documentable_id   = $invoice->id;
+                    $copy->save();
+                }
+            }
+
+            // c) Post accounting for the invoice (creates/refreshes journal + lines)
+            (new InvoicePosting())
+                ->syncInvoiceJournal($invoice, (int) $invoice->company_id, (int) ($invoice->created_by ?? null));
+
+            if (isset($request['save_status']) && $request['save_status'] == 'send') {
+                $this->sharedActionServices->emailEntity($record);
+            }
+
+                
+
+
+            // d) (Optional) store the journal on quote too, for traceability
+            if (!empty($invoice->journal_entry_id)) {
+                $record->journal_entry_id = $invoice->journal_entry_id;
+                $record->save();
+            }
         }
 
         return $record;
     }
+
+
+    // public function updateOrCreate($request)
+    // {
+    //     $record = Quote::updateOrCreate(
+    //         [
+    //             "id" => $request["id"] ?? null
+    //         ],
+    //         [
+    //             ...$request,
+    //             'quote_date' => $request['quote_date'] ?? now(),
+    //             'quoteID' => $this->generateQuoteId(),
+    //             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
+    //             'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
+    //         ]
+    //     );
+
+    //     if (isset($request["id"]) && $request["id"]) {
+    //         $record->editLineItems($request['line_items']);
+    //     } else {
+    //         $record->addLineItems($request['line_items']);
+    //     }
+
+    //     if ($request['save_status'] == 'send') {
+    //         $this->sharedActionServices->emailEntity($record);
+    //     }
+
+    //     return $record;
+    // }
 
     public function export($records, $exportType)
     {

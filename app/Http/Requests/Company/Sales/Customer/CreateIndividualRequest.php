@@ -25,14 +25,14 @@ class CreateIndividualRequest extends FormRequest
     {
         return [
             "full_name" => 'required|string|max:225',
-            "display_name" => 'required|string|max:225',
+            "display_name" => 'nullable|string|max:225',
             "salutation" => 'nullable|string|max:225',
             "category_id" => 'nullable|integer',
             "customer_type" => 'required|in:business,individual',
             "currency_id" => 'required|integer|exists:currencies,id',
             "image" => 'nullable|string',
-            "phone_ext" => 'required|string|exists:countries,phone_code',
-            "primary_phone_number" => 'required|string',
+            "phone_ext" => 'nullable|string|exists:countries,phone_code',
+            "primary_phone_number" => 'nullable|string',
             "secondary_phone_number" => 'nullable|string',
             "primary_email" => 'required|string|email',
             "secondary_email" => 'nullable|string|email',
@@ -41,8 +41,11 @@ class CreateIndividualRequest extends FormRequest
             "primary_address" => 'nullable|string',
             "secondary_address" => 'nullable|string',
             "zip_code" => 'nullable|string',
+            "vat_number" => 'nullable|string',
+            "vat_date" => 'nullable|string',
+            "tax_type" => 'nullable|string',
             "terms_and_conditions" => 'nullable|string',
-            "contact_person_id" => ['sometimes', 'required', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
+            "contact_person_id" => ['sometimes', 'nullable', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
                 $person = CompanyContactPerson::where('company_id', Auth::user()?->company?->id)
                     ->where('id', $value)
                     ->first();

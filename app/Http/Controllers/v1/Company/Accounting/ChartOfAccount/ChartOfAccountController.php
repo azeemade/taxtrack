@@ -231,4 +231,16 @@ class ChartOfAccountController extends Controller
         }
     }
 
+    public function loadDefaultAccounts(Request $request)
+    {
+        try {
+            $records = $this->chartOfAccountService->loadDefaultAccounts();
+            return JsonResponser::send(false, 'Company accounts loaded successfully', $records, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_CONFLICT);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
 }

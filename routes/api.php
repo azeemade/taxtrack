@@ -14,6 +14,7 @@ use App\Http\Controllers\v1\Company\Report\Reconciliation\ReconciliationControll
 use App\Http\Controllers\v1\Company\Report\TaxAndBalances\TaxBalancesController;
 use App\Http\Controllers\v1\Company\Report\Transaction\AccountTransactionController;
 use App\Http\Controllers\BulkUploadController;
+use App\Http\Controllers\v1\Company\Report\VAT\VATReturnController;
 use App\Responser\JsonResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -347,6 +348,7 @@ Route::group([
                         Route::get('/sublist/account_by_subcategory/{accountSubCategory}', [ChartOfAccountController::class, 'accountSubCategoryName']);
                         Route::get('/download/template', [ChartOfAccountController::class, 'getDownload']);
                         Route::post('/import', [ChartOfAccountController::class, 'importAccount']);
+                        Route::post('/load-default-accounts', [ChartOfAccountController::class, 'loadDefaultAccounts']);
                     });
 
                     Route::prefix('journal-entry')->group(function () {
@@ -429,6 +431,9 @@ Route::group([
                         Route::post('/foreign-currency-gain-and-losses', [TaxBalancesController::class, 'foreignCurrencyGainAndLosses']);
                         Route::post('/general-ledger-details', [TaxBalancesController::class, 'generalLedgerDetails']);
                         Route::post('/general-ledger-summary', [TaxBalancesController::class, 'generalLedgerSummary']);
+                        Route::post('/vat-return-flat-rate', [VATReturnController::class, 'generateFlatRateVatReturn']);
+                        Route::post('/vat-return-standard-rate', [VATReturnController::class, 'generateStandardRateVatReturn']);
+                        Route::post('/vat-return', [VATReturnController::class, 'generateVatReturn']);
                     });
 
                     Route::group(['prefix' => 'transaction'], function () {
@@ -596,6 +601,7 @@ Route::group([
         "namespace" => "Guest"
     ], function () {
         Route::get('/currencies', 'GuestController@currencies');
+        Route::get('/countries', 'GuestController@countries');
         Route::get('/categories', 'GuestController@categories');
         Route::get('/industries', 'GuestController@industries');
         Route::get('/permissions', 'GuestController@allPermissions');

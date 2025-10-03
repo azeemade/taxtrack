@@ -82,7 +82,12 @@ class CustomerService
             'currency_id',
             'customer_logo',
             'is_active',
-            'terms_and_conditions'
+            'terms_and_conditions',
+            'industry',
+            'vat_number',
+            'vat_date',
+            'tax_type',
+            'payment_term'
         )
             ->with(['currency:id,name,symbol', 'category:id,name', 'contactPersons'])
             ->find($id);
@@ -98,22 +103,25 @@ class CustomerService
             "id" => $request["id"] ?? null
         ], [
             "company_name" => $request['company_name'],
-            "customerID" => $this->generateCompanyReference(),
+            "customerID" => $request['customerID'] ?? $this->generateCompanyReference(),
             "business_registration_number" => $request['business_registration_number'] ?? null,
             "vat_number" => $request['vat_number'] ?? null,
             "category_id" => $request['category_id'] ?? null,
             "customer_type" => $request['customer_type'] ?? null,
             "business_type" => $request['business_type'] ?? null,
             "industry" => $request['industry'] ?? null,
-            "phone_ext" => $request['phone_ext'],
-            "phone_number" => $request['phone_number'],
+            "phone_ext" => $request['phone_ext'] ?? null,
+            "phone_number" => $request['phone_number'] ?? null,
             "email" => $request['email'],
             "employee_count" => $request['employee_count'] ?? 0,
             "currency_id" => $request['currency_id'],
+            "state_id" => $request['state_id'] ?? null,
             "country_id" => $request['country_id'] ?? null,
-            "address" => $request['address'],
+            "address" => $request['address'] ?? null,
             "city_id" => $request['city_id'] ?? null,
-            "customer_logo" => $request['customer_logo'],
+            "vat_date" => $request['vat_date'] ?? null,
+            "tax_type" => $request['tax_type'] ?? null,
+            "customer_logo" => $request['customer_logo'] ?? null,
             "payment_term" => $request['payment_term'] ?? null,
             "special_instruction" => $request['special_instruction'] ?? null,
             "terms_and_conditions" => $request['terms_and_conditions'] ?? null,

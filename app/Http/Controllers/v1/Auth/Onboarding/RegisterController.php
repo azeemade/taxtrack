@@ -4,6 +4,7 @@ namespace App\Http\Controllers\v1\Auth\Onboarding;
 
 use App\Enums\CustomerTypeEnums;
 use App\Exceptions\BadRequestException;
+use App\Helpers\Posting\CoaProvisionerFromConfig;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AddCompanyRequest;
 use App\Http\Requests\Auth\CompanyUserRequest;
@@ -223,68 +224,70 @@ class RegisterController extends Controller
     public function addCompany(AddCompanyRequest $request, $id)
     {
         try {
-            DB::beginTransaction();
+            // DB::beginTransaction();
 
             $user = User::find($id);
             if (!$user) {
                 throw new BadRequestException("User doesn't exist", 404);
             }
-            $user->update([
-                'can_login' => true,
-                'is_active' => true
-            ]);
+            $request->validated();
+            // $user->update([
+            //     'can_login' => true,
+            //     'is_active' => true
+            // ]);
 
-            if (
-                (isset($request->companies) &&
-                    count($request->companies) > 1) &&
-                $user->company_type != CustomerTypeEnums::ACCOUNTANT->value
-            ) {
-                throw new BadRequestException("Multiple companies not allowed for small business", 400);
-            }
+            // if (
+            //     (isset($request->companies) &&
+            //         count($request->companies) > 1) &&
+            //     $user->company_type != CustomerTypeEnums::ACCOUNTANT->value
+            // ) {
+            //     throw new BadRequestException("Multiple companies not allowed for small business", 400);
+            // }
 
-            foreach ($request->companies as $key => $company) {
-                $company = $this->companyService->create($company, $id);
-                if ($key === array_key_first($request->companies)) {
-                    $user->update([
-                        "current_company_id" => $company->id
-                    ]);
-                }
+            // foreach ($request->companies as $key => $company) {
+            //     $company = $this->companyService->create($company, $id);
+            //     if ($key === array_key_first($request->companies)) {
+            //         $user->update([
+            //             "current_company_id" => $company->id
+            //         ]);
+            //     }
 
-                $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
-                $company->currencies()->attach($user->currency_id);
+            //     $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
+            //     $company->currencies()->attach($user->currency_id);
 
-                if (isset($company['subscription_plan_id']) && $company['subscription_plan_id']) {
-                    $planId = $company['subscription_plan_id'];
-                    $free = false;
-                    $duration = $company['duration'];
-                } else {
-                    $freePlan = SubscriptionPlan::where('is_free', true)->first();
-                    $planId = $freePlan->id;
-                    $free = true;
-                    $duration = $freePlan->duration > 30 ? 'yearly' : 'monthly';
-                }
-                $this->companySubscriptionService->subscribeToPlan([
-                    'user_id' => $id,
-                    'company_id' => $company->id,
-                    'subscription_plan_id' => $planId,
-                    'is_free' => $free,
-                    'duration' => $duration,
-                    'additional_users_count' => $company['additional_users_count'] ?? 0,
-                    'provider_payment_method_id' => $company['provider_payment_method_id'] ?? null,
-                    'save_card' => $company['save_card'] ?? false,
-                    'action' => $company['action'] ?? 'subscribe',
-                ]);
-            }
+            //     if (isset($company['subscription_plan_id']) && $company['subscription_plan_id']) {
+            //         $planId = $company['subscription_plan_id'];
+            //         $free = false;
+            //         $duration = $company['duration'];
+            //     } else {
+            //         $freePlan = SubscriptionPlan::where('is_free', true)->first();
+            //         $planId = $freePlan->id;
+            //         $free = true;
+            //         $duration = $freePlan->duration > 30 ? 'yearly' : 'monthly';
+            //     }
+            //     $this->companySubscriptionService->subscribeToPlan([
+            //         'user_id' => $id,
+            //         'company_id' => $company->id,
+            //         'subscription_plan_id' => $planId,
+            //         'is_free' => $free,
+            //         'duration' => $duration,
+            //         'additional_users_count' => $company['additional_users_count'] ?? 0,
+            //         'provider_payment_method_id' => $company['provider_payment_method_id'] ?? null,
+            //         'save_card' => $company['save_card'] ?? false,
+            //         'action' => $company['action'] ?? 'subscribe',
+            //     ]);
+            // }
 
 
-            DB::commit();
-            $userCompanies = $user->companies;
-            return JsonResponser::send(false, 'Company created successfully', $userCompanies);
+            // DB::commit();
+            // $userCompanies = $user->companies;
+            // return JsonResponser::send(false, 'Company created successfully', $userCompanies);
+            return JsonResponser::send(false, 'Company validated successfully', $request->all());
         } catch (BadRequestException $e) {
-            DB::rollBack();
+            // DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            DB::rollBack();
+            // DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
@@ -334,6 +337,7 @@ class RegisterController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
+    
 
     public function completeOnboarding(CompanyUserRequest $request, $id)
     {
@@ -358,10 +362,17 @@ class RegisterController extends Controller
                 throw new BadRequestException("Multiple companies not allowed for small business", 400);
             }
 
-            foreach ($request->companies as $key => $company) {
-                $company = $this->companyService->create($company, $id);
+            foreach ($request->companies as $key => $companyData) {
+                $company = $this->companyService->create($companyData, $id);
+
+                // ProcessCompanyOnboarding::dispatch($company);
+                // (new CoaProvisionerFromConfig())
+                //     ->provisionForCompany($company->id, $id);
+
                 if ($key === array_key_first($request->companies)) {
                     $user->update([
+                        "currency_id" => $company->currency_id,
+                        "country_id" => $company->country_id,
                         "current_company_id" => $company->id
                     ]);
                 }
@@ -370,10 +381,10 @@ class RegisterController extends Controller
                 $company->currencies()->attach($user->currency_id);
                 $company->attachEmailTemplates();
 
-                if (isset($company['subscription_plan_id']) && $company['subscription_plan_id']) {
-                    $planId = $company['subscription_plan_id'];
+                if (isset($companyData['subscription_plan_id']) && $companyData['subscription_plan_id']) {
+                    $planId = $companyData['subscription_plan_id'];
                     $free = false;
-                    $duration = $company['duration'];
+                    $duration = $companyData['duration'];
                 } else {
                     $freePlan = SubscriptionPlan::where('is_free', true)->first();
                     $planId = $freePlan->id;
@@ -386,14 +397,11 @@ class RegisterController extends Controller
                     'subscription_plan_id' => $planId,
                     'is_free' => $free,
                     'duration' => $duration,
-                    'additional_users_count' => $company['additional_users_count'] ?? 0,
-                    'provider_payment_method_id' => $company['provider_payment_method_id'] ?? null,
-                    'save_card' => $company['save_card'] ?? false,
-                    'action' => $company['action'] ?? 'subscribe',
+                    'additional_users_count' => $companyData['additional_users_count'] ?? 0,
+                    'provider_payment_method_id' => $companyData['provider_payment_method_id'] ?? null,
+                    'save_card' => $companyData['save_card'] ?? false,
+                    'action' => $companyData['action'] ?? 'subscribe',
                 ]);
-
-
-                // ProcessCompanyOnboarding::dispatch($company);
             }
 
             foreach ($request->users as $user) {

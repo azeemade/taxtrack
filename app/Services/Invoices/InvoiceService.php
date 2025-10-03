@@ -7,6 +7,7 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Helpers\Posting\InvoicePosting;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Quote;
@@ -55,6 +56,8 @@ class InvoiceService
             $quote->update([
                 'status' => FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
             ]);
+
+            (new InvoicePosting())->syncInvoiceJournal($record, $record->company_id ?? null, $request['created_by'] ?? null);
         }
 
         if (isset($request["id"]) && $request["id"]) {
