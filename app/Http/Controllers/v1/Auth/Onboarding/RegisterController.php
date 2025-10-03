@@ -337,7 +337,7 @@ class RegisterController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
-    
+
 
     public function completeOnboarding(CompanyUserRequest $request, $id)
     {
@@ -370,9 +370,10 @@ class RegisterController extends Controller
                 //     ->provisionForCompany($company->id, $id);
 
                 if ($key === array_key_first($request->companies)) {
+                    $country = \Nnjeim\World\Models\Country::find($companyData['country_id']);
                     $user->update([
-                        "currency_id" => $company->currency_id,
-                        "country_id" => $company->country_id,
+                        "currency_id" => $country->currency->id,
+                        "country_id" => $country->id,
                         "current_company_id" => $company->id
                     ]);
                 }
