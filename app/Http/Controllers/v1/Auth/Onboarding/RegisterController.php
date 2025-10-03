@@ -370,6 +370,8 @@ class RegisterController extends Controller
 
                 if ($key === array_key_first($request->companies)) {
                     $user->update([
+                        "currency_id" => $company->currency_id,
+                        "country_id" => $company->country_id,
                         "current_company_id" => $company->id
                     ]);
                 }

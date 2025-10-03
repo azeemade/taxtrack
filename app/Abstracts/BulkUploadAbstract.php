@@ -11,6 +11,8 @@ use App\Services\Supplier\SupplierService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Nnjeim\World\Models\City;
+use Nnjeim\World\Models\Country;
 use Nnjeim\World\Models\Currency;
 
 abstract class BulkUploadAbstract implements BulkUploadContract
@@ -436,7 +438,7 @@ abstract class BulkUploadAbstract implements BulkUploadContract
      * Find or create supplier
      */
     protected function findOrCreateSupplier(array $data, int $rowNumber): ?Vendor
-    
+
     {
         $companyId = $this->getCurrentCompanyId();
 
@@ -499,6 +501,23 @@ abstract class BulkUploadAbstract implements BulkUploadContract
      */
     protected function findCurrency(string $currency): ?Currency
     {
-        return Currency::where('code', $currency)->first();
+        return Currency::where('code', 'like', '%' . $currency . '%')
+            ->orWhere('name', 'like', '%' . $currency . '%')->first();
+    }
+
+    /**
+     * Find currency
+     */
+    protected function findCountry(string $field): ?Country
+    {
+        return Country::where('name', 'like', '%' . $field . '%')->first();
+    }
+
+    /**
+     * Find city
+     */
+    protected function findCity(string $field): ?City
+    {
+        return City::where('name', 'like', '%' . $field . '%')->first();
     }
 }
