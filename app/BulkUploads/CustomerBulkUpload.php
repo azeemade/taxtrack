@@ -3,12 +3,8 @@
 namespace App\BulkUploads;
 
 use App\Abstracts\BulkUploadAbstract;
-use App\Http\Requests\Company\Sales\Customer\CreateIndividualRequest;
-use App\Http\Requests\Company\Sales\Customer\CreateOrganizationRequest;
 use App\Models\Customer;
 use App\Services\Customer\CustomerService;
-use App\Services\RequestValidationService;
-use Illuminate\Support\Str;
 
 class CustomerBulkUpload extends BulkUploadAbstract
 {
@@ -123,7 +119,6 @@ class CustomerBulkUpload extends BulkUploadAbstract
         if ($validatedData === false) {
             return null;
         }
-
 
         if ($validatedData['category']) {
             $category = $this->findCategory($validatedData['category'], 'invoices');
