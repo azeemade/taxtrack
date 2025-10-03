@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Company\Purchase\PurchaseInvoice;
 
 use App\Exceptions\BadRequestException;
+use App\Helpers\Posting\PurchaseInvoicePosting;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Purchase\Payment\RecordPaymentRequest;
 use App\Http\Requests\Company\Purchase\PurchaseInvoice\CreatePurchaseInvoiceRequest;
@@ -58,6 +59,10 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
             $record = $this->purchaseInvoiceService->updateOrCreate($request->validated());
+
+            (new PurchaseInvoicePosting())
+                ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
+
             DB::commit();
             return JsonResponser::send(false, 'Purchase invoice issued successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -106,6 +111,10 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
             $record = $this->purchaseInvoiceService->updateOrCreate([...$request->validated(), "id" => $id]);
+
+            (new PurchaseInvoicePosting())
+                ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
+                
             DB::commit();
             return JsonResponser::send(false, 'Purchase invoice updated successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {

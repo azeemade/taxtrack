@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Company\Purchase\Bills;
 
 use App\Enums\FinancialDocumentStatusEnums;
+use App\Helpers\Posting\VendorBillPosting;
 use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Purchase\Bills\CreateBillsRequest;
@@ -52,6 +53,8 @@ class BillsController extends Controller
 
             $record = $this->billsService->updateOrCreate($request->validated());
 
+            (new VendorBillPosting())->syncVendorBillJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
+
             DB::commit();
             return JsonResponser::send(false, 'Bills created successfully', $record);
         } catch (BadRequestException $e) {
@@ -88,6 +91,8 @@ class BillsController extends Controller
             DB::beginTransaction();
 
             $record = $this->billsService->updateOrCreate($request->validated());
+
+            (new VendorBillPosting())->syncVendorBillJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
 
             DB::commit();
             return JsonResponser::send(false, 'Bills updated successfully', $record);

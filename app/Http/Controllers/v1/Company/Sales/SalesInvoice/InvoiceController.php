@@ -101,17 +101,14 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
-<<<<<<< HEAD
             $record = $this->paymentRecordService->modify($request->validated());
 
+            $record = $this->paymentRecordService->modify([...$request->validated(), 'model' => 'invoices', 'model_id' => $id]);
+            $record->recordable->customer->increment('current_balance', $record->amount_paid);
 
             // Idempotent: creates/updates the SAME journal for this payment record
             (new PaymentPosting())
                 ->syncForPaymentRecord($record);
-=======
-            $record = $this->paymentRecordService->modify([...$request->validated(), 'model' => 'invoices', 'model_id' => $id]);
-            $record->recordable->customer->increment('current_balance', $record->amount_paid);
->>>>>>> 9f937af774c68049b320413f650ae7951f2e31d9
 
             DB::commit();
             return JsonResponser::send(false, 'Invoice issued successfully', $record, Response::HTTP_OK);

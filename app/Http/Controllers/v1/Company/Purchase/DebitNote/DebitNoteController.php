@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Company\Purchase\DebitNote;
 
 use App\Exceptions\BadRequestException;
+use App\Helpers\Posting\DebitNotePosting;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Purchase\DebitNote\CreateDebitNoteRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
@@ -46,6 +47,9 @@ class DebitNoteController extends Controller
 
             $record = $this->debitNoteService->create($request->validated());
 
+            (new DebitNotePosting())
+                ->syncForDebitNote($record, (int)$record->company_id, (int)($record->created_by ?? null));
+
             DB::commit();
             return JsonResponser::send(false, 'Debit note created successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -81,6 +85,9 @@ class DebitNoteController extends Controller
             DB::beginTransaction();
 
             $record = $this->debitNoteService->update([...$request->validated(), "id" => $id]);
+
+            (new DebitNotePosting())
+                ->syncForDebitNote($record, (int)$record->company_id, (int)($record->created_by ?? null));
 
             DB::commit();
             return JsonResponser::send(false, 'Debit note updated successfully', $record, Response::HTTP_OK);
