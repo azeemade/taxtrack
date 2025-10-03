@@ -131,7 +131,6 @@ class QuoteService
 
 
     public function updateOrCreate($request)
-<<<<<<< HEAD
 {
     // 1) Load previous status if editing (to detect transition)
     $prevStatus = null;
@@ -192,21 +191,6 @@ class QuoteService
                 'discount_total'=> $record->discount_total ?? 0,
                 'shipping_charge'   => $record->shipping_charge ?? 0,
                 'additional_charge' => $record->additional_charge ?? 0,
-=======
-    {
-        $customer = Customer::find($request['customer_id']);
-        $record = Quote::updateOrCreate(
-            [
-                "id" => $request["id"] ?? null
-            ],
-            [
-                ...$request,
-                'currency_id' => $customer->currency_id,
-                'quote_date' => $request['quote_date'] ?? now(),
-                'quoteID' => $request['quoteID'] ?? $this->generateQuoteId(),
-                'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-                'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
->>>>>>> 9f937af774c68049b320413f650ae7951f2e31d9
             ]
         );
 
@@ -220,15 +204,57 @@ class QuoteService
             }
         }
 
-<<<<<<< HEAD
+        if ($request['save_status'] == 'send') {
         // c) Post accounting for the invoice (creates/refreshes journal + lines)
         (new InvoicePosting())
             ->syncInvoiceJournal($invoice, (int) $invoice->company_id, (int) ($invoice->created_by ?? null));
-=======
+        }
+        
         if (isset($request['save_status']) && $request['save_status'] == 'send') {
             $this->sharedActionServices->emailEntity($record);
         }
->>>>>>> 9f937af774c68049b320413f650ae7951f2e31d9
+
+        // d) (Optional) store the journal on quote too, for traceability
+        if (!empty($invoice->journal_entry_id)) {
+            $record->journal_entry_id = $invoice->journal_entry_id;
+            $record->save();
+        }
+    }
+
+    return $record;
+}
+
+        $customer = Customer::find($request['customer_id']);
+        $record = Quote::updateOrCreate(
+            [
+                "id" => $request["id"] ?? null
+            ],
+            [
+                ...$request,
+                'currency_id' => $customer->currency_id,
+                'quote_date' => $request['quote_date'] ?? now(),
+                'quoteID' => $request['quoteID'] ?? $this->generateQuoteId(),
+                'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
+                'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : ($request['save_status'] == FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value ? FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value : GeneralEnums::PENDING->value)
+            ]
+        );
+
+        // b) Copy quote line items to the invoice on first creation
+        if ($invoice->wasRecentlyCreated) {
+            foreach ($record->lineItems as $li) {
+                $copy = $li->replicate();
+                $copy->documentable_type = Invoice::class;
+                $copy->documentable_id   = $invoice->id;
+                $copy->save();
+            }
+        }
+
+        // c) Post accounting for the invoice (creates/refreshes journal + lines)
+        (new InvoicePosting())
+            ->syncInvoiceJournal($invoice, (int) $invoice->company_id, (int) ($invoice->created_by ?? null));
+        if (isset($request['save_status']) && $request['save_status'] == 'send') {
+            $this->sharedActionServices->emailEntity($record);
+        }
 
         // d) (Optional) store the journal on quote too, for traceability
         if (!empty($invoice->journal_entry_id)) {
