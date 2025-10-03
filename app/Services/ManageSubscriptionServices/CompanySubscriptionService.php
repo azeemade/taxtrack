@@ -364,7 +364,7 @@ class CompanySubscriptionService
             'payment_type' => 'card',
             'amount_paid' => $amountPaid['total'] ?? 0.00,
             'plan_amount' => $durationDependencies['plan_amount'],
-            'end_date' => $durationDependencies['end_date'],
+            'end_date' => isset($request['is_free']) && $request['is_free'] ? Carbon::now()->addDays($plan->duration) : $durationDependencies['end_date'],
             'status' => GeneralEnums::ACTIVE->value,
             'subscribed_at' => Carbon::now(),
             'subscriber_id' => $subscriber->id,

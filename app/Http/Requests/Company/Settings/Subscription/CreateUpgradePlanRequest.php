@@ -25,7 +25,7 @@ class CreateUpgradePlanRequest extends FormRequest
             'duration' => 'required|string|in:monthly,yearly',
             // 'additional_charge' => 'nullable|numeric|min:0.00',
             // 'tax' => 'nullable|numeric|min:0.00',
-            'additional_users_count' => 'nullable|integer|min:0',
+            'additional_users_count' => 'nullable|numeric|min:0',
             // 'sub_total' => 'required|numeric|min:0.00',
             // 'total' => 'required|numeric|min:0.00',
             'subscription_plan_id' => 'required|integer|exists:subscription_plans,id',
