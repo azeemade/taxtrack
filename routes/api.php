@@ -41,7 +41,7 @@ Route::group([
             Route::post('/basic-information', 'RegisterController@basicInformation');
             Route::get('/company-check', 'RegisterController@companyCheck');
             Route::post('/verify-token', 'RegisterController@verifyToken');
-            Route::post('/resend-token', 'RegisterController@resendToken');
+            Route::post('/resend-token/{id}', 'RegisterController@resendToken');
             Route::post('/add-company/{id}', 'RegisterController@addCompany');
             Route::post('/add-role/{id}', 'RegisterController@addRole');
             Route::post('/invite-users/{id}', 'RegisterController@inviteUsers');

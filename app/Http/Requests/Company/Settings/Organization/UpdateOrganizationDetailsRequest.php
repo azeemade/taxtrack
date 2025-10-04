@@ -39,7 +39,7 @@ class UpdateOrganizationDetailsRequest extends FormRequest
             "physical_address_information.state_id" => 'sometimes|nullable|integer|exists:states,id',
             "physical_address_information.city_id" => 'sometimes|nullable|integer|exists:cities,id',
             "phone_country_code" => 'sometimes|string|max:5',
-            "phone_number" => 'sometimes|string|max:40',
+            "phone_number" => 'nullable',
             "secondary_phone_country_code" => 'sometimes|nullable|string|max:5',
             "secondary_phone_number" => 'sometimes|nullable|string|max:40',
             "fax" => 'sometimes|nullable|string|max:5',

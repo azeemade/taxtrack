@@ -184,31 +184,55 @@ class RegisterController extends Controller
         }
     }
 
-    public function resendToken(Request $request)
+    public function resendToken(Request $request, $id = null)
     {
         try {
             DB::beginTransaction();
 
-            $validate = Validator::make($request->all(), [
-                'email' => 'required|string|email|max:250|exists:users,email'
-            ]);
+            // Validation rules: either email or id must be provided
+            $validate = Validator::make(
+                array_merge($request->all(), ['id' => $id]),
+                [
+                    'email' => 'nullable|string|email|max:250|exists:users,email',
+                    'id' => 'nullable|integer|exists:users,id',
+                ],
+                [
+                    'email.exists' => 'The provided email does not exist in our records.',
+                    'id.exists' => 'The provided ID does not exist in our records.',
+                ]
+            );
+
+            // Ensure at least one of email or id is provided
+            if (!$request->has('email') && !$id) {
+                throw new BadRequestException('Either email or id must be provided.', 400);
+            }
 
             if ($validate->fails()) {
                 throw new BadRequestException($validate->errors()->first(), 400);
             }
 
-            $record = User::where(
-                'email',
-                $request->email
-            )->first();
+            // Fetch user by email or id
+            $query = User::query();
+            if ($request->has('email')) {
+                $query->where('email', $request->email);
+            }
+            if ($id) {
+                $query->orWhere('id', $id);
+            }
+            $record = $query->first();
+
+            // Check if user was found
+            if (!$record) {
+                throw new BadRequestException('User not found.', 404);
+            }
 
             $token = $this->generateToken('App\Models\User', $record->id, 15);
 
             $mailData = [
-                "name" => $request->name,
+                "name" => $request->name ?? $record->name, // Fallback to user name from database
                 "token" => $token
             ];
-            Notification::route('mail', $request->email)->notify(new OnboardingOtpNotification($mailData));
+            Notification::route('mail', $record->email)->notify(new OnboardingOtpNotification($mailData));
 
             DB::commit();
             return JsonResponser::send(false, 'Token resent');

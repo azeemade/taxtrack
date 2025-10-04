@@ -86,6 +86,7 @@ class CoaProvisionerFromConfig
                     'is_active'               => $acc['is_active'] ?? 'true',
                     'is_default'              =>$acc['is_default'] ?? 'true',
                     'is_hidden'               => $acc['is_hidden'] ?? 'false',
+                    'status'                  => $acc['status'] ?? 'published',
                     'updated_at'              => now(),
                     'deleted_at'              => null,
                     'company_id'              => $companyId,
