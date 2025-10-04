@@ -14,6 +14,7 @@ use App\Models\Quote;
 use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 
 class InvoiceService
@@ -40,6 +41,8 @@ class InvoiceService
             [
                 ...$request,
                 'currency_id' => $customer->currency_id,
+                'created_by' => Auth::id(),
+                'company_id' => Auth::user()->current_company_id,
                 'quote_date' => $request['quote_date'] ?? now(),
                 'referenceID' => $this->generateRefId(),
                 'invoiceID' => $request['invoiceID'] ?? $this->generateInvoiceId(),
@@ -49,16 +52,7 @@ class InvoiceService
             ]
         );
 
-        $record->customer->decrement('current_balance', $record->invoice_value);
-
-        if (isset($request['quote_id']) && $request['quote_id']) {
-            $quote = Quote::find($request['quote_id']);
-            $quote->update([
-                'status' => FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
-            ]);
-
-            (new InvoicePosting())->syncInvoiceJournal($record, $record->company_id ?? null, $request['created_by'] ?? null);
-        }
+        $record->customer->decrement('current_balance', $record->invoice_value);  
 
         if (isset($request["id"]) && $request["id"]) {
             $record->editLineItems($request['line_items']);
@@ -66,7 +60,21 @@ class InvoiceService
             $record->addLineItems($request['line_items']);
         }
 
+        if (isset($request['quote_id']) && $request['quote_id']) {
+            $quote = Quote::find($request['quote_id']);
+            $quote->update([
+                'status' => FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
+            ]);
+
+           
+        }
+
         if (isset($request['save_status']) && $request['save_status'] == 'send') {
+
+            $createdBy = Auth::id() ?? null;
+
+            (new InvoicePosting())->syncInvoiceJournal($record, $record->company_id ?? null, $createdBy);
+            
             $this->sharedActionServices->emailEntity($record);
         }
 
