@@ -39,6 +39,11 @@ class AccountReconciliationService
             $query->where('account_id', $request->account_id);
         }
 
+        if ($request->q) {
+            $query->where('referenceID', 'LIKE', '%' . $request->q . '%')
+                ->orWhere('description', 'LIKE', '%' . $request->q . '%');
+        }
+
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('transaction_date', [$request->start_date, $request->end_date]);
         }
