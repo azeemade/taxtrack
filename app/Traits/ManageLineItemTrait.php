@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\LineItem;
+use Illuminate\Support\Facades\Auth;
 
 trait ManageLineItemTrait
 {
@@ -11,8 +12,8 @@ trait ManageLineItemTrait
         foreach ($request as $value) {
             $this->lineItems()->create([
                 ...$value,
-                'created_by' => auth()->user()->id ?? null,
-                'company_id' => auth()->user()->current_company_id,
+                'created_by' => Auth::id(),
+                'company_id' => Auth::user()->current_company_id,
             ]);
         }
     }
@@ -27,8 +28,8 @@ trait ManageLineItemTrait
             } else {
                 $record = $this->lineItems()->create([
                     ...$lineItem,
-                    'created_by' => auth()->user()->id ?? null,
-                    'company_id' => auth()->user()->current_company_id,
+                    'created_by' => Auth::id(),
+                    'company_id' => Auth::user()->current_company_id,
                 ]);
             }
             $idsToKeep[] = $record->id;
