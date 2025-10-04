@@ -138,12 +138,16 @@ class QuoteService
             $prevStatus = Quote::where('id', $request['id'])->value('status');
         }
 
+
+        $customer = Customer::find($request['customer_id']);
+
         // 2) Upsert Quote (no accounting here)
         $record = Quote::updateOrCreate(
             ["id" => $request["id"] ?? null],
             [
                 ...$request,
                 'quote_date'   => $request['quote_date'] ?? now(),
+                'currency_id' => $customer->currency_id,
                 'quoteID'      => $request['quoteID'] ?? $this->generateQuoteId(),
                 'share_status' => ($request['save_status'] == 'send')
                     ? ShareStatusEnums::SHARED->value
