@@ -13,7 +13,7 @@ use App\Services\Customer\CustomerService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Auth;
 class CustomerController extends Controller
 {
     protected CustomerService $customerService;
@@ -85,6 +85,8 @@ class CustomerController extends Controller
                 "city_id" => $request->city_id,
                 "zip_code" => $request->zip_code,
                 "address" => $request->primary_address,
+                "created_by" => auth()->user()->id,
+                "company_id" => auth()->user()->current_company_id,
                 "contact_persons" => [[
                     "full_name" => $request->full_name,
                     "salutation" => $request->salutation,
@@ -138,7 +140,9 @@ class CustomerController extends Controller
                 "phone_number" => $request->primary_phone_number,
                 "customer_type" => CustomerTypeEnums::ORGANIZATION->value,
                 "customer_logo" => $request->image,
-                "contact_persons" => $request->contact_persons
+                "contact_persons" => $request->contact_persons,
+                "created_by" => auth()->user()->id,
+                "company_id" => auth()->user()->current_company_id,
             ];
             $record = $this->customerService->createCustomer($data);
 
@@ -235,7 +239,9 @@ class CustomerController extends Controller
                 "phone_number" => $request->primary_phone_number,
                 "customer_type" => CustomerTypeEnums::ORGANIZATION->value,
                 "customer_logo" => $request->image,
-                "contact_persons" => $request->contact_persons
+                "contact_persons" => $request->contact_persons,
+                "created_by" => auth()->user()->id,
+                "company_id" => auth()->user()->current_company_id,
             ];
             $record = $this->customerService->createCustomer($data);
 

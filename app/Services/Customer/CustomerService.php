@@ -125,6 +125,8 @@ class CustomerService
             "payment_term" => $request['payment_term'] ?? null,
             "special_instruction" => $request['special_instruction'] ?? null,
             "terms_and_conditions" => $request['terms_and_conditions'] ?? null,
+            "created_by" => $request['created_by'] ?? null,
+            "company_id" => $request['company_id'] ?? null,
         ]);
 
         if (isset($request["id"]) && $request["id"]) {
