@@ -162,7 +162,8 @@ class VendorController extends Controller
                     'city_id',
                     'state_id',
                     'country_id',
-                    'city_id'
+                    'city_id',
+                    'county'
                 ),
                 "id" => $id,
                 "customer_logo" => $request->image,

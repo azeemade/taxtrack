@@ -34,6 +34,7 @@ return new class extends Migration
             $table->unsignedBigInteger('currency_id');
             $table->unsignedBigInteger('country_id')->nullable();
             $table->unsignedBigInteger('city_id')->nullable();
+            $table->string('county')->nullable();
             $table->string('address')->nullable();
             $table->string('zip_code')->nullable();
             $table->mediumText('special_instruction')->nullable();

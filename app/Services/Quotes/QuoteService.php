@@ -140,14 +140,15 @@ class QuoteService
         }
         $customer = Customer::find($request['customer_id']);
 
+
         // 2) Upsert Quote (no accounting here)
         $record = Quote::updateOrCreate(
             ["id" => $request["id"] ?? null],
             [
                 ...$request,
                 'quote_date'   => $request['quote_date'] ?? now(),
-                'quoteID'      => $request['quoteID'] ?? $this->generateQuoteId(),
                 'currency_id' => $customer->currency_id,
+                'quoteID'      => $request['quoteID'] ?? $this->generateQuoteId(),
                 'created_by' => Auth::id(),
                 'company_id' => Auth::user()->current_company_id,
                 'share_status' => ($request['save_status'] == 'send')
