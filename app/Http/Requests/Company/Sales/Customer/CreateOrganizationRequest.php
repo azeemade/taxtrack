@@ -43,6 +43,7 @@ class CreateOrganizationRequest extends FormRequest
             "country_id" => 'nullable|integer',
             "city_id" => 'nullable|integer',
             "state_id" => 'nullable|integer',
+            "county" => 'nullable|string',
             "terms_and_conditions" => 'nullable|string',
             "contact_persons" => 'nullable|array',
             "contact_persons.*.id" => ['sometimes', 'nullable', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {

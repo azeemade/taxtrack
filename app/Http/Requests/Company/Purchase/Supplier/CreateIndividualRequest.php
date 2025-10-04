@@ -37,6 +37,7 @@ class CreateIndividualRequest extends FormRequest
             "secondary_email" => 'nullable|string|email',
             "country_id" => 'nullable|integer|exists:countries,id',
             "city_id" => 'nullable|integer|exists:cities,id',
+            "county" => 'nullable|string',
             "primary_address" => 'nullable|string',
             "secondary_address" => 'nullable|string',
             "post_code" => 'nullable|string',
