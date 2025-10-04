@@ -229,7 +229,7 @@ class QuoteService
         return $record;
     }
 
-    public function convertQuoteToInvoice($id)
+    public function convertQuoteToInvoice($request, $id)
     {
         $record = Quote::find($id);
         if (!$record) {
@@ -237,6 +237,7 @@ class QuoteService
         }
 
         $record->update([
+            'additional_referenceID' => $request->referenceId,
             'status' => FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value,
         ]);
 
@@ -256,6 +257,14 @@ class QuoteService
                 'discount_total' => $record->discount_total ?? 0,
                 'shipping_charge'   => $record->shipping_charge ?? 0,
                 'additional_charge' => $record->additional_charge ?? 0,
+                'referenceID' => $request->referenceId,
+                'start_date' => $request->start_date,
+                'due_date' => $request->end_date,
+                'terms_and_conditions' => $record->terms_and_conditions,
+                'customer_note' => $record->customer_note,
+                'quote_id' => $record->id,
+                'save_status' => $request->saveStatus ?? "send",
+                'line_items' => $record->lineItems,
             ]
         );
 
@@ -278,7 +287,7 @@ class QuoteService
 
 
 
-        $this->sharedActionServices->emailEntity($record);
+        // $this->sharedActionServices->emailEntity($record);
 
         // d) (Optional) store the journal on quote too, for traceability
         if (!empty($invoice->journal_entry_id)) {
