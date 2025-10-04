@@ -108,6 +108,7 @@ Route::group([
                                 return JsonResponser::send(true, 'Resource not found', null, Response::HTTP_NOT_FOUND);
                             });
                         Route::get('/quotes/create/generateId', 'QuoteController@generateQuoteId');
+                        Route::post('/quotes/{id}/convert-to-invoice', 'QuoteController@convertToInvoice');
                     });
 
                     //customers
