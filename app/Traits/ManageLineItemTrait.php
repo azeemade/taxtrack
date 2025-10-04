@@ -9,9 +9,11 @@ trait ManageLineItemTrait
     public function addLineItems($request)
     {
         foreach ($request as $value) {
-            $this->lineItems()->create(
-                $value,
-            );
+            $this->lineItems()->create([
+                ...$value,
+                'created_by' => auth()->user()->id ?? null,
+                'company_id' => auth()->user()->current_company_id,
+            ]);
         }
     }
     public function editLineItems($request)
@@ -23,9 +25,11 @@ trait ManageLineItemTrait
                 $record = $this->lineItems()->find($lineItem['id']);
                 $record->update($lineItem);
             } else {
-                $record = $this->lineItems()->create(
-                    $lineItem,
-                );
+                $record = $this->lineItems()->create([
+                    ...$lineItem,
+                    'created_by' => auth()->user()->id ?? null,
+                    'company_id' => auth()->user()->current_company_id,
+                ]);
             }
             $idsToKeep[] = $record->id;
         }
