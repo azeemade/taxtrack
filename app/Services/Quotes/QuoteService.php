@@ -283,7 +283,7 @@ class QuoteService
         // c) Post accounting for the invoice (creates/refreshes journal + lines)
 
         (new InvoicePosting())
-            ->syncInvoiceJournal($invoice, (int) $invoice->company_id, (int) ($invoice->created_by ?? null));
+            ->syncInvoiceJournal($invoice, (int) $invoice->company_id, (int) ($invoice->created_by ?? null), $record->id);
 
 
 

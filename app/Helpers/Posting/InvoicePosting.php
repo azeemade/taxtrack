@@ -21,18 +21,17 @@ class InvoicePosting
      *     Dr COGS
      *     Cr Inventory
      */
-    public function syncInvoiceJournal(object $invoice, int $companyId, ?int $editedBy = null): int
+    public function syncInvoiceJournal(object $invoice, int $companyId, ?int $editedBy = null, $quoteId = null): int
     {
         // ------------- 1) Pull line items -------------
         $lines = DB::table('line_items')
-            ->where('documentable_id', $invoice->id)
-            ->where('documentable_type', 'invoices')
+            ->where('documentable_id', $quoteId)
+            // ->where('documentable_id', $invoice->id)
+            // ->where('documentable_type', 'invoices')
+            ->where('documentable_type', 'App\Models\Quote')
             ->get([
-                'id','quantity','price','total_unit_price','discount','vat','amount','category_id',
-                // optional cost columns if you have them:
-                'unit_cost','cost_price','cost','average_cost',
-                // optional product pointer:
-                'product_id',
+                'id','quantity','price','discount','vat','amount','category_id',
+                // 'id','quantity','price','total_unit_price','discount','vat','amount','category_id',
             ]);
 
         if ($lines->isEmpty()) {
@@ -51,7 +50,8 @@ class InvoicePosting
         foreach ($lines as $li) {
             $qty        = max((float)($li->quantity ?? 0), 0.0);
             $unitPrice  = (float)($li->price ?? 0);
-            $unitTotal  = $this->orFloat($li->total_unit_price, $qty * $unitPrice); // BEFORE discount
+            $unitTotal  = $this->orFloat($li->amount, $qty * $unitPrice); // BEFORE discount
+            // $unitTotal  = $this->orFloat($li->total_unit_price, $qty * $unitPrice); // BEFORE discount
             $discVal    = (float)($li->discount ?? 0); // may be % or absolute
             $vatVal     = (float)($li->vat ?? 0);      // may be % or absolute (system uses % on sales)
             $lineGross  = (float)($li->amount ?? 0);   // usually net+vat, from UI
@@ -111,9 +111,9 @@ class InvoicePosting
                     'date'       => $invoice->invoice_date ?? now(),
                     'info'       => 'Invoice '.$this->safeStr($invoice->invoiceID).' for customer '.$this->safeStr($invoice->customer_id),
                     'edited_by'  => $editedBy,
-                    'status'     => 'posted',
+                    'status'     => 'published',
                     'updated_at' => now(),
-                    'type'       => 'sales_invoice',
+                    'type'       => 'original',
                 ]);
 
                 DB::table('finance_account_entries')->where('journal_entry_id', $jeId)->delete();
@@ -122,12 +122,12 @@ class InvoicePosting
                     'date'       => $invoice->invoice_date ?? now(),
                     'info'       => 'Invoice '.$this->safeStr($invoice->invoiceID).' for customer '.$this->safeStr($invoice->customer_id),
                     'edited_by'  => $editedBy,
-                    'status'     => 'posted',
+                    'status'     => 'published',
                     'created_at' => now(),
                     'updated_at' => now(),
                     'company_id' => (int)$companyId,
                     'parent_journal_entry_id' => null,
-                    'type'       => 'sales_invoice',
+                    'type'       => 'original',
                 ]);
 
                 DB::table('invoices')->where('id', $invoice->id)->update(['journal_entry_id' => $jeId]);
@@ -229,23 +229,23 @@ class InvoicePosting
     private function resolveUnitCost(object $li): float
     {
         // Prefer explicit unit cost columns if present on line
-        foreach (['unit_cost','cost_price','average_cost','cost'] as $col) {
+        foreach (['price'] as $col) {
             if (property_exists($li, $col) && $li->{$col} !== null) {
                 return (float)$li->{$col};
             }
         }
-        // Optional: pull from products table if you store it there
-        if (property_exists($li, 'product_id') && $li->product_id) {
-            $prod = DB::table('products')->where('id', $li->product_id)
-                ->first(['unit_cost','cost_price','average_cost','cost']);
-            if ($prod) {
-                foreach (['unit_cost','cost_price','average_cost','cost'] as $col) {
-                    if (property_exists($prod, $col) && $prod->{$col} !== null) {
-                        return (float)$prod->{$col};
-                    }
-                }
-            }
-        }
+        // // Optional: pull from products table if you store it there
+        // if (property_exists($li, 'product_id') && $li->product_id) {
+        //     $prod = DB::table('products')->where('id', $li->product_id)
+        //         ->first(['price']);
+        //     if ($prod) {
+        //         foreach (['price'] as $col) {
+        //             if (property_exists($prod, $col) && $prod->{$col} !== null) {
+        //                 return (float)$prod->{$col};
+        //             }
+        //         }
+        //     }
+        // }
         return 0.0; // no cost info → skip COGS/Inventory posting
     }
 
