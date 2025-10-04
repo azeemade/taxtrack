@@ -17,6 +17,7 @@ use App\Services\Invoices\InvoiceService;
 use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QuoteService
@@ -137,6 +138,8 @@ class QuoteService
         if (!empty($request['id'])) {
             $prevStatus = Quote::where('id', $request['id'])->value('status');
         }
+        $customer = Customer::find($request['customer_id']);
+
 
         // 2) Upsert Quote (no accounting here)
         $record = Quote::updateOrCreate(
@@ -144,7 +147,10 @@ class QuoteService
             [
                 ...$request,
                 'quote_date'   => $request['quote_date'] ?? now(),
+                'currency_id' => $customer->currency_id,
                 'quoteID'      => $request['quoteID'] ?? $this->generateQuoteId(),
+                'created_by' => Auth::id(),
+                'company_id' => Auth::user()->current_company_id,
                 'share_status' => ($request['save_status'] == 'send')
                     ? ShareStatusEnums::SHARED->value
                     : ShareStatusEnums::NOT_SHARED->value,
@@ -196,6 +202,8 @@ class QuoteService
                     $copy = $li->replicate();
                     $copy->documentable_type = Invoice::class;
                     $copy->documentable_id   = $invoice->id;
+                    $copy->created_by = Auth::id();
+                    $copy->company_id = Auth::user()->current_company_id;
                     $copy->save();
                 }
             }

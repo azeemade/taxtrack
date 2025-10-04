@@ -4,12 +4,14 @@ namespace App\Services\Company;
 
 use App\Enums\CompanyStatusEnums;
 use App\Enums\GeneralEnums;
+use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
 use App\Mail\Company\ClientOnboardingEmail;
 use App\Models\Company;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -149,23 +151,69 @@ class CompanyService
         return $user;
     }
 
+    // public function updateCompanyDetails(array $data)
+    // {
+    //     $currentUser = Auth::user();
+    //     $record = Company::find($currentUser->current_company_id);
+
+    //     if (isset($data['physical_address_information'])) {
+    //         $data['address'] = $data['physical_address_information']['address'] ?? $record['physical_address_information']['address'];
+    //         $data['physical_address_information']['address'] = $data['physical_address_information']['address'] ?? $record['physical_address_information']['address'];
+    //         $data['physical_address_information']['country_id'] = $data['physical_address_information']['country_id'] ?? $record['physical_address_information']['country_id'];
+    //         $data['physical_address_information']['state_id'] = $data['physical_address_information']['state_id'] ?? $record['physical_address_information']['state_id'];
+    //         $data['physical_address_information']['city_id'] = $data['physical_address_information']['city_id'] ?? $record['physical_address_information']['city_id'];
+    //     }
+    //     if (isset($data['postal_address_information'])) {
+    //         $data['postal_address_information']['address'] = $data['postal_address_information']['address'] ?? $record['postal_address_information']['address'];
+    //         $data['postal_address_information']['country_id'] = $data['postal_address_information']['country_id'] ?? $record['postal_address_information']['country_id'];
+    //         $data['postal_address_information']['state_id'] = $data['postal_address_information']['state_id'] ?? $record['postal_address_information']['state_id'];
+    //         $data['postal_address_information']['city_id'] = $data['postal_address_information']['city_id'] ?? $record['postal_address_information']['city_id'];
+    //     }
+
+    //     $record->update($data);
+    //     return $record;
+    // }
+
     public function updateCompanyDetails(array $data)
     {
         $currentUser = Auth::user();
         $record = Company::find($currentUser->current_company_id);
 
-        if (isset($data['physical_address_information'])) {
-            $data['address'] = $data['physical_address_information']['address'] ?? $record['physical_address_information']['address'];
-            $data['physical_address_information']['address'] = $data['physical_address_information']['address'] ?? $record['physical_address_information']['address'];
-            $data['physical_address_information']['country_id'] = $data['physical_address_information']['country_id'] ?? $record['physical_address_information']['country_id'];
-            $data['physical_address_information']['state_id'] = $data['physical_address_information']['state_id'] ?? $record['physical_address_information']['state_id'];
-            $data['physical_address_information']['city_id'] = $data['physical_address_information']['city_id'] ?? $record['physical_address_information']['city_id'];
+        // Check if the company record exists
+        if (!$record) {
+            throw new BadRequestException('Company not found', Response::HTTP_NOT_FOUND);
         }
+
+        // Decode JSON fields if they are stored as JSON in the database
+
+        $postal_address = is_array($data['postal_address_information'])
+            ? $data['postal_address_information']
+            : json_decode($data['postal_address_information'], true);
+
+        $physical_address = is_array($data['physical_address_information'])
+            ? $data['physical_address_information']
+            : json_decode($data['physical_address_information'], true);
+
+        $physicalAddressInfo = $physical_address ? $physical_address : [];
+        $postalAddressInfo = $postal_address ? $postal_address : [];
+
+        // Handle physical_address_information
+        if (isset($data['physical_address_information'])) {
+            $data['address'] = $data['physical_address_information']['address'] ?? ($physicalAddressInfo['address'] ?? null);
+            $data['physical_address_information']['address'] = $data['physical_address_information']['address'] ?? ($physicalAddressInfo['address'] ?? null);
+            $data['physical_address_information']['country_id'] = $data['physical_address_information']['country_id'] ?? ($physicalAddressInfo['country_id'] ?? null);
+            $data['physical_address_information']['state_id'] = $data['physical_address_information']['state_id'] ?? ($physicalAddressInfo['state_id'] ?? null);
+            $data['physical_address_information']['city_id'] = $data['physical_address_information']['city_id'] ?? ($physicalAddressInfo['city_id'] ?? null);
+            $data['physical_address_information']['phone_number'] = $data['physical_address_information']['phone_number'] ?? ($physicalAddressInfo['phone_number'] ?? null);
+        }
+
+        // Handle postal_address_information
         if (isset($data['postal_address_information'])) {
-            $data['postal_address_information']['address'] = $data['postal_address_information']['address'] ?? $record['postal_address_information']['address'];
-            $data['postal_address_information']['country_id'] = $data['postal_address_information']['country_id'] ?? $record['postal_address_information']['country_id'];
-            $data['postal_address_information']['state_id'] = $data['postal_address_information']['state_id'] ?? $record['postal_address_information']['state_id'];
-            $data['postal_address_information']['city_id'] = $data['postal_address_information']['city_id'] ?? $record['postal_address_information']['city_id'];
+            $data['postal_address_information']['address'] = $data['postal_address_information']['address'] ?? ($postalAddressInfo['address'] ?? null);
+            $data['postal_address_information']['country_id'] = $data['postal_address_information']['country_id'] ?? ($postalAddressInfo['country_id'] ?? null);
+            $data['postal_address_information']['state_id'] = $data['postal_address_information']['state_id'] ?? ($postalAddressInfo['state_id'] ?? null);
+            $data['postal_address_information']['city_id'] = $data['postal_address_information']['city_id'] ?? ($postalAddressInfo['city_id'] ?? null);
+            $data['postal_address_information']['phone_number'] = $data['postal_address_information']['phone_number'] ?? ($postalAddressInfo['phone_number'] ?? null);
         }
 
         $record->update($data);
