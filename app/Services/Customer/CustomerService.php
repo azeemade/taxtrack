@@ -64,7 +64,7 @@ class CustomerService
     public function stats($request)
     {
         $companyId = Auth::user()->current_company_id;
-        
+
         $records = Customer::query()
             ->where('company_id', $companyId)
             ->when(isset($request->start_date) && $request->start_date && $request->end_date, function ($query) use ($request) {
@@ -81,7 +81,7 @@ class CustomerService
     public function view($id)
     {
         $companyId = Auth::user()->current_company_id;
-        
+
         $record = Customer::select(
             'id',
             'company_name',
@@ -110,7 +110,8 @@ class CustomerService
 
     public function createCustomer($request)
     {
-        $companyId = Auth::user()->current_company_id;
+        //code...
+        $companyId = Auth::user()?->current_company_id;
 
         $record = Customer::updateOrCreate([
             "id" => $request["id"] ?? null
@@ -210,7 +211,7 @@ class CustomerService
     public function generateCustomerStatement($id)
     {
         $companyId = Auth::user()->current_company_id;
-        
+
         $record = Customer::select(
             'id',
             'company_name',

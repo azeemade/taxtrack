@@ -429,8 +429,10 @@ class RegisterController extends Controller
                 ]);
             }
 
-            foreach ($request->users as $user) {
-                $this->userService->create($user, null, $id);
+            if ($request->users && count($request->users) > 0) {
+                foreach ($request->users as $user) {
+                    $this->userService->create($user, null, $id);
+                }
             }
 
             DB::commit();

@@ -73,25 +73,21 @@ class SupplierService
 
     public function createSupplier($request)
     {
-        try {
-            $record = Vendor::updateOrCreate([
-                "id" => $request["id"] ?? null
-            ], [
-                ...$request,
-                "referenceID" => $request['supplier_reference'] ?? $this->view($request["id"])?->referenceID,
-                "zip_code" => $request['post_code'] ?? null
-            ]);
+        $record = Vendor::updateOrCreate([
+            "id" => $request["id"] ?? null
+        ], [
+            ...$request,
+            "referenceID" => $request['supplier_reference'] ?? $this->view($request["id"])?->referenceID,
+            "zip_code" => $request['post_code'] ?? null
+        ]);
 
-            if (isset($request["id"]) && $request["id"]) {
-                $this->updateContactPerson($record, $request);
-            } else {
-                $this->createContactPerson($record, $request);
-            }
-
-            return $record->only('id', 'vendor_name', 'primary_phone_number', 'primary_email');
-        } catch (\Exception $e) {
-            dd($e->getMessage());
+        if (isset($request["id"]) && $request["id"]) {
+            $this->updateContactPerson($record, $request);
+        } else {
+            $this->createContactPerson($record, $request);
         }
+
+        return $record->only('id', 'vendor_name', 'primary_phone_number', 'primary_email');
     }
 
     protected function createContactPerson($record, $request)
