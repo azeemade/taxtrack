@@ -106,4 +106,21 @@ class QuoteController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function convertToInvoice($id)
+    {
+        try {
+            DB::beginTransaction();
+            $record = $this->quoteService->convertQuoteToInvoice($id);
+            DB::commit();
+            return JsonResponser::send(false, 'Quote converted to invoice successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return JsonResponser::send(true, $th, [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            // return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 }

@@ -229,6 +229,66 @@ class QuoteService
         return $record;
     }
 
+    public function convertQuoteToInvoice($id)
+    {
+        $record = Quote::find($id);
+        if (!$record) {
+            throw new BadRequestException("Quote not found!", Response::HTTP_NOT_FOUND);
+        }
+
+        $record->update([
+            'status' => FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value,
+        ]);
+
+        $invoice = Invoice::firstOrCreate(
+            ['quote_id' => $record->id],
+            [
+                'company_id'    => $record->company_id,
+                'customer_id'   => $record->customer_id,
+                'currency_id'   => $record->currency_id,
+                'created_by'    => $record->created_by,
+                'invoice_date'  => now(),
+                'invoiceID'     => $this->invoiceService->generateInvoiceId(),
+                'status'        => FinancialDocumentStatusEnums::ISSUED->value, // posting at issue
+                'share_status'  => ShareStatusEnums::NOT_SHARED->value,
+                'sub_total'     => $record->sub_total ?? 0,
+                'tax_total'     => $record->tax_total ?? 0,
+                'discount_total' => $record->discount_total ?? 0,
+                'shipping_charge'   => $record->shipping_charge ?? 0,
+                'additional_charge' => $record->additional_charge ?? 0,
+            ]
+        );
+
+        // b) Copy quote line items to the invoice on first creation
+        if ($invoice->wasRecentlyCreated) {
+            foreach ($record->lineItems as $li) {
+                $copy = $li->replicate();
+                $copy->documentable_type = Invoice::class;
+                $copy->documentable_id   = $invoice->id;
+                $copy->created_by = Auth::id();
+                $copy->company_id = Auth::user()->current_company_id;
+                $copy->save();
+            }
+        }
+
+        // c) Post accounting for the invoice (creates/refreshes journal + lines)
+
+        (new InvoicePosting())
+            ->syncInvoiceJournal($invoice, (int) $invoice->company_id, (int) ($invoice->created_by ?? null));
+
+
+
+        $this->sharedActionServices->emailEntity($record);
+
+        // d) (Optional) store the journal on quote too, for traceability
+        if (!empty($invoice->journal_entry_id)) {
+            $record->journal_entry_id = $invoice->journal_entry_id;
+            $record->save();
+        }
+
+        return $record;
+    }
+
 
 
 
