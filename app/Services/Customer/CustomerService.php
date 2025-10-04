@@ -22,7 +22,7 @@ class CustomerService
     public function list($request)
     {
         $records = Customer::query()
-            ->select('id', 'company_name', 'customerID', 'current_balance', 'is_active', 'currency_id', 'terms_and_conditions')
+            ->select('id', 'company_name', 'customerID', 'current_balance', 'is_active', 'currency_id', 'terms_and_conditions', 'county')
             ->with('contactPerson:id,full_name,company_contact_people.contactable_id')
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
@@ -119,12 +119,14 @@ class CustomerService
             "country_id" => $request['country_id'] ?? null,
             "address" => $request['address'] ?? null,
             "city_id" => $request['city_id'] ?? null,
+            "county" => $request['county'] ?? null,
             "vat_date" => $request['vat_date'] ?? null,
             "tax_type" => $request['tax_type'] ?? null,
             "customer_logo" => $request['customer_logo'] ?? null,
             "payment_term" => $request['payment_term'] ?? null,
             "special_instruction" => $request['special_instruction'] ?? null,
             "terms_and_conditions" => $request['terms_and_conditions'] ?? null,
+            "zip_code" => $request['zip_code'] ?? null,
         ]);
 
         if (isset($request["id"]) && $request["id"]) {

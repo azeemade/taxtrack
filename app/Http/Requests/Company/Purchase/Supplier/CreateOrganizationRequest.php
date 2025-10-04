@@ -46,6 +46,7 @@ class CreateOrganizationRequest extends FormRequest
             "country_id" => 'nullable|integer|exists:countries,id',
             "city_id" => 'nullable|integer|exists:cities,id',
             "state_id" => 'nullable|integer|exists:states,id',
+            "county" => 'nullable|string',
             "contact_persons" => 'required|array',
             "contact_persons.*.id" => ['sometimes', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
                 $person = CompanyContactPerson::where('company_id', Auth::user()?->company?->id)

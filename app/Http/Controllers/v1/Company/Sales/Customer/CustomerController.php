@@ -75,7 +75,8 @@ class CustomerController extends Controller
                     'payment_term',
                     'terms_and_conditions',
                     'vat_number',
-                    'vat_date'
+                    'vat_date',
+                    'county'
                 ),
                 "company_name" => $request->display_name,
                 "customer_logo" => $request->image,
@@ -131,7 +132,8 @@ class CustomerController extends Controller
                     'city_id',
                     'terms_and_conditions',
                     'vat_number',
-                    'vat_date'
+                    'vat_date',
+                    'county'
                 ),
                 "customer_logo" => $request->image,
                 "email" => $request->primary_email,
@@ -168,7 +170,8 @@ class CustomerController extends Controller
                     'terms_and_conditions',
                     'vat_number',
                     'vat_date',
-                    'tax_type'
+                    'tax_type',
+                    'county'
                 ),
                 "id" => $id,
                 "company_name" => $request->display_name,
@@ -227,7 +230,8 @@ class CustomerController extends Controller
                     'terms_and_conditions',
                     'vat_number',
                     'vat_date',
-                    'tax_type'
+                    'tax_type',
+                    'county'
                 ),
                 "id" => $id,
                 "customer_logo" => $request->image,
