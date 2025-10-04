@@ -10,6 +10,7 @@ use App\Models\Customer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 
 class CustomerService
@@ -21,9 +22,12 @@ class CustomerService
 
     public function list($request)
     {
+        $companyId = Auth::user()->current_company_id;
+
         $records = Customer::query()
             ->select('id', 'company_name', 'customerID', 'current_balance', 'is_active', 'currency_id', 'terms_and_conditions')
             ->with('contactPerson:id,full_name,company_contact_people.contactable_id')
+            ->where('company_id', $companyId)
             ->when($request->sort_by, function ($query) use ($request) {
                 if ($request->sort_by == "alphabetically") {
                     return $query->orderBy('company_name', 'asc');
@@ -59,7 +63,10 @@ class CustomerService
 
     public function stats($request)
     {
+        $companyId = Auth::user()->current_company_id;
+        
         $records = Customer::query()
+            ->where('company_id', $companyId)
             ->when(isset($request->start_date) && $request->start_date && $request->end_date, function ($query) use ($request) {
                 return $query->where('created_at', [$request?->start_date, $request->end_date]);
             });
@@ -73,9 +80,12 @@ class CustomerService
 
     public function view($id)
     {
+        $companyId = Auth::user()->current_company_id;
+        
         $record = Customer::select(
             'id',
             'company_name',
+            'company_id',
             'category_id',
             'customer_type',
             'business_type',
@@ -90,6 +100,7 @@ class CustomerService
             'payment_term'
         )
             ->with(['currency:id,name,symbol', 'category:id,name', 'contactPersons'])
+            ->where('company_id', $companyId)
             ->find($id);
         if (!$record) {
             throw new BadRequestException("Customer not found.", Response::HTTP_NOT_FOUND);
@@ -99,6 +110,8 @@ class CustomerService
 
     public function createCustomer($request)
     {
+        $companyId = Auth::user()->current_company_id;
+
         $record = Customer::updateOrCreate([
             "id" => $request["id"] ?? null
         ], [
@@ -126,7 +139,7 @@ class CustomerService
             "special_instruction" => $request['special_instruction'] ?? null,
             "terms_and_conditions" => $request['terms_and_conditions'] ?? null,
             "created_by" => $request['created_by'] ?? null,
-            "company_id" => $request['company_id'] ?? null,
+            "company_id" => $request['company_id'] ?? $companyId,
         ]);
 
         if (isset($request["id"]) && $request["id"]) {
@@ -194,6 +207,8 @@ class CustomerService
 
     public function generateCustomerStatement($id)
     {
+        $companyId = Auth::user()->current_company_id;
+        
         $record = Customer::select(
             'id',
             'company_name',
@@ -201,7 +216,7 @@ class CustomerService
             'customerID',
             'email',
             'currency_id',
-            'company_id'
+            'company_id',
         )
             ->with([
                 'currency:id,name,symbol',
@@ -217,6 +232,7 @@ class CustomerService
                 ]
             ])
             ->withSum('invoices as total_invoice_value', 'invoice_value')
+            ->where('company_id', $companyId)
             ->find($id);
         if (!$record) {
             throw new BadRequestException("Customer not found.", Response::HTTP_NOT_FOUND);
