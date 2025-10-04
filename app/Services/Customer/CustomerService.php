@@ -97,7 +97,8 @@ class CustomerService
             'vat_number',
             'vat_date',
             'tax_type',
-            'payment_term'
+            'payment_term',
+            'county'
         )
             ->with(['currency:id,name,symbol', 'category:id,name', 'contactPersons'])
             ->where('company_id', $companyId)
