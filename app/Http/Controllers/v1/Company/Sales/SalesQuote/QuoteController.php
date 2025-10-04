@@ -111,7 +111,7 @@ class QuoteController extends Controller
     {
         try {
             DB::beginTransaction();
-            $record = $this->quoteService->convertQuoteToInvoice($request->validated(), $id);
+            $record = $this->quoteService->convertQuoteToInvoice($request, $id);
             DB::commit();
             return JsonResponser::send(false, 'Quote converted to invoice successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
