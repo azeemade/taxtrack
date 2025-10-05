@@ -320,7 +320,7 @@ Route::group([
                         Route::post('/build-and-save-reconciliation-records', [ReconciliationController::class, 'buildAndSaveReconciliationRecords']);
                         Route::post('/list-reconciliation-runs', [ReconciliationController::class, 'listReconciliationRuns']);
                         Route::get('/get-reconciliation-run/{runId}', [ReconciliationController::class, 'getReconciliationRun']);
-                        // Route::get('/all_statements', [ReconciliationController::class, 'allBankStatements']);
+                        Route::get('/all_statements', [ReconciliationController::class, 'allBankStatements']);
                         // Route::get('/all_account_transactions', [ReconciliationController::class, 'allAccountTransactions']);
 
                         // Route::post('/bank-reconciliation-summary', [ReconciliationController::class, 'getBankReconciliationSummary']);
