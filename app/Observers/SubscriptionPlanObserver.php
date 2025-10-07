@@ -61,6 +61,11 @@ class SubscriptionPlanObserver
             return;
         }
 
+        // Skip if it's a free plan
+        if ($model->is_free) {
+            return;
+        }
+
         $stripe = $this->stripe;
 
         if (!$model->is_free) {
@@ -76,45 +81,63 @@ class SubscriptionPlanObserver
                 ]
             );
 
-            if ($model->wasChanged('monthly_fee')) {
-                $this->updatePrice(
-                    $model->provider_product_id,
-                    $model->provider_price_ids['monthly'],
-                    $model->monthly_fee,
-                    'month',
-                    'base',
-                    $stripe
-                );
+            $oldModel = $model->getOriginal();
+            // if ($model->isDirty('monthly_fee')) {
+            if ($oldModel['monthly_fee'] != $model->monthly_fee) {
+                $priceIds = is_array($model->provider_price_ids) ? $model->provider_price_ids : json_decode($model->provider_price_ids, true);
+                if (empty($priceIds)) {
+                    $monthlyPrice = $this->createPrice(
+                        $model->provider_product_id,
+                        $model->monthly_fee,
+                        'month',
+                        'base',
+                        $stripe
+                    );
+                    $monthlyPrice = $monthlyPrice->toArray();
+                } else {
+                    $monthlyPrice = $this->updatePrice(
+                        $model->provider_product_id,
+                        $oldModel['provider_price_ids']['monthly'],
+                        $model->monthly_fee,
+                        'month',
+                        'base',
+                        $stripe
+                    );
+                    $monthlyPrice = $monthlyPrice->toArray();
+                }
+                $model->updateQuietly(['provider_price_ids' => [
+                    ...$priceIds,
+                    'monthly' => $monthlyPrice['id'],
+                ]]);
             }
 
-            if ($model->wasChanged('yearly_fee')) {
-                $this->updatePrice(
-                    $model->provider_product_id,
-                    $model->provider_price_ids['annually'],
-                    $model->yearly_fee,
-                    'year',
-                    'base',
-                    $stripe
-                );
-            }
+            if ($oldModel['yearly_fee'] != $model->yearly_fee) {
+                $priceIds = is_array($model->provider_price_ids) ? $model->provider_price_ids : json_decode($model->provider_price_ids, true);
+                if (empty($priceIds) || empty($priceIds['annually'])) {
+                    $annualPrice = $this->createPrice(
+                        $model->provider_product_id,
+                        $model->yearly_fee,
+                        'year',
+                        'base',
+                        $stripe
+                    );
+                    $annualPrice = $annualPrice->toArray();
+                } else {
+                    $annualPrice = $this->updatePrice(
+                        $model->provider_product_id,
+                        $oldModel['provider_price_ids']['annually'],
+                        $model->yearly_fee,
+                        'year',
+                        'base',
+                        $stripe
+                    );
+                    $annualPrice = $annualPrice->toArray();
+                }
 
-            if ($model->wasChanged('seat_amount')) {
-                $this->updatePrice(
-                    $model->provider_product_id,
-                    $model->provider_seat_amount_ids['monthly'],
-                    floatval($model->seat_amount ?? 0.00),
-                    'month',
-                    'per_user',
-                    $stripe
-                );
-                $this->updatePrice(
-                    $model->provider_product_id,
-                    $model->provider_seat_amount_ids['annually'],
-                    floatval($model->seat_amount ?? 0.00),
-                    'year',
-                    'per_user',
-                    $stripe
-                );
+                $model->updateQuietly(['provider_price_ids' => [
+                    ...$priceIds,
+                    'annually' => $annualPrice['id'],
+                ]]);
             }
         }
     }
@@ -155,7 +178,7 @@ class SubscriptionPlanObserver
         \App\Services\ThirdPartyApi\Stripe\Stripe $stripe,
     ) {
         return $stripe->createPrice([
-            'currency' => SubscriptionConstant::CURRENCY_USD,
+            'currency' => SubscriptionConstant::CURRENCY_GBP,
             'unit_amount' => $amount * 100,
             'product' => $product_id,
             'recurring' => [
