@@ -13,9 +13,12 @@ class SubscriptionHistory extends Model
 
     public function scopeSubscriber($query)
     {
-        // dd(Auth::user()->company->id, Auth::user()->id);
-        return $query->whereRelation('subscriber', 'company_id', Auth::user()->company->id)
-            ->whereRelation('subscriber', 'user_id', Auth::user()->id);
+        $currentUser = Auth::user();
+        if (!$currentUser?->hasRole(['client'])) {
+            return $query;
+        }
+        return $query->whereRelation('subscriber', 'company_id', $currentUser?->company?->id)
+            ->whereRelation('subscriber', 'user_id', $currentUser?->id);
     }
 
     public function subscriptionRefund()

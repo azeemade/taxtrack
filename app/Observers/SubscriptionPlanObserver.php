@@ -24,7 +24,7 @@ class SubscriptionPlanObserver
             $product = $stripe->createProduct([
                 'name' => $model->title,
                 'description' => $model->short_description,
-                'active' => $model->is_active,
+                'active' => boolval($model->is_active),
                 'metadata' => [
                     'default_seat_count' => $model->default_seat || SubscriptionConstant::DEFAULT_SEAT_COUNT,
                 ],
@@ -69,7 +69,7 @@ class SubscriptionPlanObserver
                 [
                     'name' => $model->title,
                     'description' => $model->short_description,
-                    'active' => $model->is_active,
+                    'active' => boolval($model->is_active),
                     'metadata' => [
                         'default_seat_count' => $model->default_seat ?? SubscriptionConstant::DEFAULT_SEAT_COUNT,
                     ],
@@ -126,7 +126,8 @@ class SubscriptionPlanObserver
     {
         $stripe = $this->stripe;
         if (!$model->is_free) {
-            $stripe->deleteProduct($model->provider_product_id);
+            $stripe->updateProduct($model->provider_product_id, ["active" => false]);
+            // $stripe->deleteProduct($model->provider_product_id);
         }
     }
 
