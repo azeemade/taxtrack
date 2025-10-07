@@ -23,8 +23,8 @@ class BankStatementTemplateExport implements FromArray, WithHeadings
             'transaction_date',
             'reference_id',
             'description',
-            'withdrawals',
-            'lodgments',
+            'debit',
+            'credit',
             'balance',
             'value_date',
         ];

@@ -2,29 +2,15 @@
 
 namespace App\Exports\Accounting\ChartOfAccount;
 
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\Exportable;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-// use 
-class AccountTemplate implements FromCollection, WithHeadings
-{
-    use Exportable;
-    /**
-     * @return \Illuminate\Support\Collection
-     */
-    public function collection()
-    {
-        return collect([
-            [
-                'account_sub_category_name' => "Accounts Payable",
-                'name' => 'SayLita',
-                'description' => 'Salita Account'
-            ]
-        ]);
-    }
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
-    public function headings(): array
+class AccountTemplateExport implements WithMultipleSheets
+{
+    public function sheets(): array
     {
-        return array('Account SubCategory Name', 'Name', 'Description');
+        return [
+            new AccountTemplateSheet(),  // Sheet 1
+            new SubCategorySheet(),      // Sheet 2
+        ];
     }
 }
