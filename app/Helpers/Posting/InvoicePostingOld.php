@@ -5,7 +5,7 @@ namespace App\Helpers\Posting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class InvoicePosting
+class InvoicePostingOld
 {
     /**
      * Idempotent sales invoice posting built from line_items.

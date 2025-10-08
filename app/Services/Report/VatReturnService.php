@@ -166,7 +166,7 @@ class VatReturnService
      * replace the gross-up with a direct sum of that account.
      *
      * @param float $flatRatePercent      e.g., 12.0 for 12% flat rate
-     * @param float $standardVatRate      e.g., 0.075 for 7.5% (default Nigeria)
+     * @param float $standardVatRate      e.g., 20 for 20% (default UK)
      */
     public function generateFlatRateVatReturn(
         string $startDate,
@@ -174,7 +174,7 @@ class VatReturnService
         string $companyId,
         ?string $vatNumber = null,
         ?float $flatRatePercent = null,
-        float $standardVatRate = 0.075 // adjust for your jurisdiction if needed
+        float $standardVatRate = 20 // adjust for your jurisdiction if needed
     ): array {
         $start = Carbon::parse($startDate)->startOfDay();
         $end   = Carbon::parse($endDate)->endOfDay();
@@ -216,7 +216,7 @@ class VatReturnService
             'vat_number'            => $vatNumber,
             'quarter_ending'        => $end->format('d.m.y'),
             'flat_rate_percentage'  => $flatRatePercent,
-            'standard_vat_rate'     => $standardVatRate * 100, // for display
+            'standard_vat_rate'     => $standardVatRate, // for display // * 100
             'line_total'            => number_format($netVat, 2, '.', ''),
             'lines' => [
                 'line_1' => [
