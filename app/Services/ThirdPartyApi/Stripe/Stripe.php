@@ -132,6 +132,11 @@ class Stripe
         return $this->stripe->paymentIntents->confirm($id, $data);
     }
 
+    public function retrievePaymentIntent($id)
+    {
+        return $this->stripe->paymentIntents->retrieve($id);
+    }
+
     /**
      * 
      * Refund section
@@ -140,5 +145,15 @@ class Stripe
     public function createRefund($data)
     {
         return $this->stripe->refunds->create($data);
+    }
+
+    public function createPlan($data)
+    {
+        return $this->stripe->plans->create($data);
+    }
+
+    public function updatePlan($id, $data)
+    {
+        return $this->stripe->plans->update($id, $data);
     }
 }
