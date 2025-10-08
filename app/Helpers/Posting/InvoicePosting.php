@@ -4,57 +4,80 @@ namespace App\Helpers\Posting;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+use App\Helpers\Posting\AccountHelper;
 
 class InvoicePosting
 {
     /**
      * Idempotent sales invoice posting built from line_items.
      *
-     * Lines produced:
+     * Lines produced (NET sales workflow):
      *   Dr Accounts Receivable (invoice_value OR computed)
      *   Cr Sales revenue (sum of unit totals BEFORE discount)
      *   Dr Discounts (contra revenue) (sum of discounts)
      *   Cr VAT Payable (sum of VAT on net)
-     *   Cr Shipping Income (shipping_charge)
-     *   Cr Other Income (additional_charge)
+     *   Cr Shipping Income (shipping_charge) [optional]
+     *   Cr Other Income (additional_charge) [optional]
      *   [Inventory items only]
      *     Dr COGS
      *     Cr Inventory
+     *   [Optional rounding plug if UI total != computed]
+     *     Dr/Cr Rounding/Suspense
+     *
+     * @param object   $invoice    Must contain: id, company_id, invoice_date?, invoiceID?, customer_id?, invoice_value?, shipping_charge?, additional_charge?, journal_entry_id?
+     * @param int      $companyId
+     * @param int|null $editedBy
+     * @param int|null $quoteId    If provided, lines are pulled from Quote; otherwise from the invoice itself
+     * @return int journal_entry_id
+     * @throws \Throwable
      */
-    public function syncInvoiceJournal(object $invoice, int $companyId, ?int $editedBy = null, $quoteId = null): int
+    public function syncInvoiceJournal(object $invoice, int $companyId, ?int $editedBy = null, ?int $quoteId = null): int
     {
-        // ------------- 1) Pull line items -------------
-        $lines = DB::table('line_items')
-            ->where('documentable_id', $quoteId)
-            // ->where('documentable_id', $invoice->id)
-            // ->where('documentable_type', 'invoices')
-            ->where('documentable_type', 'App\Models\Quote')
-            ->get([
-                'id','quantity','price','discount','vat','amount','category_id',
-                // 'id','quantity','price','total_unit_price','discount','vat','amount','category_id',
-            ]);
+        // ---------- 1) Pull line items ----------
+        $linesQuery = DB::table('line_items');
+
+        if ($quoteId) {
+            $linesQuery->where('documentable_id', $quoteId)
+                       ->where('documentable_type', 'App\Models\Quote');
+        } else {
+            $linesQuery->where('documentable_id', $invoice->id)
+                       ->where('documentable_type', 'App\Models\Invoice');
+        }
+
+        $lines = $linesQuery->get([
+            'id',
+            'quantity',
+            'price',
+            'discount',
+            'vat',
+            'amount',         // UI gross (optional; used for consistency checks)
+            'category_id',
+            'cost_price',     // preferred cost
+            'avg_cost',       // fallback cost
+            'product_id',     // optional product lookup
+        ]);
 
         if ($lines->isEmpty()) {
             throw new \RuntimeException('No line items found for invoice.');
         }
 
-        // ------------- 2) Build totals from lines -------------
+        // ---------- 2) Build totals from lines ----------
         $salesGross       = 0.0; // sum of unit totals BEFORE discount
         $discountTotal    = 0.0;
         $vatTotal         = 0.0;
-        $grossFromLines   = 0.0; // sum of line gross (net + vat)
+        $grossFromLines   = 0.0; // sum of (net + vat) for all lines
 
         $cogsTotal        = 0.0; // only for inventory items
-        $inventoryTotal   = 0.0;
 
         foreach ($lines as $li) {
             $qty        = max((float)($li->quantity ?? 0), 0.0);
             $unitPrice  = (float)($li->price ?? 0);
-            $unitTotal  = $this->orFloat($li->amount, $qty * $unitPrice); // BEFORE discount
-            // $unitTotal  = $this->orFloat($li->total_unit_price, $qty * $unitPrice); // BEFORE discount
-            $discVal    = (float)($li->discount ?? 0); // may be % or absolute
-            $vatVal     = (float)($li->vat ?? 0);      // may be % or absolute (system uses % on sales)
-            $lineGross  = (float)($li->amount ?? 0);   // usually net+vat, from UI
+            $unitTotal  = $qty * $unitPrice; // BEFORE discount
+
+            $discVal    = (float)($li->discount ?? 0); // %/fraction/absolute handled below
+            $vatVal     = (float)($li->vat ?? 0);      // %/fraction/absolute handled below
+            $lineGross  = $li->amount !== null ? (float)$li->amount : null;   // UI gross (optional)
 
             $discountAmt = $this->discountAmount($unitTotal, $discVal);
             $netExVat    = max($unitTotal - $discountAmt, 0.0);
@@ -65,13 +88,11 @@ class InvoicePosting
             $vatTotal       += $vatAmt;
             $grossFromLines += ($netExVat + $vatAmt);
 
-            // Inventory posting (COGS/Inventory) only for inventory categories
+            // Inventory posting (COGS) only for inventory-type categories
             if ($this->isInventoryCategory((int)($li->category_id ?? 0))) {
                 $unitCost = $this->resolveUnitCost($li);
                 if ($unitCost > 0 && $qty > 0) {
-                    $cost = $unitCost * $qty;
-                    $cogsTotal      += $cost;
-                    $inventoryTotal += $cost;
+                    $cogsTotal += ($unitCost * $qty);
                 }
             }
         }
@@ -79,29 +100,37 @@ class InvoicePosting
         $shipping     = (float)($invoice->shipping_charge ?? 0.0);
         $otherCharge  = (float)($invoice->additional_charge ?? 0.0);
 
-        // Prefer persisted invoice_value for AR (UI truth); else compute.
-        $receivable = (float)($invoice->invoice_value ?? ($grossFromLines + $shipping + $otherCharge));
+        // AR from UI if present; else compute (most audit-friendly to use UI total, but we will guard with rounding plug)
+        $computedTotal = $grossFromLines + $shipping + $otherCharge;
+        $receivable    = (float)($invoice->invoice_value ?? $computedTotal);
 
-        // ------------- 3) Resolve accounts -------------
-        $accAR          = $this->accountIdFromKey('AR', $companyId);
-        $accSales       = $this->accountIdFromKey('SALES', $companyId);
-        $accDiscounts   = $this->accountIdFromKey('DISCOUNTS', $companyId);
-        $accVATPayable  = $this->accountIdFromKey('VAT_PAYABLE', $companyId);
+        // ---------- 3) Resolve accounts ----------
+        $accAR          = $this->accountIdFromKey('AR', $companyId);                   // trade-account-receivables
+        $accSales       = $this->accountIdFromKey('SALES', $companyId);                // sales
+        $accDiscounts   = $this->accountIdFromKey('DISCOUNTS', $companyId);            // discounts (contra)
+        $accVATPayable  = $this->accountIdFromKey('VAT_PAYABLE', $companyId);          // vat-payable
 
         // Optional income buckets (fallback to SALES if not configured)
         $accShippingInc = $this->accountIdFromKeyOptional('SHIPPING_INCOME', $companyId) ?? $accSales;
-        $accOtherInc    = $this->accountIdFromKeyOptional('OTHER_INCOME', $companyId) ?? $accSales;
+        $accOtherInc    = $this->accountIdFromKeyOptional('OTHER_INCOME', $companyId)    ?? $accSales;
 
-        // Inventory accounts
-        $accCOGS        = $this->accountIdFromKeyOptional('COGS', $companyId);         // 'cost-of-goods-sold'
-        $accInventory   = $this->accountIdFromKeyOptional('INVENTORY', $companyId)     // 'inventories'
-                          ?? $this->accountIdFromSlug('inventories', $companyId);      // fallback by slug present in your CoA
+        // Inventory accounts (optional)
+        $accCOGS        = $this->accountIdFromKeyOptional('COGS', $companyId);         // cost-of-goods-sold
+        $accInventory   = $this->accountIdFromKeyOptional('INVENTORY', $companyId);    // inventories
+        if (!$accInventory) {
+            // Fallback by slug from your CoA template (inventories)
+            $accInventory = $this->accountIdFromSlug('inventories', $companyId);
+        }
 
-        // ------------- 4) Upsert header + lines -------------
+        // Optional rounding/suspense account (else fallback to 'suspense-account')
+        $accRounding    = $this->accountIdFromKeyOptional('ROUNDING_DIFF', $companyId)
+                       ?? $this->accountIdFromSlug('suspense-account', $companyId);    // 1020020007
+
+        // ---------- 4) Upsert header + lines ----------
         return DB::transaction(function () use (
             $invoice, $companyId, $editedBy, $receivable, $salesGross, $discountTotal, $vatTotal,
             $shipping, $otherCharge, $accAR, $accSales, $accDiscounts, $accVATPayable, $accShippingInc, $accOtherInc,
-            $cogsTotal, $accCOGS, $accInventory
+            $cogsTotal, $accCOGS, $accInventory, $accRounding, $computedTotal
         ) {
             // Header
             if (!empty($invoice->journal_entry_id)) {
@@ -139,41 +168,70 @@ class InvoicePosting
 
             $entries = [];
 
-            // Dr AR
-            if ($receivable > 0) $entries[] = $this->line($jeId, $date, $accAR, $ref, 'Accounts Receivable', $receivable, 0);
+            // Dr AR (full receivable)
+            if ($receivable > 0) {
+                $entries[] = $this->line($jeId, $date, $accAR, $ref, 'Accounts Receivable', $receivable, 0);
+            }
 
-            // Cr Sales (gross before discount)
-            if ($salesGross > 0) $entries[] = $this->line($jeId, $date, $accSales, $ref, 'Sales revenue (gross)', 0, $salesGross);
+            // Cr Sales (gross BEFORE discount)
+            if ($salesGross > 0) {
+                $entries[] = $this->line($jeId, $date, $accSales, $ref, 'Sales revenue (gross)', 0, $salesGross);
+            }
 
-            // Dr Discounts (contra)
-            if ($discountTotal > 0) $entries[] = $this->line($jeId, $date, $accDiscounts, $ref, 'Sales discounts', $discountTotal, 0);
+            // Dr Discounts (contra revenue)
+            if ($discountTotal > 0) {
+                $entries[] = $this->line($jeId, $date, $accDiscounts, $ref, 'Sales discounts', $discountTotal, 0);
+            }
 
             // Cr VAT Payable
-            if ($vatTotal > 0) $entries[] = $this->line($jeId, $date, $accVATPayable, $ref, 'VAT on sales', 0, $vatTotal);
+            if ($vatTotal > 0) {
+                $entries[] = $this->line($jeId, $date, $accVATPayable, $ref, 'VAT on sales', 0, $vatTotal);
+            }
 
             // Cr Shipping Income
-            if ($shipping > 0) $entries[] = $this->line($jeId, $date, $accShippingInc, $ref, 'Shipping charge', 0, $shipping);
+            if ($shipping > 0) {
+                $entries[] = $this->line($jeId, $date, $accShippingInc, $ref, 'Shipping charge', 0, $shipping);
+            }
 
             // Cr Other Income
-            if ($otherCharge > 0) $entries[] = $this->line($jeId, $date, $accOtherInc, $ref, 'Additional charges', 0, $otherCharge);
+            if ($otherCharge > 0) {
+                $entries[] = $this->line($jeId, $date, $accOtherInc, $ref, 'Additional charges', 0, $otherCharge);
+            }
 
-            // Inventory/COGS (only when amounts exist & accounts resolved)
+            // Inventory / COGS
             if ($cogsTotal > 0) {
                 if (!$accCOGS || !$accInventory) {
-                    Log::warning('COGS/Inventory posting skipped: account missing.', compact('accCOGS','accInventory'));
+                    Log::warning('COGS/Inventory posting skipped: account missing.', compact('accCOGS', 'accInventory'));
                 } else {
                     $entries[] = $this->line($jeId, $date, $accCOGS,      $ref, 'Cost of goods sold', $cogsTotal, 0);
-                    $entries[] = $this->line($jeId, $date, $accInventory, $ref, 'Reduce Inventory', 0, $cogsTotal);
+                    $entries[] = $this->line($jeId, $date, $accInventory, $ref, 'Reduce Inventory',  0, $cogsTotal);
                 }
             }
 
-            foreach ($entries as $e) DB::table('finance_account_entries')->insert($e);
+            // Rounding / UI total reconciliation (guard)
+            $diff = round($receivable - $computedTotal, 2);
+            if (abs($diff) >= 0.01) {
+                // If receivable > computed → credit rounding to keep debits=credits (and vice-versa)
+                if ($diff > 0) {
+                    $entries[] = $this->line($jeId, $date, $accRounding, $ref, 'Rounding/Recon adjustment', 0, $diff);
+                } else {
+                    $entries[] = $this->line($jeId, $date, $accRounding, $ref, 'Rounding/Recon adjustment', -$diff, 0);
+                }
+            }
 
-            // Balance guard
-            $d=0.0; $c=0.0;
-            foreach ($entries as $e) { $d += $e['debit_amount']; $c += $e['credit_amount']; }
-            if (abs($d - $c) > 0.01) { // small tolerance
-                Log::error("Invoice JE out of balance", ['debits'=>$d,'credits'=>$c,'invoice_id'=>$invoice->id]);
+            // Persist all lines
+            foreach ($entries as $e) {
+                DB::table('finance_account_entries')->insert($e);
+            }
+
+            // Final balance guard
+            $d = 0.0; $c = 0.0;
+            foreach ($entries as $e) {
+                $d += $e['debit_amount'];
+                $c += $e['credit_amount'];
+            }
+            if (abs($d - $c) > 0.01) {
+                Log::error("Invoice JE out of balance", ['debits' => $d, 'credits' => $c, 'invoice_id' => $invoice->id]);
                 throw new \RuntimeException('Journal not balanced (debits != credits).');
             }
 
@@ -186,30 +244,30 @@ class InvoicePosting
     private function discountAmount(float $unitTotal, float $discountField): float
     {
         if ($discountField <= 0) return 0.0;
-        // Treat 0 < x <= 1 as fraction; 1 < x <= 100 as percent; else absolute
+        // 0<x<=1 -> fraction; 1<x<=100 -> percent; else absolute
         if ($discountField > 0 && $discountField <= 1) {
             return round($unitTotal * $discountField, 2);
         } elseif ($discountField > 1 && $discountField <= 100) {
             return round($unitTotal * ($discountField / 100), 2);
         }
-        return min($discountField, $unitTotal);
+        return round(min($discountField, $unitTotal), 2);
     }
 
     private function vatAmount(float $netExVat, float $vatField, ?float $lineGross): float
     {
         if ($vatField <= 0) return 0.0;
-        // 0<x<=1 -> fraction, 1<x<=100 -> percent, else assume absolute VAT
+        // 0<x<=1 -> fraction; 1<x<=100 -> percent; else absolute VAT
         if ($vatField > 0 && $vatField <= 1) {
             return round($netExVat * $vatField, 2);
         } elseif ($vatField > 1 && $vatField <= 100) {
             $calc = round($netExVat * ($vatField / 100), 2);
-            // If UI sent 'amount' (gross), prefer it when consistent
+            // Prefer UI gross if consistent
             if ($lineGross && abs(($netExVat + $calc) - $lineGross) <= 0.01) return $calc;
             if ($lineGross && $lineGross > $netExVat) return round($lineGross - $netExVat, 2);
             return $calc;
         }
-        // treat as absolute VAT amount
-        return max($vatField, 0.0);
+        // absolute VAT
+        return round(max($vatField, 0.0), 2);
     }
 
     private function isInventoryCategory(int $categoryId): bool
@@ -218,7 +276,7 @@ class InvoicePosting
         $slug = DB::table('categories')->where('id', $categoryId)->value('slug');
         if (!$slug) return false;
 
-        // Allow config override: config('inventory.inventory_slugs', [...])
+        // Override list via config if you like
         $inventorySlugs = config('inventory.inventory_slugs', [
             'hardware','materials','equipment','inventory','stock'
         ]);
@@ -226,26 +284,33 @@ class InvoicePosting
         return in_array($slug, $inventorySlugs, true);
     }
 
+    /**
+     * Resolve a cost to use for COGS.
+     * Priority: cost_price → avg_cost → product.price_cost? (example) → 0
+     */
     private function resolveUnitCost(object $li): float
     {
-        // Prefer explicit unit cost columns if present on line
-        foreach (['price'] as $col) {
+        foreach (['cost_price', 'avg_cost'] as $col) {
             if (property_exists($li, $col) && $li->{$col} !== null) {
-                return (float)$li->{$col};
+                $v = (float)$li->{$col};
+                if ($v > 0) return $v;
             }
         }
-        // // Optional: pull from products table if you store it there
-        // if (property_exists($li, 'product_id') && $li->product_id) {
-        //     $prod = DB::table('products')->where('id', $li->product_id)
-        //         ->first(['price']);
-        //     if ($prod) {
-        //         foreach (['price'] as $col) {
-        //             if (property_exists($prod, $col) && $prod->{$col} !== null) {
-        //                 return (float)$prod->{$col};
-        //             }
-        //         }
-        //     }
-        // }
+
+        // Optional: product lookup if available
+        if (property_exists($li, 'product_id') && $li->product_id) {
+            $prod = DB::table('products')->where('id', $li->product_id)
+                ->first(['cost_price', 'avg_cost', 'price_cost']);
+            if ($prod) {
+                foreach (['cost_price', 'avg_cost', 'price_cost'] as $col) {
+                    if (property_exists($prod, $col) && $prod->{$col} !== null) {
+                        $v = (float)$prod->{$col};
+                        if ($v > 0) return $v;
+                    }
+                }
+            }
+        }
+
         return 0.0; // no cost info → skip COGS/Inventory posting
     }
 
@@ -279,14 +344,17 @@ class InvoicePosting
             Log::error("Missing account for $desc");
             throw new \InvalidArgumentException("Missing account for $desc");
         }
+        $debit  = round($debit, 2);
+        $credit = round($credit, 2);
+
         return [
             'journal_entry_id' => $jeId,
-            'date'             => $date,
+            'date'             => $date instanceof Carbon ? $date : Carbon::parse($date),
             'account_id'       => $accountId,
             'reference'        => $ref,
             'description'      => $desc,
-            'debit_amount'     => round($debit, 2),
-            'credit_amount'    => round($credit, 2),
+            'debit_amount'     => $debit,
+            'credit_amount'    => $credit,
             'amount'           => round($debit - $credit, 2),
             'transaction_date' => $date,
             'edited_by'        => null,
@@ -295,10 +363,8 @@ class InvoicePosting
         ];
     }
 
-    private function orFloat($value, float $fallback): float
+    private function safeStr($v): string
     {
-        return $value !== null ? (float)$value : $fallback;
+        return (string)($v ?? '');
     }
-
-    private function safeStr($v): string { return (string)($v ?? ''); }
 }
