@@ -64,6 +64,7 @@ class VatReturnService
             'vat_number' => $vatNumber,
             'quarter_ending' => $end->format('d.m.y'),
             'flat_rate_percentage' => $vatType * 100,
+            'line_total' => number_format($netVat, 2, '.', ''),
             'lines' => [
                 // 'line_1' => number_format($vatDueOnSales, 2, '.', ''),
                 // 'line_2' => number_format($vatEcAcquisitions, 2, '.', ''),
@@ -111,7 +112,7 @@ class VatReturnService
                     'value' => number_format($ecAcquisitions, 2, '.', ''),
                     'description' => 'EC acquisitions'
                 ],
-            ]
+            ],
         ];
     }
 
@@ -187,6 +188,7 @@ class VatReturnService
             'vat_number' => $vatNumber,
             'quarter_ending' => $end->format('d.m.y'),
             'vat_rate' => $vatRate * 100,
+            'line_total' => number_format($netVat, 2, '.', ''),
             'lines' => [
                 // 'line_1' => number_format($vatDueOnSales, 2, '.', ''),
                 // 'line_2' => number_format($vatEcAcquisitions, 2, '.', ''),
