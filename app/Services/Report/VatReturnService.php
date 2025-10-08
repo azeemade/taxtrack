@@ -187,7 +187,7 @@ class VatReturnService
             'company_name' => $companyName,
             'vat_number' => $vatNumber,
             'quarter_ending' => $end->format('d.m.y'),
-            'vat_rate' => $vatRate * 100,
+            'vat_rate' => $vatRate,
             'line_total' => number_format($netVat, 2, '.', ''),
             'lines' => [
                 // 'line_1' => number_format($vatDueOnSales, 2, '.', ''),
