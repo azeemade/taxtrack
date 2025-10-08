@@ -215,8 +215,9 @@ class VatReturnService
             'company_name'          => $company->name,
             'vat_number'            => $vatNumber,
             'quarter_ending'        => $end->format('d.m.y'),
-            'flat_rate_percentage'  => $flatRatePercent,
-            'standard_vat_rate'     => $standardVatRate, // for display // * 100
+            'vat_rate' => $flatRatePercent,
+            // 'flat_rate_percentage'  => $flatRatePercent,
+            // 'standard_vat_rate'     => $standardVatRate, // for display // * 100
             'line_total'            => number_format($netVat, 2, '.', ''),
             'lines' => [
                 'line_1' => [
