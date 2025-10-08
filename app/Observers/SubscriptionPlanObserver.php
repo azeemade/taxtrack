@@ -177,6 +177,15 @@ class SubscriptionPlanObserver
         string $type,
         \App\Services\ThirdPartyApi\Stripe\Stripe $stripe,
     ) {
+        if ($type == 'base') {
+            $plan = $stripe->createPlan([
+                'amount' => $amount * 100,
+                'currency' => SubscriptionConstant::CURRENCY_GBP,
+                'interval' => $interval,
+                'product' => $product_id,
+            ]);
+        }
+
         return $stripe->createPrice([
             'currency' => SubscriptionConstant::CURRENCY_GBP,
             'unit_amount' => $amount * 100,
@@ -185,7 +194,7 @@ class SubscriptionPlanObserver
                 'interval' => $interval,
                 'interval_count' => 1,
             ],
-            'metadata' => ['type' => $type]
+            'metadata' => ['type' => $type, 'plan_id' => $plan->id ?? null]
         ]);
     }
 
@@ -211,6 +220,14 @@ class SubscriptionPlanObserver
         string $price_id,
         \App\Services\ThirdPartyApi\Stripe\Stripe $stripe,
     ) {
+        $price = $stripe->retrievePrice($price_id);
+        if (
+            isset($price['metadata']['plan_id']) &&
+            $price['metadata']['type'] == 'base' &&
+            $price['metadata']['plan_id'] != null
+        ) {
+            $stripe->updatePlan($price['metadata']['plan_id'], ["active" => false]);
+        }
         return $stripe->updatePrice($price_id, ["active" => false]);
     }
 }

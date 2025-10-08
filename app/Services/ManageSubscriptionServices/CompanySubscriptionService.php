@@ -425,10 +425,10 @@ class CompanySubscriptionService
                 'paid_out_of_band' => true,
             ]);
         }
-
         if ($amountPaid['total'] > 0) {
             $this->stripe->confirmPaymentIntent($providerSubscription->latest_invoice->payment_intent->id, [
                 'payment_method' => $request['provider_payment_method_id'],
+                'payment_method_options' => ['card' => ['request_three_d_secure' => 'any']],
             ]);
         }
     }
@@ -438,6 +438,7 @@ class CompanySubscriptionService
         return $this->stripe->createSubscription([
             'customer' => $customer_id,
             'items' => $subscriptionItems,
+            'collection_method' => 'charge_automatically',
             'payment_behavior' => 'default_incomplete',
             'expand' => ['latest_invoice.payment_intent'],
             'payment_settings' => [
@@ -492,7 +493,7 @@ class CompanySubscriptionService
         $credit_balance = 0.00;
         $usable_credit_balance = $use_credit_balance ? $credit_balance : 0.00;
         $subtotal = $usable_credit_balance > $subtotal_before_credit_balance ? 0.00 : $subtotal_before_credit_balance - $usable_credit_balance;
-        $tax = $subtotal * SubscriptionConstant::TAX_RATE;
+        $tax = 0; //$subtotal * SubscriptionConstant::TAX_RATE;
         $total = $subtotal + $tax;
 
         return [
