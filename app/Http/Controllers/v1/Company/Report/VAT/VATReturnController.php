@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\v1\Company\Report\VAT;
 
+use App\Exports\Report\VATReturnReport;
 use App\Http\Controllers\Controller;
 use App\Responser\JsonResponser;
 use App\Services\Report\VatReturnService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class VATReturnController extends Controller
 {
@@ -65,6 +67,10 @@ class VATReturnController extends Controller
                 $records = $this->vATReturnService->generateStandardRateVatReturn($startDate, $endDate, $userCompanyId, $vatNumber, 20);
             } else {
                 $records = $this->vATReturnService->generateFlatRateVatReturn($startDate, $endDate, $userCompanyId, $vatNumber, auth()->user()->company->tax_type);
+            }
+
+            if ($request->export) {
+                return Excel::download(new VATReturnReport($records), 'vat_return.xlsx');
             }
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
