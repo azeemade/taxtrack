@@ -430,12 +430,13 @@ class CompanySubscriptionService
                     'paid_out_of_band' => true,
                 ]);
             }
-            if ($amountPaid['total'] > 0) {
-                $this->stripe->confirmPaymentIntent($providerSubscription->latest_invoice->payment_intent->id, [
-                    'payment_method' => $request['provider_payment_method_id'],
-                    'payment_method_options' => ['card' => ['request_three_d_secure' => 'any']],
-                ]);
-            }
+
+            // if ($amountPaid['total'] > 0) {
+            //     $this->stripe->confirmPaymentIntent($providerSubscription->latest_invoice->payment_intent->id, [
+            //         'payment_method' => $request['provider_payment_method_id'],
+            //         'payment_method_options' => ['card' => ['request_three_d_secure' => 'any']],
+            //     ]);
+            // }
         } catch (\Stripe\Exception\CardException $e) {
             throw new BadRequestException($e->getError()->message, Response::HTTP_BAD_REQUEST);
         } catch (\Stripe\Exception\RateLimitException $e) {
@@ -463,7 +464,7 @@ class CompanySubscriptionService
             'expand' => ['latest_invoice.payment_intent'],
             'payment_settings' => [
                 'payment_method_types' => ['card'],
-                'save_default_payment_method' => $save_card ? 'on_subscription' : 'never',
+                'save_default_payment_method' => $save_card ? 'on_subscription' : 'off',
             ],
         ]);
     }
