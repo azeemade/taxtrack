@@ -439,7 +439,7 @@ class RegisterController extends Controller
             return JsonResponser::send(false, 'Company created and invite sent successfully');
         } catch (BadRequestException $e) {
             DB::rollBack();
-            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode(), $e);
         } catch (\Throwable $th) {
             DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);

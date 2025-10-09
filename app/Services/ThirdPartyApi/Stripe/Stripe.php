@@ -107,6 +107,11 @@ class Stripe
         return $this->stripe->paymentMethods->attach($id, $data);
     }
 
+    public function retrievePaymentMethod($id)
+    {
+        return $this->stripe->paymentMethods->retrieve($id);
+    }
+
     /**
      * 
      * Invoice section
