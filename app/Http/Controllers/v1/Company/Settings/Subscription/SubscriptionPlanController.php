@@ -76,7 +76,7 @@ class SubscriptionPlanController extends Controller
             return JsonResponser::send(false, 'Record created successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             DB::rollBack();
-            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode(), $e);
         } catch (\Throwable $th) {
             DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);

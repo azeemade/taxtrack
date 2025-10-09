@@ -46,7 +46,7 @@ class JsonResponser
         $statusCode = 200,
         $th = null
     ): JsonResponse {
-        if ($th && $statusCode == 500) {
+        if ($th && in_array($statusCode, [400, 500])) {
             ErrorLog::create([
                 'causer' => optional(auth()->user())->id ?? 'Guest',
                 'model' => get_class($th),
@@ -60,7 +60,7 @@ class JsonResponser
         if ($data instanceof JsonResponse) {
             $data = $data->getData(true); // unwrap to array
         }
-        
+
         return response()->json([
             "error" => $error,
             "message" => $message,
