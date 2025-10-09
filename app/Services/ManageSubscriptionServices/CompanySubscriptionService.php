@@ -437,6 +437,7 @@ class CompanySubscriptionService
             //         'payment_method_options' => ['card' => ['request_three_d_secure' => 'any']],
             //     ]);
             // }
+            return $providerSubscription->latest_invoice->payment_intent->client_secret;
         } catch (\Stripe\Exception\CardException $e) {
             throw new BadRequestException($e->getError()->message, Response::HTTP_BAD_REQUEST);
         } catch (\Stripe\Exception\RateLimitException $e) {
