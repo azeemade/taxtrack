@@ -489,6 +489,8 @@ Route::group([
                     ], function () {
                         Route::put('update', 'OrganizationDetailsController@update');
                         Route::get('view', 'OrganizationDetailsController@view');
+                        Route::post('add-company', 'OrganizationDetailsController@addCompany');
+                        Route::get('list-companies', 'OrganizationDetailsController@listCompanies');
                     });
                     Route::group([
                         "namespace" => "EmailSettings"

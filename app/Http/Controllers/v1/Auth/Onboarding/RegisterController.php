@@ -333,48 +333,49 @@ class RegisterController extends Controller
 
             if ($request->companies && count($request->companies) > 0) {
                 foreach ($request->companies as $key => $companyData) {
-                    $company = $this->companyService->create($companyData, $id);
+                    $this->companyService->onboardCompany($companyData, $user);
+                    //     $company = $this->companyService->create($companyData, $id);
 
-                    // ProcessCompanyOnboarding::dispatch($company);
-                    (new CoaProvisionerFromConfig())
-                        ->provisionForCompany($company->id, $id);
+                    //     // ProcessCompanyOnboarding::dispatch($company);
+                    //     (new CoaProvisionerFromConfig())
+                    //         ->provisionForCompany($company->id, $id);
 
-                    if ($key === array_key_first($request->companies)) {
-                        $country = \Nnjeim\World\Models\Country::find($companyData['country_id']);
-                        $user->update([
-                            "currency_id" => $user->currency_id ?? $country->currency->id,
-                            "country_id" => $user->country_id ?? $country->id,
-                            "current_company_id" => $company->id
-                        ]);
-                    }
+                    //     if ($key === array_key_first($request->companies)) {
+                    //         $country = \Nnjeim\World\Models\Country::find($companyData['country_id']);
+                    //         $user->update([
+                    //             "currency_id" => $user->currency_id ?? $country->currency->id,
+                    //             "country_id" => $user->country_id ?? $country->id,
+                    //             "current_company_id" => $company->id
+                    //         ]);
+                    //     }
 
-                    $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
-                    $company->currencies()->attach($user->currency_id);
-                    $company->attachEmailTemplates();
+                    //     $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
+                    //     $company->currencies()->attach($user->currency_id);
+                    //     $company->attachEmailTemplates();
 
-                    if (isset($companyData['subscription_plan_id']) && $companyData['subscription_plan_id']) {
-                        $planId = $companyData['subscription_plan_id'];
-                        $free = false;
-                        $duration = $companyData['duration'];
-                    } else {
-                        $freePlan = SubscriptionPlan::where('is_free', true)->first();
-                        $planId = $freePlan->id;
-                        $free = true;
-                        $duration = $freePlan->duration > 30 ? 'yearly' : 'monthly';
-                        $companyDuration = $user->company_type == CustomerTypeEnums::ACCOUNTANT->value ? 90 : $freePlan->duration;
-                    }
-                    $this->companySubscriptionService->subscribeToPlan([
-                        'user_id' => $id,
-                        'company_id' => $company->id,
-                        'subscription_plan_id' => $planId,
-                        'is_free' => $free,
-                        'duration' => $duration,
-                        'additional_users_count' => $companyData['additional_users_count'] ?? 0,
-                        'provider_payment_method_id' => $companyData['provider_payment_method_id'] ?? null,
-                        'save_card' => $companyData['save_card'] ?? false,
-                        'action' => $companyData['action'] ?? 'subscribe',
-                        'company_duration' => $companyDuration,
-                    ]);
+                    //     if (isset($companyData['subscription_plan_id']) && $companyData['subscription_plan_id']) {
+                    //         $planId = $companyData['subscription_plan_id'];
+                    //         $free = false;
+                    //         $duration = $companyData['duration'];
+                    //     } else {
+                    //         $freePlan = SubscriptionPlan::where('is_free', true)->first();
+                    //         $planId = $freePlan->id;
+                    //         $free = true;
+                    //         $duration = $freePlan->duration > 30 ? 'yearly' : 'monthly';
+                    //         $companyDuration = $user->company_type == CustomerTypeEnums::ACCOUNTANT->value ? 90 : $freePlan->duration;
+                    //     }
+                    //     $this->companySubscriptionService->subscribeToPlan([
+                    //         'user_id' => $id,
+                    //         'company_id' => $company->id,
+                    //         'subscription_plan_id' => $planId,
+                    //         'is_free' => $free,
+                    //         'duration' => $duration,
+                    //         'additional_users_count' => $companyData['additional_users_count'] ?? 0,
+                    //         'provider_payment_method_id' => $companyData['provider_payment_method_id'] ?? null,
+                    //         'save_card' => $companyData['save_card'] ?? false,
+                    //         'action' => $companyData['action'] ?? 'subscribe',
+                    //         'company_duration' => $companyDuration,
+                    //     ]);
                 }
             }
 

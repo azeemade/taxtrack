@@ -26,10 +26,10 @@ class CompanyUserRequest extends FormRequest
     {
         return [
             'companies' => 'required|array',
-            'companies.*.name' => 'required|string|unique:companies,name||max:250',
-            'companies.*.address' => 'required|string||max:250',
+            'companies.*.name' => 'required|string|unique:companies,name|max:250',
+            'companies.*.address' => 'required|string|max:250',
             'companies.*.country_id' => 'required|exists:countries,id',
-            'companies.*.industry' => 'required|string||max:250',
+            'companies.*.industry' => 'required|string|max:250',
             'companies.*.tax_id' => 'nullable|string|max:20',
             'companies.*.tax_type' => 'nullable|string',
             'companies.*.vat_date' => 'nullable|string',

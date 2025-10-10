@@ -92,7 +92,7 @@ class UserService
 
     public function create(array $data, int $company_id = null, int $created_by = null)
     {
-        $currentUser = auth()->user();
+        $currentUser = auth()->user() ?: User::find($created_by);
         if (isset($data['company'])) {
             $companyField = $data['company'][0];
         }
