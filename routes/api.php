@@ -533,6 +533,7 @@ Route::group([
                             Route::get('/current', 'SubscriptionPlanController@view');
                             Route::post('/breakdown', 'SubscriptionPlanController@planBreakdown');
                             Route::post('/change', 'SubscriptionPlanController@create');
+                            Route::post('/mark-as-paid', 'SubscriptionPlanController@markAsPaid');
                         });
                     });
                     Route::group([

@@ -82,4 +82,19 @@ class SubscriptionPlanController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function markAsPaid(Request $request)
+    {
+        $request->validate([
+            'subscription_id' => 'required|string|exists:subscription_histories,provider_subscription_id',
+        ]);
+        try {
+            $this->companySubscriptionService->markAsPaid($request->subscription_id);
+            return JsonResponser::send(false, 'Subscription created successfully', null, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode(), $e);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 }

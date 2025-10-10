@@ -365,8 +365,8 @@ class CompanySubscriptionService
                 'payment_type' => 'card',
                 'amount_paid' => $amountPaid['total'] ?? 0.00,
                 'plan_amount' => $durationDependencies['plan_amount'],
-                'end_date' => isset($request['is_free']) && $request['is_free'] ? Carbon::now()->addDays($plan->duration) : $durationDependencies['end_date'],
-                'status' => GeneralEnums::ACTIVE->value,
+                'end_date' => isset($request['is_free']) && $request['is_free'] ? Carbon::now()->addDays($request['company_duration'] ?? $plan->duration) : $durationDependencies['end_date'],
+                'status' => isset($request['is_free']) && $request['is_free'] ? GeneralEnums::ACTIVE->value : GeneralEnums::PENDING->value,
                 'subscribed_at' => Carbon::now(),
                 'subscriber_id' => $subscriber->id,
                 'subscription_plan_id' => $plan->id,
@@ -437,6 +437,7 @@ class CompanySubscriptionService
             //         'payment_method_options' => ['card' => ['request_three_d_secure' => 'any']],
             //     ]);
             // }
+            return ["subscription_id" => $providerSubscription->id, "client_secret" => $providerSubscription->latest_invoice->payment_intent->client_secret];
         } catch (\Stripe\Exception\CardException $e) {
             throw new BadRequestException($e->getError()->message, Response::HTTP_BAD_REQUEST);
         } catch (\Stripe\Exception\RateLimitException $e) {
@@ -648,5 +649,16 @@ class CompanySubscriptionService
         $remainingDuration = $totalDuration - $usedDuration;
         $remainingAmount = $subscriptionHistory->amount_paid * ($remainingDuration / $totalDuration);
         return $subscriptionHistory->amount_paid - $remainingAmount;
+    }
+
+    public function markAsPaid($subscription_id)
+    {
+        $subscriptionHistory = SubscriptionHistory::where('provider_subscription_id', $subscription_id)->first();
+        if (!$subscriptionHistory) {
+            throw new BadRequestException("Subscription not found!");
+        }
+        $subscriptionHistory->update([
+            'status' => GeneralEnums::ACTIVE->value,
+        ]);
     }
 }
