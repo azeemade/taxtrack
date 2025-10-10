@@ -57,15 +57,16 @@ class CreateOrganizationRequest extends FormRequest
                 }
             }],
             "contact_persons.*.full_name" => 'required|string',
-            "contact_persons.*.primary_email" => 'required|string',
+            "contact_persons.*.primary_email" => 'nullable|string',
             "contact_persons.*.secondary_email" => 'nullable|string',
-            "contact_persons.*.primary_phone_number" => 'required|string',
+            "contact_persons.*.primary_phone_number" => 'nullable|string',
             "contact_persons.*.secondary_phone_number" => 'nullable|string',
-            "contact_persons.*.country_id" => 'required|integer',
+            "contact_persons.*.country_id" => 'nullable|integer',
             "contact_persons.*.state_id" => 'nullable|integer',
             "contact_persons.*.city_id" => 'nullable|integer',
+            "contact_persons.*.county" => 'nullable|string',
             "contact_persons.*.post_code" => 'nullable|string',
-            "contact_persons.*.primary_address" => 'required|string',
+            "contact_persons.*.primary_address" => 'nullable|string',
             "contact_persons.*.secondary_address" => 'nullable|string'
         ];
 

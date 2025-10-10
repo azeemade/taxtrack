@@ -161,16 +161,17 @@ class CustomerService
             $record->addContactPerson([
                 "full_name" => $person['full_name'],
                 "salutation" => $person['salutation'] ?? null,
-                "primary_email" => $person['primary_email'],
-                "secondary_email" => $person['secondary_email'],
-                "primary_phone_number" => $person['primary_phone_number'],
-                "secondary_phone_number" => $person['secondary_phone_number'],
-                "country_id" => $person['country_id'],
+                "primary_email" => $person['primary_email'] ?? null,
+                "secondary_email" => $person['secondary_email'] ?? null,
+                "primary_phone_number" => $person['primary_phone_number'] ?? null,
+                "secondary_phone_number" => $person['secondary_phone_number'] ?? null,
+                "country_id" => $person['country_id'] ?? null,
                 "state_id" => $person['state_id'] ?? null,
-                "city_id" => $person['city_id'],
-                "primary_address" => $person['primary_address'],
-                "secondary_address" => $person['secondary_address'],
-                "post_code" => $person['post_code'],
+                "city_id" => $person['city_id'] ?? null,
+                "county" => $person['county'] ?? null,
+                "primary_address" => $person['primary_address'] ?? null,
+                "secondary_address" => $person['secondary_address'] ?? null,
+                "post_code" => $person['post_code'] ?? null,
             ]);
         }
     }

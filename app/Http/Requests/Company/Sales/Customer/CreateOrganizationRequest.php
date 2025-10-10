@@ -25,7 +25,7 @@ class CreateOrganizationRequest extends FormRequest
     {
         return [
             "company_name" => 'required|string|max:225',
-            "primary_email" => 'required|string',
+            "primary_email" => 'nullable|string',
             "primary_phone_number" => 'nullable|string',
             "business_registration_number" => 'nullable|string',
             "vat_number" => 'nullable|string',
@@ -55,11 +55,12 @@ class CreateOrganizationRequest extends FormRequest
                 }
             }],
             "contact_persons.*.full_name" => 'nullable|string',
-            "contact_persons.*.primary_email" => 'required|string',
+            "contact_persons.*.primary_email" => 'nullable|string',
             "contact_persons.*.secondary_email" => 'nullable|string',
             "contact_persons.*.primary_phone_number" => 'nullable|string',
             "contact_persons.*.secondary_phone_number" => 'nullable|string',
-            "contact_persons.*.country_id" => 'required|integer',
+            "contact_persons.*.country_id" => 'nullable|integer',
+            "contact_persons.*.county" => 'nullable|string',
             "contact_persons.*.post_code" => 'nullable|string',
             "contact_persons.*.primary_address" => 'nullable|string',
             "contact_persons.*.secondary_address" => 'nullable|string'
