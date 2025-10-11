@@ -5,6 +5,7 @@ namespace App\Http\Requests\Company\Sales\Invoices;
 use App\Models\Customer;
 use App\Services\Invoices\InvoiceService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class CreateInvoiceRequest extends FormRequest
 {
@@ -32,7 +33,7 @@ class CreateInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id' => 'required|integer|exists:customers,id',
+            'customer_id' => 'required|integer|exists:customers,id,company_id,' . Auth::user()->current_company_id,
             // 'currency_id' => [
             //     'required',
             //     'integer',

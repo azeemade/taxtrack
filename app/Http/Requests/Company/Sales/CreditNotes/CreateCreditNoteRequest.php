@@ -6,6 +6,7 @@ use App\Enums\DocumentableModelEnums;
 use App\Models\Customer;
 use App\Models\LineItem;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class CreateCreditNoteRequest extends FormRequest
 {
@@ -25,7 +26,7 @@ class CreateCreditNoteRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'customer_id' => 'required|integer|exists:customers,id',
+            'customer_id' => 'required|integer|exists:customers,id,company_id,' . Auth::user()->current_company_id,
             // 'currency_id' => [
             //     'required',
             //     'integer',
