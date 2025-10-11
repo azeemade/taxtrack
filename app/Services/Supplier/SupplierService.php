@@ -81,6 +81,7 @@ class SupplierService
             "id" => $request["id"] ?? null
         ], [
             ...$request,
+            "days_until_payment_due" => $request['days_until_payment_due'] ?? 1,
             "currency_id" => $request['currency_id'] ?? $companyCurrency?->id,
             "referenceID" => $request['supplier_reference'] ?? $this->view($request["id"])?->referenceID,
             "zip_code" => $request['post_code'] ?? null
