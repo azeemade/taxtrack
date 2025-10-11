@@ -3,11 +3,10 @@
 namespace App\Exports\Report;
 
 use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class VATReturnReport implements FromArray, WithHeadings, WithStyles
+class VATReturnReport implements FromArray, WithStyles
 {
     protected $records;
 
@@ -19,63 +18,80 @@ class VATReturnReport implements FromArray, WithHeadings, WithStyles
     public function array(): array
     {
         $rows = [];
-        $account = $this->records['account'];
 
-        // Add account and budget metadata as header rows
-        $rows[] = ['Company Name', $account['company_name']];
-        $rows[] = ['VAT Number', $account['vat_number']];
-        $rows[] = ['Quarter Ending', $account['quarter_ending']];
-        $rows[] = ['VAT Rate', $account['vat_rate']];
-        $rows[] = ['Line Total', $account['line_total']];
-        $rows[] = []; // Empty row for spacing
+        // Company info
+        $rows[] = ['Company Name', $this->records['company_name'] ?? ''];
+        $rows[] = ['VAT Number', $this->records['vat_number'] ?? ''];
+        $rows[] = ['Quarter Ending', $this->records['quarter_ending'] ?? ''];
+        $rows[] = ['VAT Rate', $this->records['vat_rate'] ?? ''];
+        $rows[] = ['Line Total', $this->records['line_total'] ?? 0];
 
-        // Add table headers
+        // === two explicit blank rows (each with two empty cells) ===
+        $rows[] = ['', ''];
+        $rows[] = ['', ''];
+
+        // Table header
         $rows[] = ['Description', 'Value'];
 
-        // Add period data
-        foreach ($account['periods'] as $period) {
-            $rows[] = [
-                ucfirst($period['description']),
-                $period['value'],
-            ];
+        // Lines
+        if (!empty($this->records['lines']) && is_array($this->records['lines'])) {
+            foreach ($this->records['lines'] as $line) {
+                $rows[] = [
+                    $line['description'] ?? '',
+                    $line['value'] ?? 0,
+                ];
+            }
         }
 
-        // Add totals row
-        $rows[] = [
-            'Total',
-            $account['line_total'] ?? 0,
-            $account['line_total'] ?? 0,
-        ];
+        // Total (no extra blank rows after the table header in your requested layout)
+        $rows[] = ['Total', $this->records['line_total'] ?? 0];
 
         return $rows;
     }
 
-    public function headings(): array
-    {
-        // Headings are included in the array method for simplicity
-        return [];
-    }
-
     public function styles(Worksheet $sheet)
     {
-        // Apply styles to headers and totals
-        $sheet->getStyle('A1:B3')->applyFromArray([
+        // Bold the company info labels (A1:A5)
+        $sheet->getStyle('A1:A5')->applyFromArray([
             'font' => ['bold' => true],
         ]);
-        $sheet->getStyle('A5:F5')->applyFromArray([
+
+        // Find the header row dynamically (the row that contains 'Description' in column A)
+        $highestRow = $sheet->getHighestRow();
+        $headerRow = null;
+        for ($i = 1; $i <= $highestRow; $i++) {
+            $val = $sheet->getCell("A{$i}")->getValue();
+            if (is_string($val) && trim($val) === 'Description') {
+                $headerRow = $i;
+                break;
+            }
+        }
+
+        if ($headerRow) {
+            $sheet->getStyle("A{$headerRow}:B{$headerRow}")->applyFromArray([
+                'font' => ['bold' => true],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['argb' => 'FFD3D3D3'],
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                ],
+            ]);
+        }
+
+        // Style the last row (Total)
+        $lastRow = $sheet->getHighestRow();
+        $sheet->getStyle("A{$lastRow}:B{$lastRow}")->applyFromArray([
             'font' => ['bold' => true],
             'fill' => [
                 'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                'startColor' => ['argb' => 'D3D3D3'],
+                'startColor' => ['argb' => 'FFB7DEE8'], // soft blue
             ],
-        ]);
-        $lastRow = count($this->records['account']['periods']) + 6; // Adjust for header rows
-        $sheet->getStyle("A{$lastRow}:F{$lastRow}")->applyFromArray([
-            'font' => ['bold' => true],
         ]);
 
         // Auto-size columns
-        foreach (range('A', 'F') as $column) {
+        foreach (range('A', 'B') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
