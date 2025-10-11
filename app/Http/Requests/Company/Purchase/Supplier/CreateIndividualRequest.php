@@ -25,12 +25,12 @@ class CreateIndividualRequest extends FormRequest
     {
         $rules = [
             "vendor_name" => 'required|string|max:225',
-            "supplier_reference" => 'required|string|max:10',
+            "supplier_reference" => 'nullable|string|max:10',
             "category_id" => 'nullable|integer',
             "days_until_payment_due" => 'nullable|integer|min:1',
-            "currency_id" => 'required|integer|exists:currencies,id',
-            "primary_phone_ext" => 'required|string|exists:countries,phone_code',
-            "primary_phone_number" => 'required|string',
+            "currency_id" => 'nullable|integer|exists:currencies,id',
+            "primary_phone_ext" => 'nullable|string|exists:countries,phone_code',
+            "primary_phone_number" => 'nullable|string',
             "secondary_phone_ext" => 'nullable|string|exists:countries,phone_code',
             "secondary_phone_number" => 'nullable|string',
             "primary_email" => 'required|string|email',

@@ -10,6 +10,7 @@ use App\Models\Vendor;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SupplierService
@@ -73,10 +74,14 @@ class SupplierService
 
     public function createSupplier($request)
     {
+        if (Auth::check()) {
+            $companyCurrency = Auth::user()?->company?->currentCurrency;
+        }
         $record = Vendor::updateOrCreate([
             "id" => $request["id"] ?? null
         ], [
             ...$request,
+            "currency_id" => $request['currency_id'] ?? $companyCurrency?->id,
             "referenceID" => $request['supplier_reference'] ?? $this->view($request["id"])?->referenceID,
             "zip_code" => $request['post_code'] ?? null
         ]);

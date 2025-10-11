@@ -111,7 +111,9 @@ class CustomerService
 
     public function createCustomer($request)
     {
-        //code...
+        if (Auth::check()) {
+            $companyCurrency = Auth::user()?->company?->currentCurrency;
+        }
         $companyId = Auth::user()?->current_company_id;
 
         $record = Customer::updateOrCreate([
@@ -129,7 +131,7 @@ class CustomerService
             "phone_number" => $request['phone_number'] ?? null,
             "email" => $request['email'],
             "employee_count" => $request['employee_count'] ?? 0,
-            "currency_id" => $request['currency_id'],
+            "currency_id" => $request['currency_id'] ?? $companyCurrency?->id,
             "state_id" => $request['state_id'] ?? null,
             "country_id" => $request['country_id'] ?? null,
             "address" => $request['address'] ?? null,

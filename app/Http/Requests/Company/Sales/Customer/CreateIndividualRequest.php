@@ -29,7 +29,7 @@ class CreateIndividualRequest extends FormRequest
             "salutation" => 'nullable|string|max:225',
             "category_id" => 'nullable|integer',
             "customer_type" => 'required|in:business,individual',
-            "currency_id" => 'required|integer|exists:currencies,id',
+            "currency_id" => 'nullable|integer|exists:currencies,id',
             "image" => 'nullable|string',
             "phone_ext" => 'nullable|string|exists:countries,phone_code',
             "primary_phone_number" => 'nullable|string',
