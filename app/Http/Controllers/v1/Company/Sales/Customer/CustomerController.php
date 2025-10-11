@@ -79,7 +79,7 @@ class CustomerController extends Controller
                     'vat_date',
                     'county'
                 ),
-                "company_name" => $request->display_name,
+                "company_name" => $request->display_name ?? $request->full_name,
                 "customer_logo" => $request->image,
                 "phone_number" => $request->primary_phone_number,
                 "email" => $request->primary_email,
