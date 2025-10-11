@@ -54,7 +54,6 @@ class InvoicePosting
             'amount',         // UI gross (optional; used for consistency checks)
             'category_id',
             'cost_price',     // preferred cost
-            'avg_cost',       // fallback cost
             'product_id',     // optional product lookup
         ]);
 
