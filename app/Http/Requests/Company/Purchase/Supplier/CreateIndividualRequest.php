@@ -33,7 +33,7 @@ class CreateIndividualRequest extends FormRequest
             "primary_phone_number" => 'nullable|string',
             "secondary_phone_ext" => 'nullable|string|exists:countries,phone_code',
             "secondary_phone_number" => 'nullable|string',
-            "primary_email" => 'required|string|email',
+            "primary_email" => 'nullable|string|email',
             "secondary_email" => 'nullable|string|email',
             "country_id" => 'nullable|integer|exists:countries,id',
             "city_id" => 'nullable|integer|exists:cities,id',

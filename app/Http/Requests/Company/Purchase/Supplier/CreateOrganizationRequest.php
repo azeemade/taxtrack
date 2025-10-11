@@ -26,7 +26,7 @@ class CreateOrganizationRequest extends FormRequest
         $rules = [
             "vendor_name" => 'required|string|max:225',
             "supplier_reference" => 'nullable|string',
-            "primary_email" => 'required|string',
+            "primary_email" => 'nullable|string',
             "primary_phone_number" => 'nullable|string',
             "business_registration_number" => 'nullable|string',
             "vat_number" => 'nullable|string',
