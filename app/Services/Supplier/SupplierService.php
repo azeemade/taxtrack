@@ -75,7 +75,7 @@ class SupplierService
     public function createSupplier($request)
     {
         if (Auth::check()) {
-            $companyCurrency = Auth::user()?->company?->currentCurrency;
+            $companyCurrency = Auth::user()?->company?->currentCurrency();
         }
         $record = Vendor::updateOrCreate([
             "id" => $request["id"] ?? null

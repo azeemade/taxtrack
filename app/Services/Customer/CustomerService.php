@@ -112,7 +112,7 @@ class CustomerService
     public function createCustomer($request)
     {
         if (Auth::check()) {
-            $companyCurrency = Auth::user()?->company?->currentCurrency;
+            $companyCurrency = Auth::user()?->company?->currentCurrency();
         }
         $companyId = Auth::user()?->current_company_id;
 
