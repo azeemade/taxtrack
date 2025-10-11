@@ -113,6 +113,7 @@ class CustomerService
     {
         if (Auth::check()) {
             $companyCurrency = Auth::user()?->company?->currentCurrency();
+            $primaryEmail = Auth::user()?->email;
         }
         $companyId = Auth::user()?->current_company_id;
 
@@ -129,7 +130,7 @@ class CustomerService
             "industry" => $request['industry'] ?? null,
             "phone_ext" => $request['phone_ext'] ?? null,
             "phone_number" => $request['phone_number'] ?? null,
-            "email" => $request['email'],
+            "email" => $request['email'] ?? $primaryEmail ?? null,
             "employee_count" => $request['employee_count'] ?? 0,
             "currency_id" => $request['currency_id'] ?? $companyCurrency?->id,
             "state_id" => $request['state_id'] ?? null,

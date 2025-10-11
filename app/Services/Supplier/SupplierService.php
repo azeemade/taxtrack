@@ -76,11 +76,13 @@ class SupplierService
     {
         if (Auth::check()) {
             $companyCurrency = Auth::user()?->company?->currentCurrency();
+            $primaryEmail = Auth::user()?->email;
         }
         $record = Vendor::updateOrCreate([
             "id" => $request["id"] ?? null
         ], [
             ...$request,
+            "primary_email" => $request['primary_email'] ?? $primaryEmail ?? null,
             "days_until_payment_due" => $request['days_until_payment_due'] ?? 1,
             "currency_id" => $request['currency_id'] ?? $companyCurrency?->id,
             "referenceID" => $request['supplier_reference'] ?? $this->view($request["id"])?->referenceID,
