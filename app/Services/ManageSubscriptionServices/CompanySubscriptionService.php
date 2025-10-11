@@ -308,141 +308,164 @@ class CompanySubscriptionService
      */
     public function subscribeToPlan($request)
     {
-        /**
-         * Web hook is required for auto renewal of subscription on stripe
-         */
-        $currentUser = Auth::check() ? Auth::user() : User::find($request['user_id']);
-        if (!$currentUser) {
-            throw new BadRequestException('User not found');
-        }
+        try {
+            /**
+             * Web hook is required for auto renewal of subscription on stripe
+             */
+            $currentUser = Auth::check() ? Auth::user() : User::find($request['user_id']);
+            if (!$currentUser) {
+                throw new BadRequestException('User not found');
+            }
 
-        $company = isset($request['company_id']) ? Company::find($request['company_id']) : $currentUser->company;
+            $company = isset($request['company_id']) ? Company::find($request['company_id']) : $currentUser->company;
 
-        if (!$company) {
-            throw new BadRequestException('Company not found');
-        }
+            if (!$company) {
+                throw new BadRequestException('Company not found');
+            }
 
-        if (!isset($request['subscription_plan_id']) && !isset($request['is_free'])) {
-            throw new BadRequestException('Subscription plan is required');
-        }
+            if (!isset($request['subscription_plan_id']) && !isset($request['is_free'])) {
+                throw new BadRequestException('Subscription plan is required');
+            }
 
-        $plan = $this->getPlan([
-            'subscription_plan_id' => $request['subscription_plan_id'] ?? null,
-            'is_free' => $request['is_free'] ?? false,
-        ]);
+            $plan = $this->getPlan([
+                'subscription_plan_id' => $request['subscription_plan_id'] ?? null,
+                'is_free' => $request['is_free'] ?? false,
+            ]);
 
-        if (!$plan || !$plan->is_active || $plan->status === GeneralEnums::INACTIVE->value) {
-            throw new BadRequestException('Plan not found or is inactive');
-        }
+            if (!$plan || !$plan->is_active || $plan->status === GeneralEnums::INACTIVE->value) {
+                throw new BadRequestException('Plan not found or is inactive');
+            }
 
-        $subscriber = $this->handleSubscriber([
-            'company_id' => $company->id,
-            'user_id' => $currentUser->id,
-            'name' => $company->name,
-            'email' => $currentUser->email,
-        ]);
+            $subscriber = $this->handleSubscriber([
+                'company_id' => $company->id,
+                'user_id' => $currentUser->id,
+                'name' => $company->name,
+                'email' => $currentUser->email,
+            ]);
 
-        $durationDependencies = $this->getPlanDurationDependencies($request['duration'], $plan, $request['is_free'] ?? false);
+            $durationDependencies = $this->getPlanDurationDependencies($request['duration'], $plan, $request['is_free'] ?? false);
 
-        //load credit note from stripe here
-        $amountPaid =  $this->calculateSubscriptionCosts(
-            $durationDependencies['plan_amount'],
-            $durationDependencies['seat_amount'],
-            $request['use_credit_balance'] ?? false,
-            $request['additional_users_count'] ?? 0
-        );
+            //load credit note from stripe here
+            $amountPaid =  $this->calculateSubscriptionCosts(
+                $durationDependencies['plan_amount'],
+                $durationDependencies['seat_amount'],
+                $request['use_credit_balance'] ?? false,
+                $request['additional_users_count'] ?? 0
+            );
 
-        $subscription = SubscriptionHistory::create([
-            'receipt_no' => "RCP-" . date('YmdHis'),
-            'customer_refer_no' => "RCP-" . date('YmdHis'),
-            'billed_per' => $request['duration'] === SubscriptionPlanDurationEnums::MONTHLY->value ? 'month' : 'year',
-            'additional_charge' => $request['additional_charge'] ?? 0.00,
-            'tax' => $request['tax'] ?? 0.00,
-            'team_size' => $request['additional_users_count'] ?? 0 + SubscriptionConstant::DEFAULT_SEAT_COUNT,
-            'sub_total' => $amountPaid['sub_total'] ?? 0.00,
-            'payment_method_id' => $paymentMethod->id ?? null,
-            'payment_type' => 'card',
-            'amount_paid' => $amountPaid['total'] ?? 0.00,
-            'plan_amount' => $durationDependencies['plan_amount'],
-            'end_date' => isset($request['is_free']) && $request['is_free'] ? Carbon::now()->addDays($plan->duration) : $durationDependencies['end_date'],
-            'status' => GeneralEnums::ACTIVE->value,
-            'subscribed_at' => Carbon::now(),
-            'subscriber_id' => $subscriber->id,
-            'subscription_plan_id' => $plan->id,
-        ]);
+            $subscription = SubscriptionHistory::create([
+                'receipt_no' => "RCP-" . date('YmdHis'),
+                'customer_refer_no' => "RCP-" . date('YmdHis'),
+                'billed_per' => $request['duration'] === SubscriptionPlanDurationEnums::MONTHLY->value ? 'month' : 'year',
+                'additional_charge' => $request['additional_charge'] ?? 0.00,
+                'tax' => $request['tax'] ?? 0.00,
+                'team_size' => $request['additional_users_count'] ?? 0 + SubscriptionConstant::DEFAULT_SEAT_COUNT,
+                'sub_total' => $amountPaid['sub_total'] ?? 0.00,
+                'payment_method_id' => $paymentMethod->id ?? null,
+                'payment_type' => 'card',
+                'amount_paid' => $amountPaid['total'] ?? 0.00,
+                'plan_amount' => $durationDependencies['plan_amount'],
+                'end_date' => isset($request['is_free']) && $request['is_free'] ? Carbon::now()->addDays($request['company_duration'] ?? $plan->duration) : $durationDependencies['end_date'],
+                'status' => isset($request['is_free']) && $request['is_free'] ? GeneralEnums::ACTIVE->value : GeneralEnums::PENDING->value,
+                'subscribed_at' => Carbon::now(),
+                'subscriber_id' => $subscriber->id,
+                'subscription_plan_id' => $plan->id,
+            ]);
 
-        $subscriber->update([
-            'current_subscription_plan_id' => $request['subscription_plan_id'],
-            'credit_balance' => $subscriber->credit_balance - $amountPaid['credit_note_balance'],
-        ]);
+            $subscriber->update([
+                'current_subscription_plan_id' => $request['subscription_plan_id'],
+                'credit_balance' => $subscriber->credit_balance - $amountPaid['credit_note_balance'],
+            ]);
 
-        if (isset($request['is_free']) && $request['is_free']) {
-            return;
-        }
+            if (isset($request['is_free']) && $request['is_free']) {
+                return;
+            }
 
-        $this->stripe->attachPaymentMethod($request['provider_payment_method_id'], ['customer' => $subscriber->provider_customer_id]);
+            $paymentMethod = $this->stripe->retrievePaymentMethod($request['provider_payment_method_id']);
 
-        if (isset($request['save_card']) && $request['save_card']) {
+            if ($paymentMethod->customer !== $subscriber->provider_customer_id) {
+                $this->stripe->attachPaymentMethod($request['provider_payment_method_id'], [
+                    'customer' => $subscriber->provider_customer_id
+                ]);
+            }
+
             $this->stripe->updateCustomer($subscriber->provider_customer_id, [
                 'invoice_settings' => [
                     'default_payment_method' => $request['provider_payment_method_id']
                 ]
             ]);
-        }
 
-        if ($request['action'] === 'upgrade') {
-            $providerSubscription = $this->changePlan(
-                $subscriber->provider_customer_id,
-                $request['additional_users_count'] ?? 0,
-                $durationDependencies['provider_price_id'],
-                $durationDependencies['provider_seat_price_id']
-            );
-        } else {
-            $subscriptionItems = [
-                [
-                    'price' => $durationDependencies['provider_price_id'],
-                    'metadata' => ['type' => 'base']
-                ],
-            ];
-
-            if (isset($request['additional_users_count']) && $request['additional_users_count'] > 0 && $durationDependencies['provider_seat_price_id']) {
-                $subscriptionItems[] = [
-                    'price' => $durationDependencies['provider_seat_price_id'],
-                    'quantity' => $request['additional_users_count'],
-                    'metadata' => ['type' => 'per_user']
+            if ($request['action'] === 'upgrade') {
+                $providerSubscription = $this->changePlan(
+                    $subscriber->provider_customer_id,
+                    $request['additional_users_count'] ?? 0,
+                    $durationDependencies['provider_price_id'],
+                    $durationDependencies['provider_seat_price_id']
+                );
+            } else {
+                $subscriptionItems = [
+                    [
+                        'price' => $durationDependencies['provider_price_id'],
+                        'metadata' => ['type' => 'base']
+                    ],
                 ];
+
+                if (isset($request['additional_users_count']) && $request['additional_users_count'] > 0 && $durationDependencies['provider_seat_price_id']) {
+                    $subscriptionItems[] = [
+                        'price' => $durationDependencies['provider_seat_price_id'],
+                        'quantity' => $request['additional_users_count'],
+                        'metadata' => ['type' => 'per_user']
+                    ];
+                }
+                $providerSubscription = $this->createNewSubscription($subscriber->provider_customer_id, $subscriptionItems, $request['save_card'] ?? false);
             }
-            $providerSubscription = $this->createNewSubscription($subscriber->provider_customer_id, $subscriptionItems);
-        }
 
-        $subscription->update([
-            'provider_subscription_id' => $providerSubscription['id'],
-        ]);
-
-
-        if ($amountPaid['credit_note_balance'] > 0) {
-            $this->stripe->payInvoice($providerSubscription->latest_invoice->id, [
-                'paid_out_of_band' => true,
+            $subscription->update([
+                'provider_subscription_id' => $providerSubscription['id'],
             ]);
-        }
 
-        if ($amountPaid['total'] > 0) {
-            $this->stripe->confirmPaymentIntent($providerSubscription->latest_invoice->payment_intent->id, [
-                'payment_method' => $request['provider_payment_method_id'],
-            ]);
+
+            if ($amountPaid['credit_note_balance'] > 0) {
+                $this->stripe->payInvoice($providerSubscription->latest_invoice->id, [
+                    'paid_out_of_band' => true,
+                ]);
+            }
+
+            // if ($amountPaid['total'] > 0) {
+            //     $this->stripe->confirmPaymentIntent($providerSubscription->latest_invoice->payment_intent->id, [
+            //         'payment_method' => $request['provider_payment_method_id'],
+            //         'payment_method_options' => ['card' => ['request_three_d_secure' => 'any']],
+            //     ]);
+            // }
+            return ["subscription_id" => $providerSubscription->id, "client_secret" => $providerSubscription->latest_invoice->payment_intent->client_secret];
+        } catch (\Stripe\Exception\CardException $e) {
+            throw new BadRequestException($e->getError()->message, Response::HTTP_BAD_REQUEST);
+        } catch (\Stripe\Exception\RateLimitException $e) {
+            throw new BadRequestException('Something went wrong. Try again later.', Response::HTTP_BAD_REQUEST);
+        } catch (\Stripe\Exception\InvalidRequestException $e) {
+            throw new BadRequestException($e->getError()->message, Response::HTTP_BAD_REQUEST);
+        } catch (\Stripe\Exception\AuthenticationException $e) {
+            throw new BadRequestException('Something went wrong. Try again later.', Response::HTTP_BAD_REQUEST);
+        } catch (\Stripe\Exception\ApiConnectionException $e) {
+            throw new BadRequestException('Communication with Stripe failed. Try again later.', Response::HTTP_BAD_REQUEST);
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            throw new BadRequestException('Something went wrong. Try again later.', Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            throw new BadRequestException('Something went wrong. Try again later.', Response::HTTP_BAD_REQUEST);
         }
     }
 
-    protected function createNewSubscription($customer_id, $subscriptionItems)
+    protected function createNewSubscription($customer_id, $subscriptionItems, $save_card)
     {
         return $this->stripe->createSubscription([
             'customer' => $customer_id,
             'items' => $subscriptionItems,
-            'payment_behavior' => 'default_incomplete',
+            'collection_method' => 'charge_automatically',
+            'payment_behavior' => 'allow_incomplete',
             'expand' => ['latest_invoice.payment_intent'],
             'payment_settings' => [
                 'payment_method_types' => ['card'],
-                'save_default_payment_method' => 'on_subscription',
+                'save_default_payment_method' => $save_card ? 'on_subscription' : 'off',
             ],
         ]);
     }
@@ -492,7 +515,7 @@ class CompanySubscriptionService
         $credit_balance = 0.00;
         $usable_credit_balance = $use_credit_balance ? $credit_balance : 0.00;
         $subtotal = $usable_credit_balance > $subtotal_before_credit_balance ? 0.00 : $subtotal_before_credit_balance - $usable_credit_balance;
-        $tax = $subtotal * SubscriptionConstant::TAX_RATE;
+        $tax = 0; //$subtotal * SubscriptionConstant::TAX_RATE;
         $total = $subtotal + $tax;
 
         return [
@@ -626,5 +649,16 @@ class CompanySubscriptionService
         $remainingDuration = $totalDuration - $usedDuration;
         $remainingAmount = $subscriptionHistory->amount_paid * ($remainingDuration / $totalDuration);
         return $subscriptionHistory->amount_paid - $remainingAmount;
+    }
+
+    public function markAsPaid($subscription_id)
+    {
+        $subscriptionHistory = SubscriptionHistory::where('provider_subscription_id', $subscription_id)->first();
+        if (!$subscriptionHistory) {
+            throw new BadRequestException("Subscription not found!");
+        }
+        $subscriptionHistory->update([
+            'status' => GeneralEnums::ACTIVE->value,
+        ]);
     }
 }

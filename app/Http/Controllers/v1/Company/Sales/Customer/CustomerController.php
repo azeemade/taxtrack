@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+
 class CustomerController extends Controller
 {
     protected CustomerService $customerService;
@@ -86,20 +87,20 @@ class CustomerController extends Controller
                 "city_id" => $request->city_id,
                 "zip_code" => $request->zip_code,
                 "address" => $request->primary_address,
-                "created_by" => auth()->user()->id,
-                "company_id" => auth()->user()->current_company_id,
+                "created_by" => Auth::id(),
+                "company_id" => Auth::user()->current_company_id,
                 "contact_persons" => [[
                     "full_name" => $request->full_name,
-                    "salutation" => $request->salutation,
-                    "primary_phone_number" => $request->primary_phone_number,
-                    "secondary_phone_number" => $request->secondary_phone_number,
-                    "primary_email" => $request->primary_email,
-                    "secondary_email" => $request->secondary_email,
-                    "country_id" => $request->country_id,
-                    "city_id" => $request->city_id,
-                    "primary_address" => $request->primary_address,
-                    "secondary_address" => $request->secondary_address,
-                    "post_code" => $request->zip_code
+                    "salutation" => $request->salutation ?? null,
+                    "primary_phone_number" => $request->primary_phone_number ?? null,
+                    "secondary_phone_number" => $request->secondary_phone_number ?? null,
+                    "primary_email" => $request->primary_email ?? null,
+                    "secondary_email" => $request->secondary_email ?? null,
+                    "country_id" => $request->country_id ?? null,
+                    "city_id" => $request->city_id ?? null,
+                    "primary_address" => $request->primary_address ?? null,
+                    "secondary_address" => $request->secondary_address ?? null,
+                    "post_code" => $request->zip_cod ?? null
                 ]]
             ];
             $record = $this->customerService->createCustomer($data);
@@ -143,8 +144,8 @@ class CustomerController extends Controller
                 "customer_type" => CustomerTypeEnums::ORGANIZATION->value,
                 "customer_logo" => $request->image,
                 "contact_persons" => $request->contact_persons,
-                "created_by" => auth()->user()->id,
-                "company_id" => auth()->user()->current_company_id,
+                "created_by" => Auth::id(),
+                "company_id" => Auth::user()->current_company_id,
             ];
             $record = $this->customerService->createCustomer($data);
 
@@ -244,8 +245,8 @@ class CustomerController extends Controller
                 "customer_type" => CustomerTypeEnums::ORGANIZATION->value,
                 "customer_logo" => $request->image,
                 "contact_persons" => $request->contact_persons,
-                "created_by" => auth()->user()->id,
-                "company_id" => auth()->user()->current_company_id,
+                "created_by" => Auth::id(),
+                "company_id" => Auth::user()->current_company_id,
             ];
             $record = $this->customerService->createCustomer($data);
 

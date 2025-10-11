@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Helpers\GeneralHelper;
 use App\Models\CompanyContactPerson;
+use Illuminate\Support\Facades\Auth;
 
 trait ContactPersonTrait
 {
@@ -22,8 +23,8 @@ trait ContactPersonTrait
         return $this->contactPersons()->create([
             ...$request,
             "entity_reference" => $this->generateReference(),
-            "created_by" => auth()->id(),
-            "company_id" => auth()->user()->company->id
+            "created_by" => Auth::id(),
+            "company_id" => Auth::user()->company->id
         ]);
     }
 

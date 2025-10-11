@@ -24,6 +24,7 @@ return new class extends Migration
             $table->unsignedBigInteger('country_id')->nullable();
             $table->unsignedBigInteger('state_id')->nullable();
             $table->unsignedBigInteger('city_id')->nullable();
+            $table->string('county')->nullable();
             $table->text('primary_address')->nullable();
             $table->text('secondary_address')->nullable();
             $table->string('post_code')->nullable();
