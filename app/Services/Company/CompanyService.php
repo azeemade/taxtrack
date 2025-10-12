@@ -3,13 +3,17 @@
 namespace App\Services\Company;
 
 use App\Enums\CompanyStatusEnums;
+use App\Enums\CustomerTypeEnums;
 use App\Enums\GeneralEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Helpers\Posting\CoaProvisionerFromConfig;
 use App\Mail\Company\ClientOnboardingEmail;
 use App\Models\Company;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\ManageSubscriptionServices\CompanySubscriptionService;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +24,12 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class CompanyService
 {
+    protected CompanySubscriptionService $companySubscriptionService;
+
+    public function __construct(CompanySubscriptionService $companySubscriptionService)
+    {
+        $this->companySubscriptionService = $companySubscriptionService;
+    }
     public function overview($request)
     {
         $records = Company::query()
@@ -224,5 +234,59 @@ class CompanyService
     {
         $model = $model::select('id', 'name')->find($id);
         return $model;
+    }
+
+    public function onboardCompany(array $data, User $user)
+    {
+        $company = $this->create($data, $user->id);
+
+        // (new CoaProvisionerFromConfig())
+        //     ->provisionForCompany($company->id, $user->id);
+
+        if (
+            $user->companies->isEmpty() && isset($data['country_id'])
+        ) {
+            $country = \Nnjeim\World\Models\Country::find($data['country_id']);
+            $user->update([
+                "currency_id" => $user->currency_id ?? $country->currency->id,
+                "country_id" => $user->country_id ?? $country->id,
+                "current_company_id" => $company->id
+            ]);
+        }
+
+        $user->companies()->attach($company->id, ['company_type' => $user->company_type, "uei_id" => (string) Str::uuid()]);
+        $company->currencies()->attach($user->currency_id);
+        $company->attachEmailTemplates();
+
+        if (isset($companyData['subscription_plan_id']) && $companyData['subscription_plan_id']) {
+            $planId = $companyData['subscription_plan_id'];
+            $free = false;
+            $duration = $companyData['duration'];
+        } else {
+            $freePlan = SubscriptionPlan::where('is_free', true)->first();
+            $planId = $freePlan->id;
+            $free = true;
+            $duration = $freePlan->duration > 30 ? 'yearly' : 'monthly';
+            $companyDuration = $user->company_type == CustomerTypeEnums::ACCOUNTANT->value ? 90 : $freePlan->duration;
+        }
+        $this->companySubscriptionService->subscribeToPlan([
+            'user_id' => $user->id,
+            'company_id' => $company->id,
+            'subscription_plan_id' => $planId,
+            'is_free' => $free,
+            'duration' => $duration,
+            'additional_users_count' => $companyData['additional_users_count'] ?? 0,
+            'provider_payment_method_id' => $companyData['provider_payment_method_id'] ?? null,
+            'save_card' => $companyData['save_card'] ?? false,
+            'action' => $companyData['action'] ?? 'subscribe',
+            'company_duration' => $companyDuration,
+        ]);
+    }
+
+    public function listCompanies()
+    {
+        $currentUser = Auth::user();
+        $companies = $currentUser->companies()->latest()->paginate(10);
+        return $companies;
     }
 }

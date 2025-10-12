@@ -25,9 +25,9 @@ class CreateOrganizationRequest extends FormRequest
     {
         $rules = [
             "vendor_name" => 'required|string|max:225',
-            "supplier_reference" => 'required|string',
-            "primary_email" => 'required|string',
-            "primary_phone_number" => 'required|string',
+            "supplier_reference" => 'nullable|string',
+            "primary_email" => 'nullable|string',
+            "primary_phone_number" => 'nullable|string',
             "business_registration_number" => 'nullable|string',
             "vat_number" => 'nullable|string',
             "industry" => 'nullable|string',
@@ -36,7 +36,7 @@ class CreateOrganizationRequest extends FormRequest
             "image" => 'nullable|string',
             "special_instruction" => 'nullable|string',
             "payment_term" => 'nullable|integer',
-            "currency_id" => 'required|integer',
+            "currency_id" => 'nullable|integer',
             "bank_name" => 'nullable|string',
             "bank_account_number" => 'nullable|string',
             "bank_identification_code" => 'nullable|string',

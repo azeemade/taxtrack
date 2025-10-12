@@ -5,6 +5,7 @@ namespace App\Http\Requests\Company\Sales\Quotes;
 use App\Models\Customer;
 use App\Services\Quotes\QuoteService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class CreateQuoteRequest extends FormRequest
 {
@@ -31,7 +32,7 @@ class CreateQuoteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id' => 'required|integer|exists:customers,id',
+            'customer_id' => 'required|integer|exists:customers,id,company_id,' . Auth::user()->current_company_id,
             // 'currency_id' => [
             //     'required',
             //     'integer',

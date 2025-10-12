@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\Auth;
 
 use App\Enums\GeneralEnums;
+use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
@@ -50,7 +51,6 @@ class AuthController extends Controller
 
             $data = [
                 'user' => $user->current_company_id ? new StaffProfileResource($user) : $user,
-                // 'user' => $user,
                 'token' => $token,
                 'type' => 'bearer',
             ];
@@ -76,17 +76,31 @@ class AuthController extends Controller
                 return JsonResponser::send(true, 'Company does not exist', [], 400);
             }
 
+            $token = Auth::login($user);
+            if (!$token) {
+                return JsonResponser::send(true, 'Invalid email or password', [], Response::HTTP_BAD_REQUEST);
+            }
+
             $user->update([
-                'current_company_id' => $id
+                'current_company_id' => $id,
+                'last_login' => now()
             ]);
 
-            $user['company'] = $user->company;
-            $user['companies'] = $user->companies;
-            $user['permissions'] = User::find($user->id)->getAllPermissions();
+            if ($user?->hasRole('client') && $user?->company?->status != GeneralEnums::APPROVED->value) {
+                return JsonResponser::send(true, 'Company is inactive. Contact admin', [], Response::HTTP_BAD_REQUEST);
+            }
 
-            return JsonResponser::send(false, 'Company switched successfully', $user);
+            $data = [
+                'user' => $user->current_company_id ? new StaffProfileResource($user) : $user,
+                'token' => $token,
+                'type' => 'bearer',
+            ];
+
+            return JsonResponser::send(false, 'Company switched successfully', $data);
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], 500);
+            return JsonResponser::send(true, 'Internal Server Error', [], 500, $th);
         }
     }
 

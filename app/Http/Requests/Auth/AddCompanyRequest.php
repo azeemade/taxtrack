@@ -33,6 +33,11 @@ class AddCompanyRequest extends FormRequest
             'companies.*.registration_id' => 'nullable|string',
             'companies.*.fiscal_year_start' => 'nullable|date_format:m-d',
             'companies.*.fiscal_year_end' => 'nullable|date_format:m-d',
+            'companies.*.subscription_plan_id' => 'nullable|exists:subscription_plans,id',
+            'companies.*.provider_payment_method_id' => 'nullable|string',
+            'companies.*.save_card' => 'nullable',
+            'companies.*.additional_users_count' => 'nullable|numeric',
+            'companies.*.duration' => 'nullable|in:monthly,yearly',
         ];
     }
 }
