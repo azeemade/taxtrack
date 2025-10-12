@@ -102,7 +102,7 @@ class SupplierService
     {
         foreach ($request['contact_persons'] as $person) {
             $record->addContactPerson([
-                "full_name" => $person['full_name'],
+                "full_name" => $person['full_name'] ?? null,
                 "primary_email" => $person['primary_email'] ?? null,
                 "secondary_email" => $person['secondary_email'] ?? null,
                 "primary_phone_number" => $person['primary_phone_number'] ?? null,
