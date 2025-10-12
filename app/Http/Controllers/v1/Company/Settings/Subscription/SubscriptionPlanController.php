@@ -6,10 +6,12 @@ use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Settings\Subscription\CreateUpgradePlanRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
+use App\Http\Resources\Company\StaffProfileResource;
 use App\Responser\JsonResponser;
 use App\Services\ManageSubscriptionServices\CompanySubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class SubscriptionPlanController extends Controller
@@ -89,8 +91,10 @@ class SubscriptionPlanController extends Controller
             'subscription_id' => 'required|string|exists:subscription_histories,provider_subscription_id',
         ]);
         try {
+            $user = Auth::user();
+            
             $this->companySubscriptionService->markAsPaid($request->subscription_id);
-            return JsonResponser::send(false, 'Subscription created successfully', null, Response::HTTP_OK);
+            return JsonResponser::send(false, 'Subscription created successfully', new StaffProfileResource($user), Response::HTTP_OK);
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode(), $e);
         } catch (\Throwable $th) {
