@@ -47,7 +47,7 @@ class CreateOrganizationRequest extends FormRequest
             "city_id" => 'nullable|integer|exists:cities,id',
             "state_id" => 'nullable|integer|exists:states,id',
             "county" => 'nullable|string',
-            "contact_persons" => 'required|array',
+            "contact_persons" => 'nullable|array',
             "contact_persons.*.id" => ['sometimes', 'integer', 'exists:company_contact_people,id', function ($attribute, $value, $fail) {
                 $person = CompanyContactPerson::where('company_id', Auth::user()?->company?->id)
                     ->where('id', $value)
@@ -56,7 +56,7 @@ class CreateOrganizationRequest extends FormRequest
                     $fail('Contact person not found.');
                 }
             }],
-            "contact_persons.*.full_name" => 'required|string',
+            "contact_persons.*.full_name" => 'nullable|string',
             "contact_persons.*.primary_email" => 'nullable|string',
             "contact_persons.*.secondary_email" => 'nullable|string',
             "contact_persons.*.primary_phone_number" => 'nullable|string',
