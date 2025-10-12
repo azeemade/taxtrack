@@ -101,6 +101,9 @@ class SupplierService
     protected function createContactPerson($record, $request)
     {
         foreach ($request['contact_persons'] as $person) {
+            if (!isset($person['full_name']) || !$person['full_name']) {
+                continue;
+            }
             $record->addContactPerson([
                 "full_name" => $person['full_name'] ?? null,
                 "primary_email" => $person['primary_email'] ?? null,
