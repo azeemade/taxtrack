@@ -22,7 +22,7 @@ class PaymentPosting
         $modelId      = (int)$payload['model_id'];
         $amount       = (float)$payload['amount_paid'];
         $date         = $payload['paid_on'] ?? now();
-        $methodId     = $payload['payment_method_id'] ?? null;
+        $methodId     = $payload['payment_method_id'] ?? null; //payment_method_id is still bank_account_id
 
         // resolve the document (to grab company/customer/vendor, etc)
         $doc = DB::table($modelTable)->where('id', $modelId)->first();
@@ -36,15 +36,24 @@ class PaymentPosting
             throw new \InvalidArgumentException('Payment amount must be > 0');
         }
 
-        // settlement account (by payment method) -> try map on payment_methods.account_id, else fallback
-        $settlementAccountId = $this->resolveSettlementAccountId($companyId, $methodId);
+        // ✅ extra guard (in case someone bypasses FormRequest)
+        $this->assertCashAndBankAccount($methodId, $companyId);
 
         // AR/AP accounts
         $accAR = AccountHelper::id(config('accounts.AR'), $companyId);
         $accAP = AccountHelper::id(config('accounts.AP'), $companyId);
 
         return DB::transaction(function () use (
-            $modelTable, $modelId, $doc, $companyId, $editedBy, $amount, $date, $settlementAccountId, $accAR, $accAP
+            $modelTable,
+            $modelId,
+            $doc,
+            $companyId,
+            $editedBy,
+            $amount,
+            $date,
+            $methodId,
+            $accAR,
+            $accAP
         ) {
             // header
             $type = match ($modelTable) {
@@ -54,9 +63,9 @@ class PaymentPosting
             };
 
             $info = match ($modelTable) {
-                'invoices' => "Receipt for Invoice ".($doc->invoiceID ?? $doc->id),
-                'purchase_invoices' => "Payment for Purchase Invoice ".($doc->purchase_invoiceID ?? $doc->id),
-                'vendor_bills' => "Payment for Vendor Bill ".($doc->id),
+                'invoices' => "Receipt for Invoice " . ($doc->invoiceID ?? $doc->id),
+                'purchase_invoices' => "Payment for Purchase Invoice " . ($doc->purchase_invoiceID ?? $doc->id),
+                'vendor_bills' => "Payment for Vendor Bill " . ($doc->id),
                 default => "Payment for {$modelTable} {$doc->id}"
             };
 
@@ -76,12 +85,12 @@ class PaymentPosting
             $lines = [];
             if ($modelTable === 'invoices') {
                 // Customer receipt: Dr Cash/Bank  Cr AR
-                $lines[] = $this->line($jeId, $date, $settlementAccountId, 'Receipt', 'Cash/Bank (receipt)', $amount, 0);
+                $lines[] = $this->line($jeId, $date, $methodId, 'Receipt', 'Cash/Bank (receipt)', $amount, 0);
                 $lines[] = $this->line($jeId, $date, $accAR,              'Receipt', 'Reduce Accounts Receivable', 0, $amount);
             } else {
                 // Vendor payment: Dr AP  Cr Cash/Bank
                 $lines[] = $this->line($jeId, $date, $accAP,              'Payment', 'Reduce Accounts Payable', $amount, 0);
-                $lines[] = $this->line($jeId, $date, $settlementAccountId,'Payment', 'Cash/Bank (payment)', 0, $amount);
+                $lines[] = $this->line($jeId, $date, $methodId, 'Payment', 'Cash/Bank (payment)', 0, $amount);
             }
 
             foreach ($lines as $l) {
@@ -100,7 +109,7 @@ class PaymentPosting
 
 
 
-     /**
+    /**
      * Idempotent sync: creates/refreshes the journal tied to a PaymentRecord.
      * - If payment_records.journal_entry_id exists, it clears & re-posts lines.
      * - Otherwise, it creates the header, inserts lines, and updates payment_records.journal_entry_id.
@@ -112,6 +121,9 @@ class PaymentPosting
         // Pull needed fields
         $amount    = (float)($paymentRecord->amount_paid ?? 0);
         $date      = $paymentRecord->paid_on ?? now();
+
+
+        //payment_method_id is still bank_account_id
         $methodId  = $paymentRecord->payment_method_id ?? null;
         $doc       = $paymentRecord->recordable;     // morph to Invoice / PurchaseInvoice / VendorBill
         if (!$doc) throw new \RuntimeException('Payment recordable not found.');
@@ -129,12 +141,12 @@ class PaymentPosting
         };
 
         // Resolve accounts
-        $settlementAccountId = $this->resolveSettlementAccountId($companyId, $methodId);
+        $this->assertCashAndBankAccount($methodId, $companyId);
 
         $accAR = AccountHelper::id(config('accounts.AR'), $companyId);
         $accAP = AccountHelper::id(config('accounts.AP'), $companyId); // add 'AP' in config as suggested earlier
 
-        return DB::transaction(function () use ($paymentRecord, $doc, $companyId, $editedBy, $date, $amount, $type, $docTable, $settlementAccountId, $accAR, $accAP) {
+        return DB::transaction(function () use ($paymentRecord, $doc, $companyId, $editedBy, $date, $amount, $type, $docTable, $methodId, $accAR, $accAP) {
 
             // 1) Upsert header
             if (!empty($paymentRecord->journal_entry_id)) {
@@ -171,12 +183,12 @@ class PaymentPosting
             $lines = [];
             if ($docTable === 'invoices') {
                 // Customer receipt: Dr Cash/Bank  Cr AR
-                $lines[] = $this->line($jeId, $date, $settlementAccountId, 'Receipt', 'Cash/Bank (receipt)', $amount, 0);
+                $lines[] = $this->line($jeId, $date, $methodId, 'Receipt', 'Cash/Bank (receipt)', $amount, 0);
                 $lines[] = $this->line($jeId, $date, $accAR,              'Receipt', 'Reduce Accounts Receivable', 0, $amount);
             } else {
                 // Vendor payment: Dr AP  Cr Cash/Bank
                 $lines[] = $this->line($jeId, $date, $accAP,              'Payment', 'Reduce Accounts Payable', $amount, 0);
-                $lines[] = $this->line($jeId, $date, $settlementAccountId,'Payment', 'Cash/Bank (payment)', 0, $amount);
+                $lines[] = $this->line($jeId, $date, $methodId, 'Payment', 'Cash/Bank (payment)', 0, $amount);
             }
 
             foreach ($lines as $l) DB::table('finance_account_entries')->insert($l);
@@ -185,7 +197,7 @@ class PaymentPosting
             return $jeId;
         });
     }
-    
+
 
     private function resolveSettlementAccountId(int $companyId, ?int $paymentMethodId): int
     {
@@ -239,8 +251,36 @@ class PaymentPosting
 
     private function assertBalanced(array $lines): void
     {
-        $d=0; $c=0;
-        foreach ($lines as $l) { $d += $l['debit_amount']; $c += $l['credit_amount']; }
+        $d = 0;
+        $c = 0;
+        foreach ($lines as $l) {
+            $d += $l['debit_amount'];
+            $c += $l['credit_amount'];
+        }
         if (abs($d - $c) > 0.0001) throw new \RuntimeException('Payment journal not balanced.');
+    }
+
+    private function assertCashAndBankAccount(int $accountId, int $companyId): void
+    {
+        $ok = DB::table('finance_chart_of_accounts as a')
+            ->join('finance_account_sub_categories as sc', 'sc.id', '=', 'a.account_sub_category_id')
+            ->where('a.id', $accountId)
+            ->where('a.company_id', $companyId)
+            ->where('sc.slug', 'cash-and-bank')
+            ->exists();
+
+        if (!$ok) {
+            throw new \InvalidArgumentException('Selected bank account must be under Cash & Bank for this company.');
+        }
+    }
+
+    private function info(string $docTable, object $doc): string
+    {
+        return match ($docTable) {
+            'invoices'           => "Receipt for Invoice " . ($doc->invoiceID ?? $doc->id),
+            'purchase_invoices'  => "Payment for Purchase Invoice " . ($doc->purchase_invoiceID ?? $doc->id),
+            'vendor_bills'       => "Payment for Vendor Bill " . $doc->id,
+            default              => "Payment for {$docTable} " . $doc->id
+        };
     }
 }
