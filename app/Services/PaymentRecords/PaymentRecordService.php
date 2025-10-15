@@ -28,6 +28,13 @@ class PaymentRecordService
 
     public function modify($request)
     {
+        $recordable = $this->matchRecordableType($request['model']);
+        $recordable = $recordable::find($request['model_id']);
+
+        if ($request['amount_paid'] > $recordable->amount_due) {
+            throw new BadRequestException("Amount paid is greater than recordable amount due", Response::HTTP_BAD_REQUEST);
+        }
+
         $record = PaymentRecord::updateOrCreate(
             [
                 'id' => $request['id'] ?? null

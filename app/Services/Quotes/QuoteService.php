@@ -257,6 +257,7 @@ class QuoteService
                 'discount_total' => $record->discount_total ?? 0,
                 'shipping_charge'   => $record->shipping_charge ?? 0,
                 'additional_charge' => $record->additional_charge ?? 0,
+                'invoice_value' => $record->quote_total ?? 0,
                 'referenceID' => $request->referenceId,
                 'start_date' => $request->start_date,
                 'due_date' => $request->end_date,
