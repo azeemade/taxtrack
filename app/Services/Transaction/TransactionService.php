@@ -463,22 +463,147 @@ class TransactionService
     }
 
 
+    // public function createFinanceTransaction($request)
+    // {
+    //     DB::beginTransaction();
+    //     try {
+    //         $user = auth()->user();
+
+    //         $journal_date = date('Y-m-d');
+    //         $publishedStatus = $request->status ?? "published"; //'draft', 'pending', 'published', 'unpublished'
+    //         $paymentType = $request->payment_type; // 'payment' or 'receipt'
+    //         $mainBank = $request->bank_account_id;
+
+
+    //         //create journal entry
+    //         $journalEntry = FinanceJournalEntry::create([
+    //             'date' => $journal_date,
+    //             'info' => 'FinanceAccountTransaction',
+    //             'edited_by' => $user->id,
+    //             'company_id' => auth()->user()->current_company_id,
+    //             'status' => $publishedStatus, //draft. pending, published
+    //         ]);
+
+    //         $uniqueId = GeneralHelper::getModelUniqueRandomId2([
+    //             "modelNamespace" => 'App\Models\FinanceAccountTransactionGroup',
+    //             "modelField" => 'name',
+    //             "prefix" => 'FTR-',
+    //             "idLength" => 7,
+    //             "idType" => "numalpha"
+    //         ]);
+
+
+    //         //create transaction group
+    //         $transactionGroup = FinanceAccountTransactionGroup::create([
+    //             'name' => $uniqueId,
+    //             'payment_type' => $request->payment_type, //'payment', 'receipt'
+    //             'status' => $publishedStatus, //draft. pending, published
+    //             'edited_by' => $user->id,
+    //             'company_id' => auth()->user()->current_company_id,
+    //             'journal_entry_id' => $journalEntry->id,
+    //         ]);
+
+    //         $mainBank = $request->bank_account_id;
+
+    //         foreach ($request->financeTransactions as $key => $financeTransaction) {
+    //             $amount = $financeTransaction['amount'];
+    //             $date = $financeTransaction['transaction_date'];
+    //             // $fromAccount = $financeTransaction['type'] == "Debit" ? $financeTransaction['account_id'] : $mainBank;
+    //             // $toAccount = $financeTransaction['type'] == "Credit" ? $financeTransaction['account_id'] : $mainBank;
+    //             $fromAccount = $financeTransaction['type'] == "Expense" ? $financeTransaction['account_id'] : $mainBank;
+    //             $toAccount = $financeTransaction['type'] == "Income" ? $financeTransaction['account_id'] : $mainBank;
+
+
+    //             $createTransactions = FinanceAccountTransaction::create([
+    //                 'trans_group_id' => $transactionGroup->id,
+    //                 'journal_entry_id' => $journalEntry->id,
+    //                 'transaction_date' => $financeTransaction['transaction_date'],
+    //                 'account_id' => $financeTransaction['account_id'],
+    //                 'transactionID' => $financeTransaction['transactionID'],
+    //                 'referenceID' => $financeTransaction['referenceID'],
+    //                 'description' => $financeTransaction['description'],
+    //                 'type' => $financeTransaction['type'] == "Income" ? "Expense" : "Income", //expense, income //AccountingDebitAndCredit
+    //                 'category' => $financeTransaction['type'] == "Income" ? "Other" : "Deposit", //AccountingDebitAndCredit
+    //                 // 'type' => $financeTransaction['type'] == "Credit" ? "Expense" : "Income", //expense, income //AccountingDebitAndCredit
+    //                 // 'category' => $financeTransaction['type'] == "Credit" ? "Other" : "Deposit", //AccountingDebitAndCredit
+    //                 'amount' => $financeTransaction['amount'],
+    //                 'mode_of_payment' => $financeTransaction['mode_of_payment'], //Bank Transfer, Cash, Credit/Debit Card, Cheque
+    //                 'mainBank' => "false",
+    //                 'edited_by' => $user->id,
+
+    //                 'payment_type' => $request->payment_type,
+    //                 'bank_fee' => $financeTransaction['bank_fee'],
+    //                 'exchange_rate' => $financeTransaction['exchange_rate'],
+    //             ]);
+
+    //             //
+    //             $createTransactions2 = FinanceAccountTransaction::create([
+    //                 'trans_group_id' => $transactionGroup->id,
+    //                 'journal_entry_id' => $journalEntry->id,
+    //                 'transaction_date' => $financeTransaction['transaction_date'],
+    //                 'account_id' => $mainBank,
+    //                 'transactionID' => $financeTransaction['transactionID'],
+    //                 'referenceID' => $financeTransaction['referenceID'],
+    //                 'description' => $financeTransaction['description'],
+    //                 //type and category opposite of first transaction
+    //                 'type' => $financeTransaction['type'] == "Income"  ? "Income" : "Expense", //expense, income //AccountingDebitAndCredit
+    //                 'category' => $financeTransaction['type'] == "Income" ? "Deposit" : "Other", //AccountingDebitAndCredit
+    //                 // 'type' => $financeTransaction['type'] == "Credit"  ? "Income" : "Expense", //expense, income //AccountingDebitAndCredit
+    //                 // 'category' => $financeTransaction['type'] == "Credit" ? "Deposit" : "Other", //AccountingDebitAndCredit
+    //                 'amount' => $financeTransaction['amount'],
+    //                 'mode_of_payment' => $financeTransaction['mode_of_payment'], //Bank Transfer, Cash, Credit/Debit Card, Cheque
+    //                 'mainBank' => "true",
+    //                 'edited_by' => $user->id,
+
+    //                 'payment_type' => $request->payment_type,
+    //                 'bank_fee' => $financeTransaction['bank_fee'],
+    //                 'exchange_rate' => $financeTransaction['exchange_rate'],
+    //             ]);
+
+    //             // doubleEntry($journalEntryID, $date, $debitAccountID, $creditAccountID, $amount, $description, $reference, $profitCenter)
+    //             if ($request->status == "published") {
+    //                 $accountEntries = AccountEntriesDoubleEntryHelper::doubleEntry($journalEntry->id, $date, $fromAccount, $toAccount, $amount, $financeTransaction['description'], $financeTransaction['referenceID'], $financeTransaction['bank_fee'], $financeTransaction['exchange_rate']);
+    //                 if ($accountEntries != null) {
+    //                     throw new \Exception("Error recording account entries: " . $accountEntries);
+    //                 }
+    //             }
+    //         }
+
+
+    //         $dataToLog = [
+    //             'causer_id' => $user->id,
+    //             'action_id' => $transactionGroup->id,
+    //             'action_type' => "Models\FinanceTransactionGroup",
+    //             'log_name' => "Transaction Group created successfully",
+    //             'description' => "Transaction Group created successfully by {$user->lastname} {$user->firstname}",
+    //         ];
+
+    //         // AuditLog::storeAuditLog($dataToLog);
+    //         DB::commit();
+    //         return $transactionGroup;
+    //     } catch (\Throwable $th) {
+    //         DB::rollBack();
+    //         throw $th;
+    //     }
+    // }
+
     public function createFinanceTransaction($request)
     {
         DB::beginTransaction();
         try {
             $user = auth()->user();
-
             $journal_date = date('Y-m-d');
-            $publishedStatus = $request->status ?? "published"; //'draft', 'pending', 'published', 'unpublished'
+            $publishedStatus = $request->status ?? "published";
+            $paymentType = $request->payment_type; // 'payment' or 'receipt'
+            $mainBank = $request->bank_account_id;
 
-            //create journal entry
+            // Create journal entry
             $journalEntry = FinanceJournalEntry::create([
                 'date' => $journal_date,
                 'info' => 'FinanceAccountTransaction',
                 'edited_by' => $user->id,
                 'company_id' => auth()->user()->current_company_id,
-                'status' => $publishedStatus, //draft. pending, published
+                'status' => $publishedStatus,
             ]);
 
             $uniqueId = GeneralHelper::getModelUniqueRandomId2([
@@ -489,99 +614,113 @@ class TransactionService
                 "idType" => "numalpha"
             ]);
 
-
-            //create transaction group
+            // Create transaction group
             $transactionGroup = FinanceAccountTransactionGroup::create([
                 'name' => $uniqueId,
-                'payment_type' => $request->payment_type, //'payment', 'receipt'
-                'status' => $publishedStatus, //draft. pending, published
+                'payment_type' => $paymentType,
+                'status' => $publishedStatus,
                 'edited_by' => $user->id,
                 'company_id' => auth()->user()->current_company_id,
                 'journal_entry_id' => $journalEntry->id,
             ]);
 
-            $mainBank = $request->bank_account_id;
-
-            foreach ($request->financeTransactions as $key => $financeTransaction) {
+            foreach ($request->financeTransactions as $financeTransaction) {
                 $amount = $financeTransaction['amount'];
                 $date = $financeTransaction['transaction_date'];
-                // $fromAccount = $financeTransaction['type'] == "Debit" ? $financeTransaction['account_id'] : $mainBank;
-                // $toAccount = $financeTransaction['type'] == "Credit" ? $financeTransaction['account_id'] : $mainBank;
-                $fromAccount = $financeTransaction['type'] == "Expense" ? $financeTransaction['account_id'] : $mainBank;
-                $toAccount = $financeTransaction['type'] == "Income" ? $financeTransaction['account_id'] : $mainBank;
+                $otherAccount = $financeTransaction['account_id'];
 
+                // Determine accounting treatment based on payment_type
+                if ($paymentType === 'payment') {
+                    // Payment: Debit Expense Account, Credit Bank Account
+                    $fromAccount = $otherAccount;  // Expense account
+                    $toAccount = $mainBank;        // Bank account (decreasing)
 
-                $createTransactions = FinanceAccountTransaction::create([
-                    'trans_group_id' => $transactionGroup->id,
-                    'journal_entry_id' => $journalEntry->id,
-                    'transaction_date' => $financeTransaction['transaction_date'],
-                    'account_id' => $financeTransaction['account_id'],
-                    'transactionID' => $financeTransaction['transactionID'],
-                    'referenceID' => $financeTransaction['referenceID'],
-                    'description' => $financeTransaction['description'],
-                    'type' => $financeTransaction['type'] == "Income" ? "Expense" : "Income", //expense, income //AccountingDebitAndCredit
-                    'category' => $financeTransaction['type'] == "Income" ? "Other" : "Deposit", //AccountingDebitAndCredit
-                    // 'type' => $financeTransaction['type'] == "Credit" ? "Expense" : "Income", //expense, income //AccountingDebitAndCredit
-                    // 'category' => $financeTransaction['type'] == "Credit" ? "Other" : "Deposit", //AccountingDebitAndCredit
-                    'amount' => $financeTransaction['amount'],
-                    'mode_of_payment' => $financeTransaction['mode_of_payment'], //Bank Transfer, Cash, Credit/Debit Card, Cheque
-                    'mainBank' => "false",
-                    'edited_by' => $user->id,
+                    // Transaction for other account (Expense)
+                    $this->createTransactionRecord($transactionGroup, $journalEntry, $financeTransaction, [
+                        'account_id' => $otherAccount,
+                        'type' => 'Expense',
+                        'category' => 'Other',
+                        'mainBank' => 'false'
+                    ]);
 
-                    'payment_type' => $request->payment_type,
-                    'bank_fee' => $financeTransaction['bank_fee'],
-                    'exchange_rate' => $financeTransaction['exchange_rate'],
-                ]);
+                    // Transaction for main bank
+                    $this->createTransactionRecord($transactionGroup, $journalEntry, $financeTransaction, [
+                        'account_id' => $mainBank,
+                        'type' => 'Income',  // Credit to bank (decrease)
+                        'category' => 'Withdrawal',
+                        'mainBank' => 'true'
+                    ]);
+                } else { // receipt
+                    // Receipt: Debit Bank Account, Credit Income Account
+                    $fromAccount = $mainBank;      // Bank account (increasing)
+                    $toAccount = $otherAccount;    // Income account
 
-                //
-                $createTransactions2 = FinanceAccountTransaction::create([
-                    'trans_group_id' => $transactionGroup->id,
-                    'journal_entry_id' => $journalEntry->id,
-                    'transaction_date' => $financeTransaction['transaction_date'],
-                    'account_id' => $mainBank,
-                    'transactionID' => $financeTransaction['transactionID'],
-                    'referenceID' => $financeTransaction['referenceID'],
-                    'description' => $financeTransaction['description'],
-                    //type and category opposite of first transaction
-                    'type' => $financeTransaction['type'] == "Income"  ? "Income" : "Expense", //expense, income //AccountingDebitAndCredit
-                    'category' => $financeTransaction['type'] == "Income" ? "Deposit" : "Other", //AccountingDebitAndCredit
-                    // 'type' => $financeTransaction['type'] == "Credit"  ? "Income" : "Expense", //expense, income //AccountingDebitAndCredit
-                    // 'category' => $financeTransaction['type'] == "Credit" ? "Deposit" : "Other", //AccountingDebitAndCredit
-                    'amount' => $financeTransaction['amount'],
-                    'mode_of_payment' => $financeTransaction['mode_of_payment'], //Bank Transfer, Cash, Credit/Debit Card, Cheque
-                    'mainBank' => "true",
-                    'edited_by' => $user->id,
+                    // Transaction for other account (Income)
+                    $this->createTransactionRecord($transactionGroup, $journalEntry, $financeTransaction, [
+                        'account_id' => $otherAccount,
+                        'type' => 'Income',
+                        'category' => 'Other',
+                        'mainBank' => 'false'
+                    ]);
 
-                    'payment_type' => $request->payment_type,
-                    'bank_fee' => $financeTransaction['bank_fee'],
-                    'exchange_rate' => $financeTransaction['exchange_rate'],
-                ]);
+                    // Transaction for main bank
+                    $this->createTransactionRecord($transactionGroup, $journalEntry, $financeTransaction, [
+                        'account_id' => $mainBank,
+                        'type' => 'Expense',  // Debit to bank (increase)
+                        'category' => 'Deposit',
+                        'mainBank' => 'true'
+                    ]);
+                }
 
-                // doubleEntry($journalEntryID, $date, $debitAccountID, $creditAccountID, $amount, $description, $reference, $profitCenter)
-                if ($request->status == "published") {
-                    $accountEntries = AccountEntriesDoubleEntryHelper::doubleEntry($journalEntry->id, $date, $fromAccount, $toAccount, $amount, $financeTransaction['description'], $financeTransaction['referenceID'], $financeTransaction['bank_fee'], $financeTransaction['exchange_rate']);
+                // Double entry accounting
+                if ($publishedStatus === "published") {
+                    $accountEntries = AccountEntriesDoubleEntryHelper::doubleEntry(
+                        $journalEntry->id,
+                        $date,
+                        $fromAccount,
+                        $toAccount,
+                        $amount,
+                        $financeTransaction['description'],
+                        $financeTransaction['referenceID'],
+                        $financeTransaction['bank_fee'] ?? 0,
+                        $financeTransaction['exchange_rate'] ?? 1
+                    );
+
                     if ($accountEntries != null) {
                         throw new \Exception("Error recording account entries: " . $accountEntries);
                     }
                 }
             }
 
-
-            $dataToLog = [
-                'causer_id' => $user->id,
-                'action_id' => $transactionGroup->id,
-                'action_type' => "Models\FinanceTransactionGroup",
-                'log_name' => "Transaction Group created successfully",
-                'description' => "Transaction Group created successfully by {$user->lastname} {$user->firstname}",
-            ];
-
-            // AuditLog::storeAuditLog($dataToLog);
             DB::commit();
             return $transactionGroup;
         } catch (\Throwable $th) {
             DB::rollBack();
             throw $th;
         }
+    }
+
+    // Helper method to create transaction records
+    private function createTransactionRecord($transactionGroup, $journalEntry, $financeTransaction, $options)
+    {
+        return FinanceAccountTransaction::create([
+            'trans_group_id' => $transactionGroup->id,
+            'journal_entry_id' => $journalEntry->id,
+            'transaction_date' => $financeTransaction['transaction_date'],
+            'account_id' => $options['account_id'],
+            'transactionID' => $financeTransaction['transactionID'],
+            'referenceID' => $financeTransaction['referenceID'],
+            'description' => $financeTransaction['description'],
+            'type' => $options['type'], //expense, income 
+            'category' => $options['category'], //Deposit, Other
+            'amount' => $financeTransaction['amount'], //
+            'mode_of_payment' => $financeTransaction['mode_of_payment'], //Bank Transfer, Cash, Credit/Debit Card, Cheque
+            'mainBank' => $options['mainBank'],
+            'edited_by' => auth()->user()->id,
+            'payment_type' => $transactionGroup->payment_type,
+            'bank_fee' => $financeTransaction['bank_fee'] ?? 0,
+            'exchange_rate' => $financeTransaction['exchange_rate'] ?? 1,
+        ]);
     }
 
     public function updateFinanceTransaction($request, int $transactionGroupId)
@@ -604,6 +743,7 @@ class TransactionService
 
             // Status to use (keep existing if not provided)
             $status = $request->status ?? $transactionGroup->status;
+            $paymentType = $request->payment_type; // 'payment' or 'receipt'
 
             // Update journal & group
             $journalEntry->update([
@@ -613,12 +753,12 @@ class TransactionService
             ]);
 
             $transactionGroup->update([
-                'payment_type' => $request->payment_type,
+                'payment_type' => $paymentType,
                 'status'       => $status,
                 'edited_by'    => $user->id,
             ]);
 
-            // 🔥 Delete existing account entries and transactions (use RELATION METHODS)
+            // 🔥 Delete existing account entries and transactions
             $journalEntry->accountEntries()->delete();
             $transactionGroup->financeAccountTransactions()->delete();
 
@@ -634,71 +774,56 @@ class TransactionService
             }
 
             foreach ($rows as $tx) {
-                // ---- Normalize type: support Credit/Debit and Income/Expense ----
-                $rawType = $tx['type'] ?? null; // 'Credit'|'Debit' or 'Income'|'Expense'
-                if (!$rawType) {
-                    throw new \Exception('Each transaction requires a type.');
-                }
+                $amount = $tx['amount'] ?? 0;
+                $date = $tx['transaction_date'] ?? date('Y-m-d');
+                $otherAccount = $tx['account_id'] ?? null;
 
-                $kind = match (strtolower($rawType)) {
-                    'credit', 'income'  => 'Income',
-                    'debit',  'expense' => 'Expense',
-                    default             => throw new \Exception("Unsupported transaction type: {$rawType}")
-                };
-                // ----------------------------------------------------------------
-
-                $amount     = $tx['amount'] ?? 0;
-                $date       = $tx['transaction_date'] ?? date('Y-m-d');
-                $accountId  = $tx['account_id'] ?? null;
-                if (!$accountId) {
+                if (!$otherAccount) {
                     throw new \Exception('Each transaction requires an account_id.');
                 }
 
-                // Mirror your create() mapping for double-entry direction:
-                // Expense  => from = expense account, to = main bank
-                // Income   => from = main bank,       to = income account
-                $fromAccount = $kind === 'Expense' ? $accountId : $mainBank;
-                $toAccount   = $kind === 'Income'  ? $accountId : $mainBank;
+                // Determine accounting treatment based on payment_type
+                if ($paymentType === 'payment') {
+                    // Payment: Debit Expense Account, Credit Bank Account
+                    $fromAccount = $otherAccount;  // Expense account
+                    $toAccount = $mainBank;        // Bank account (decreasing)
 
-                // --- Non-bank side (opposite type/category) ---
-                FinanceAccountTransaction::create([
-                    'trans_group_id'    => $transactionGroup->id,
-                    'journal_entry_id'  => $journalEntry->id,
-                    'transaction_date'  => $date,
-                    'account_id'        => $accountId,
-                    'transactionID'     => $tx['transactionID'] ?? null,
-                    'referenceID'       => $tx['referenceID'] ?? null,
-                    'description'       => $tx['description'] ?? null,
-                    'type'              => $kind === 'Income' ? 'Expense' : 'Income',
-                    'category'          => $kind === 'Income' ? 'Other'   : 'Deposit',
-                    'amount'            => $amount,
-                    'mode_of_payment'   => $tx['mode_of_payment'] ?? null,
-                    'mainBank'          => 'false',
-                    'edited_by'         => $user->id,
-                    'payment_type'      => $request->payment_type,
-                    'bank_fee'          => $tx['bank_fee'] ?? null,
-                    'exchange_rate'     => $tx['exchange_rate'] ?? null,
-                ]);
+                    // Transaction for other account (Expense)
+                    $this->createTransactionRecord($transactionGroup, $journalEntry, $tx, [
+                        'account_id' => $otherAccount,
+                        'type' => 'Expense',
+                        'category' => 'Other',
+                        'mainBank' => 'false'
+                    ]);
 
-                // --- Main bank side (same type/category as logical kind) ---
-                FinanceAccountTransaction::create([
-                    'trans_group_id'    => $transactionGroup->id,
-                    'journal_entry_id'  => $journalEntry->id,
-                    'transaction_date'  => $date,
-                    'account_id'        => $mainBank,
-                    'transactionID'     => $tx['transactionID'] ?? null,
-                    'referenceID'       => $tx['referenceID'] ?? null,
-                    'description'       => $tx['description'] ?? null,
-                    'type'              => $kind, // Income or Expense
-                    'category'          => $kind === 'Income' ? 'Deposit' : 'Other',
-                    'amount'            => $amount,
-                    'mode_of_payment'   => $tx['mode_of_payment'] ?? null,
-                    'mainBank'          => 'true',
-                    'edited_by'         => $user->id,
-                    'payment_type'      => $request->payment_type,
-                    'bank_fee'          => $tx['bank_fee'] ?? null,
-                    'exchange_rate'     => $tx['exchange_rate'] ?? null,
-                ]);
+                    // Transaction for main bank
+                    $this->createTransactionRecord($transactionGroup, $journalEntry, $tx, [
+                        'account_id' => $mainBank,
+                        'type' => 'Income',  // Credit to bank (decrease)
+                        'category' => 'Withdrawal',
+                        'mainBank' => 'true'
+                    ]);
+                } else { // receipt
+                    // Receipt: Debit Bank Account, Credit Income Account
+                    $fromAccount = $mainBank;      // Bank account (increasing)
+                    $toAccount = $otherAccount;    // Income account
+
+                    // Transaction for other account (Income)
+                    $this->createTransactionRecord($transactionGroup, $journalEntry, $tx, [
+                        'account_id' => $otherAccount,
+                        'type' => 'Income',
+                        'category' => 'Other',
+                        'mainBank' => 'false'
+                    ]);
+
+                    // Transaction for main bank
+                    $this->createTransactionRecord($transactionGroup, $journalEntry, $tx, [
+                        'account_id' => $mainBank,
+                        'type' => 'Expense',  // Debit to bank (increase)
+                        'category' => 'Deposit',
+                        'mainBank' => 'true'
+                    ]);
+                }
 
                 // Double-entry postings (only when published)
                 if ($status === 'published') {
@@ -710,8 +835,8 @@ class TransactionService
                         $amount,
                         $tx['description'] ?? null,
                         $tx['referenceID'] ?? null,
-                        $tx['bank_fee'] ?? null,
-                        $tx['exchange_rate'] ?? null
+                        $tx['bank_fee'] ?? 0,
+                        $tx['exchange_rate'] ?? 1
                     );
 
                     if ($err !== null) {
@@ -720,151 +845,15 @@ class TransactionService
                 }
             }
 
-            // (Optional) Audit log here...
-
             DB::commit();
 
-            // Return fresh instance (with any lazy props updated)
+            // Return fresh instance
             return $transactionGroup->refresh();
         } catch (\Throwable $th) {
             DB::rollBack();
             throw $th;
         }
     }
-
-
-    // public function updateFinanceTransaction($request, $transactionGroupId)
-    // {
-    //     DB::beginTransaction();
-    //     try {
-    //         $user = auth()->user();
-
-    //         // Find the transaction group
-    //         $transactionGroup = FinanceAccountTransactionGroup::where('id', $transactionGroupId)
-    //             ->where('company_id', $user->current_company_id)
-    //             ->firstOrFail();
-
-    //         // Find the associated journal entry
-    //         $journalEntry = FinanceJournalEntry::where('id', $transactionGroup->journal_entry_id)
-    //             ->where('company_id', $user->current_company_id)
-    //             ->firstOrFail();
-
-    //         // Update journal entry
-    //         $journalEntry->update([
-    //             'date' => date('Y-m-d'),
-    //             'status' => $request->status ?? $journalEntry->status,
-    //             'edited_by' => $user->id,
-    //         ]);
-
-    //         // Update transaction group
-    //         $transactionGroup->update([
-    //             'payment_type' => $request->payment_type,
-    //             'status' => $request->status ?? $transactionGroup->status,
-    //             'edited_by' => $user->id,
-    //         ]);
-
-    //         // Delete existing transactions and account entries
-    //         $existingTransactions = FinanceAccountTransaction::where('trans_group_id', $transactionGroup->id)->get();
-    //         if ($existingTransactions->isEmpty()) {
-    //             throw new \Exception('No transactions found for this transaction group.');
-    //         }
-
-    //         $journalEntryId = $existingTransactions->first()->journal_entry_id;
-    //         if ($journalEntryId) {
-    //             $journalEntryInfo = FinanceJournalEntry::find($journalEntryId);
-    //             optional($journalEntryInfo->accountEntries())->delete(); // Delete associated account entries
-    //             $transactionGroup->financeAccountTransactions()->delete();
-    //             // FinanceAccountTransaction::where('trans_group_id', $transactionGroup->id)->delete();
-    //         }
-
-    //         // Create new transactions
-    //         $mainBank = $request->bank_account_id;
-    //         foreach ($request->financeTransactions as $financeTransaction) {
-    //             $amount = $financeTransaction['amount'];
-    //             $date = $financeTransaction['transaction_date'];
-    //             $fromAccount = $financeTransaction['type'] === 'Debit' ? $financeTransaction['account_id'] : $mainBank;
-    //             $toAccount = $financeTransaction['type'] === 'Credit' ? $financeTransaction['account_id'] : $mainBank;
-
-    //             // Create new transaction
-    //             $newTransaction = FinanceAccountTransaction::create([
-    //                 'trans_group_id' => $transactionGroup->id,
-    //                 'journal_entry_id' => $journalEntry->id,
-    //                 'transaction_date' => $financeTransaction['transaction_date'],
-    //                 'account_id' => $financeTransaction['account_id'],
-    //                 'transactionID' => $financeTransaction['transactionID'],
-    //                 'referenceID' => $financeTransaction['referenceID'],
-    //                 'description' => $financeTransaction['description'],
-    //                 'type' => $financeTransaction['type'] === 'Credit' ? 'Expense' : 'Income',
-    //                 'category' => $financeTransaction['type'] === 'Credit' ? 'Other' : 'Deposit',
-    //                 'amount' => $financeTransaction['amount'],
-    //                 'mode_of_payment' => $financeTransaction['mode_of_payment'],
-    //                 'mainBank' => 'false',
-    //                 'edited_by' => $user->id,
-    //                 'payment_type' => $request->payment_type,
-    //                 'bank_fee' => $financeTransaction['bank_fee'],
-    //                 'exchange_rate' => $financeTransaction['exchange_rate'],
-    //             ]);
-
-    //             // Create paired transaction (main bank)
-    //             $newPairedTransaction = FinanceAccountTransaction::create([
-    //                 'trans_group_id' => $transactionGroup->id,
-    //                 'journal_entry_id' => $journalEntry->id,
-    //                 'transaction_date' => $financeTransaction['transaction_date'],
-    //                 'account_id' => $mainBank,
-    //                 'transactionID' => $financeTransaction['transactionID'],
-    //                 'referenceID' => $financeTransaction['referenceID'],
-    //                 'description' => $financeTransaction['description'],
-    //                 'type' => $financeTransaction['type'] === 'Credit' ? 'Income' : 'Expense',
-    //                 'category' => $financeTransaction['type'] === 'Credit' ? 'Deposit' : 'Other',
-    //                 'amount' => $financeTransaction['amount'],
-    //                 'mode_of_payment' => $financeTransaction['mode_of_payment'],
-    //                 'mainBank' => 'true',
-    //                 'edited_by' => $user->id,
-    //                 'payment_type' => $request->payment_type,
-    //                 'bank_fee' => $financeTransaction['bank_fee'],
-    //                 'exchange_rate' => $financeTransaction['exchange_rate'],
-    //             ]);
-
-    //             // Update double-entry accounting if published
-    //             if ($request->status === 'published') {
-    //                 $accountEntries = AccountEntriesDoubleEntryHelper::doubleEntry(
-    //                     $journalEntry->id,
-    //                     $date,
-    //                     $fromAccount,
-    //                     $toAccount,
-    //                     $amount,
-    //                     $financeTransaction['description'],
-    //                     $financeTransaction['referenceID'],
-    //                     $financeTransaction['bank_fee'],
-    //                     $financeTransaction['exchange_rate']
-    //                 );
-    //                 if ($accountEntries !== null) {
-    //                     throw new \Exception("Error recording account entries: " . $accountEntries);
-    //                 }
-    //             }
-    //         }
-
-    //         // Log the update
-    //         $dataToLog = [
-    //             'causer_id' => $user->id,
-    //             'action_id' => $transactionGroup->id,
-    //             'action_type' => 'Models\FinanceAccountTransactionGroup',
-    //             'log_name' => 'Transaction Group updated successfully',
-    //             'description' => "Transaction Group updated successfully by {$user->lastname} {$user->firstname}",
-    //         ];
-
-    //         // AuditLog::storeAuditLog($dataToLog);
-
-    //         DB::commit();
-    //         return $transactionGroup;
-    //     } catch (ValidationException $e) {
-    //         DB::rollBack();
-    //         throw $e;
-    //     } catch (\Throwable $th) {
-    //         DB::rollBack();
-    //         throw $th;
-    //     }
-    // }
 
     public function viewFinanceTransactionGroup($id)
     {
