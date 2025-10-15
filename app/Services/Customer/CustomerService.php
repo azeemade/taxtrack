@@ -98,6 +98,8 @@ class CustomerService
             'vat_date',
             'tax_type',
             'payment_term',
+            'special_instruction',
+            'business_registration_number',
             'county'
         )
             ->with(['currency:id,name,symbol', 'category:id,name', 'contactPersons'])
@@ -161,6 +163,9 @@ class CustomerService
     protected function createContactPerson($record, $request)
     {
         foreach ($request['contact_persons'] as $person) {
+            if (!isset($person['full_name']) || !$person['full_name']) {
+                continue;
+            }
             $record->addContactPerson([
                 "full_name" => $person['full_name'],
                 "salutation" => $person['salutation'] ?? null,
@@ -200,9 +205,9 @@ class CustomerService
         $records = $records->map(function ($record) {
             return [
                 $record->customerID,
-                $record->name,
+                $record->company_name,
                 $record->current_balance,
-                $record->status,
+                $record->is_active ? 'Active' : 'Inactive',
                 Carbon::parse($record->created_at)->toFormattedDayDateString()
             ];
         });
