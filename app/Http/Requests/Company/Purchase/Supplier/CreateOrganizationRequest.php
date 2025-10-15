@@ -31,7 +31,7 @@ class CreateOrganizationRequest extends FormRequest
             "business_registration_number" => 'nullable|string',
             "vat_number" => 'nullable|string',
             "industry" => 'nullable|string',
-            "business_type" => 'required|string|in:sole-proprietorship,partnership,corporation',
+            "business_type" => 'required|string|in:sole-proprietorship,partnership,corporation,limited-liability-partnership,limited-company',
             "employee_count" => 'nullable|integer',
             "image" => 'nullable|string',
             "special_instruction" => 'nullable|string',
