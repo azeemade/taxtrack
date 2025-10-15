@@ -43,7 +43,6 @@ class CreateTransactionRequest extends FormRequest
             'financeTransactions.*.transactionID' => ['nullable', 'string', 'max:255'],
             'financeTransactions.*.referenceID' => ['nullable', 'string', 'max:255'],
             'financeTransactions.*.description' => ['required', 'string', 'max:500'],
-            'financeTransactions.*.type' => ['required', 'string', Rule::in(['Income', 'Expense'])], //'Credit', 'Debit'
             'financeTransactions.*.amount' => ['required', 'numeric', 'gt:0'],
             'financeTransactions.*.mode_of_payment' => ['required', 'string', 'max:255'],
         ];

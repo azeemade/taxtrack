@@ -53,8 +53,7 @@ class InvoicePosting
             'vat',
             'amount',         // UI gross (optional; used for consistency checks)
             'category_id',
-            'cost_price',     // preferred cost
-            'product_id',     // optional product lookup
+            'cost_price',     // preferred cost]
         ]);
 
         if ($lines->isEmpty()) {
@@ -285,7 +284,7 @@ class InvoicePosting
 
     /**
      * Resolve a cost to use for COGS.
-     * Priority: cost_price → avg_cost → product.price_cost? (example) → 0
+     * Priority: cost_price → product.price_cost? (example) → 0
      */
     private function resolveUnitCost(object $li): float
     {

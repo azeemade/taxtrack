@@ -101,10 +101,17 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
-            $record = $this->paymentRecordService->modify($request->validated());
+            // Ensure model/model_id are set to this invoice id
+            $payload = array_merge($request->validated(), [
+                'model'    => 'invoices',
+                'model_id' => $id,
+            ]);
 
-            $record = $this->paymentRecordService->modify([...$request->validated(), 'model' => 'invoices', 'model_id' => $id]);
-            $record->recordable->customer->increment('current_balance', $record->amount_paid);
+            // Persist / upsert payment record (make sure it stores bank_account_id too)
+            $record = $this->paymentRecordService->modify($payload);
+
+            // ✅ Reduce the customer current balance by amount received
+            $record->recordable->customer->decrement('current_balance', $record->amount_paid);
 
             // Idempotent: creates/updates the SAME journal for this payment record
             (new PaymentPosting())

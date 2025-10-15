@@ -6,6 +6,7 @@ use App\Exceptions\BadRequestException;
 use App\Helpers\AccountEntriesCalculationHelper;
 use App\Helpers\FinanceTotalsHelper;
 use App\Http\Requests\Company\Accounting\JournalEntry\JournalEntryRequest;
+use App\Models\Company;
 use App\Models\FinanceAccountEntry;
 use App\Models\FinanceAccountSubCategory;
 use App\Models\FinanceAccountType;
@@ -1215,98 +1216,274 @@ class FinanceAccountTypeService
     }
 
     public function getBalanceSheetMajorRunAtDate($request)
-    {
-        try {
-            $export = $request->export; // pdf, excel
-            $currentDate = Carbon::now()->format('d/M/Y');
+{
+    try {
+        $export = $request->export; // pdf, excel
+        $currentDate = Carbon::now()->format('d/M/Y');
 
-            // Parse primary date filter
-            $primaryDate = $this->parseDateFilter($request->primary_date, $request->primary_period_type);
-            $endDate = $primaryDate['end_date'];
-            $startDate = $primaryDate['start_date'];
-
-            // Parse comparison date filter if provided
-            $comparisonDate = null;
-            if ($request->has('compare_with') && $request->compare_with !== 'none') {
-                $comparisonDate = $this->parseComparisonDate($endDate, $request->compare_with, $request->compare_period, $request->compare_value);
-                $pYEndDate = $comparisonDate['end_date'];
-                $pYStartDate = $comparisonDate['start_date'];
-            } else {
-                // Default to previous year if no comparison selected
-                $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
-                $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
-            }
-
-            // Get account types with their balances
-            $accountTypes = FinanceAccountType::whereIn("slug", ["asset", "liability", "equity"])
-                ->with([
-                    'accountCategories.accountSubCategories.accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
-                        $query->whereHas('journalEntry', function ($query) {
-                            $query->where('status', 'published')
-                                ->where('company_id',  auth()->user()->current_company_id);
-                        })
-                            ->where(function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
-                                $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
-                                    ->orWhereBetween(DB::raw('DATE(date)'), [$pYStartDate, $pYEndDate]);
-                            });
-                    },
-                    'accountCategories.accountSubCategories.accounts.accountEntries.journalEntry:id,status'
-                ])
-                ->get();
-
-            // Calculate retained earnings for both periods
-            $currentRetainedEarnings = AccountEntriesCalculationHelper::calculateRetainedEarningsByDate($startDate, $endDate);
-            $previousRetainedEarnings = AccountEntriesCalculationHelper::calculateRetainedEarningsByDate($pYStartDate, $pYEndDate);
-
-            // Process balance sheet data
-            $balanceSheet = $this->processBalanceSheetData(
-                $accountTypes,
-                $startDate,
-                $endDate,
-                $pYStartDate,
-                $pYEndDate,
-                $currentRetainedEarnings,
-                $previousRetainedEarnings
-            );
-
-            // Prepare response
-            $record = [
-                'balanceSheet' => $balanceSheet,
-                'totalAssetCy' => $balanceSheet[0]['totalCyBalance'] ?? 0,
-                'totalAssetPy' => $balanceSheet[0]['totalPyBalance'] ?? 0,
-                'totalLiabilityCy' => $balanceSheet[1]['totalCyBalance'] ?? 0,
-                'totalLiabilityPy' => $balanceSheet[1]['totalPyBalance'] ?? 0,
-                'totalEquityCy' => $balanceSheet[2]['totalCyBalance'] ?? 0,
-                'totalEquityPy' => $balanceSheet[2]['totalPyBalance'] ?? 0,
-                'equityLiabilityCyTotal' => ($balanceSheet[1]['totalCyBalance'] ?? 0) + ($balanceSheet[2]['totalCyBalance'] ?? 0),
-                'equityLiabilityPyTotal' => ($balanceSheet[1]['totalPyBalance'] ?? 0) + ($balanceSheet[2]['totalPyBalance'] ?? 0),
-                'currentDate' => $currentDate,
-                'startDate' => $startDate,
-                'endDate' => $endDate,
-                'previousStartDate' => $pYStartDate,
-                'previousEndDate' => $pYEndDate,
-                'currentYear' => Carbon::parse($endDate)->year,
-                'previousYear' => Carbon::parse($pYEndDate)->year,
-                'comparisonDate' => $comparisonDate,
-                'filterDescription' => $this->getFilterDescription($request),
-                'comparisonDescription' => $comparisonDate ? $this->getComparisonDescription($request) : null,
-            ];
-
-            // Handle exports
-            if ($export) {
-                $fileName = 'balance_sheet_' . now()->format('Ymd_His') . '.xlsx';
-
-                return Excel::download(
-                    new BalanceSheetFirstLevelReportExportCYPY($record),
-                    $fileName
-                );
-            }
-
-            return $record;
-        } catch (\Throwable $th) {
-            return $th;
+        // --- Company + Fiscal Year End ---
+        $companyId = auth()->user()->current_company_id;
+        $company   = Company::find($companyId);
+        if (!$company) {
+            throw new \Exception('Company not found');
         }
+        $fiscalYearEnd = $company->fiscal_year_end ?: '12-31'; // MM-DD
+
+        // --- Compute current FY window from fiscal_year_end ---
+        $today         = Carbon::now();
+        $fyEndThisYear = Carbon::createFromFormat('Y-m-d', $today->year . '-' . $fiscalYearEnd);
+        if ($today->gt($fyEndThisYear)) {
+            // After this year's FY end => current FY: (fyEndThisYear + 1 day) .. (fyEndThisYear next year)
+            $startOfFY = $fyEndThisYear->copy()->addDay();       // e.g. 2025-10-01 if FY end is 2025-09-30
+            $endOfFY   = $fyEndThisYear->copy()->addYear();      // e.g. 2026-09-30
+        } else {
+            // Before/On FY end => current FY: (last year's FY end + 1 day) .. (this year's FY end)
+            $endOfFY   = $fyEndThisYear->copy();
+            $startOfFY = $fyEndThisYear->copy()->subYear()->addDay();
+        }
+
+        // --- PRIMARY PERIOD (fiscal-aware) ---
+        $primaryDate = $this->parseDateFilter($request->primary_date, $request->primary_period_type);
+
+        if (($request->primary_period_type ?? null) === 'year_end' && !empty($request->primary_date)) {
+            // Interpret "year_end" as the fiscal year that ENDS in the given year
+            $yr   = Carbon::parse($request->primary_date)->year;
+            $fyE  = Carbon::createFromFormat('Y-m-d', $yr . '-' . $fiscalYearEnd); // e.g. 2025-09-30
+            $startDate = $fyE->copy()->subYear()->addDay()->toDateString();        // 2024-10-01
+            $endDate   = $fyE->toDateString();                                     // 2025-09-30
+            $filterDescription = $yr . ' Fiscal Year End';
+        } elseif (!empty($primaryDate['start_date']) && !empty($primaryDate['end_date'])) {
+            // Respect explicit parsed dates if your UI provided them
+            $startDate = Carbon::parse($primaryDate['start_date'])->toDateString();
+            $endDate   = Carbon::parse($primaryDate['end_date'])->toDateString();
+            $filterDescription = $this->getFilterDescription($request);
+        } else {
+            // Default to current fiscal window
+            $startDate = $startOfFY->toDateString();
+            $endDate   = $endOfFY->toDateString();
+            $filterDescription = 'Current Fiscal Year';
+        }
+
+        // --- COMPARISON PERIOD (fiscal-aware) ---
+        $comparisonDate = null;
+        if ($request->has('compare_with') && $request->compare_with !== 'none') {
+            if ($request->compare_with === 'years_ago') {
+                $shift = (int)($request->compare_value ?? 1);
+                $pYStartDate = Carbon::parse($startDate)->subYears($shift)->toDateString();
+                $pYEndDate   = Carbon::parse($endDate)->subYears($shift)->toDateString();
+                $comparisonDate = ['start_date' => $pYStartDate, 'end_date' => $pYEndDate];
+                $comparisonDescription = "Compared with {$shift} fiscal year(s) ago";
+            } else {
+                // If you support other modes, fall back to your helper — but keep dates aligned to fiscal if possible.
+                $parsed = $this->parseComparisonDate($endDate, $request->compare_with, $request->compare_period, $request->compare_value);
+                $pYStartDate = Carbon::parse($parsed['start_date'])->toDateString();
+                $pYEndDate   = Carbon::parse($parsed['end_date'])->toDateString();
+                $comparisonDate = ['start_date' => $pYStartDate, 'end_date' => $pYEndDate];
+                $comparisonDescription = $this->getComparisonDescription($request);
+            }
+        } else {
+            // Default previous fiscal year (same span shifted back 1 year)
+            $pYStartDate = Carbon::parse($startDate)->subYear()->toDateString();
+            $pYEndDate   = Carbon::parse($endDate)->subYear()->toDateString();
+            $comparisonDescription = null;
+        }
+
+        // --- Fetch accounts & entries (company filter unified) ---
+        $accountTypes = FinanceAccountType::whereIn("slug", ["asset", "liability", "equity"])
+            ->with([
+                'accountCategories.accountSubCategories.accounts.accountEntries' => function ($q) use ($startDate, $endDate, $pYStartDate, $pYEndDate, $companyId) {
+                    $q->whereHas('journalEntry', function ($j) use ($companyId) {
+                        $j->where('status', 'published')->where('company_id', $companyId);
+                    })
+                    ->where(function ($w) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
+                        $w->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
+                          ->orWhereBetween(DB::raw('DATE(date)'), [$pYStartDate, $pYEndDate]);
+                    });
+                },
+                'accountCategories.accountSubCategories.accounts.accountEntries.journalEntry:id,status'
+            ])
+            ->get();
+
+        // --- Retained earnings for both windows ---
+        $currentRetainedEarnings  = AccountEntriesCalculationHelper::calculateRetainedEarningsByDate($startDate, $endDate);
+        $previousRetainedEarnings = AccountEntriesCalculationHelper::calculateRetainedEarningsByDate($pYStartDate, $pYEndDate);
+
+        // --- Process into balance sheet structure ---
+        $balanceSheet = $this->processBalanceSheetData(
+            $accountTypes,
+            $startDate,
+            $endDate,
+            $pYStartDate,
+            $pYEndDate,
+            $currentRetainedEarnings,
+            $previousRetainedEarnings
+        );
+
+        // --- Response payload ---
+        $record = [
+            'balanceSheet'             => $balanceSheet,
+            'totalAssetCy'             => $balanceSheet[0]['totalCyBalance'] ?? 0,
+            'totalAssetPy'             => $balanceSheet[0]['totalPyBalance'] ?? 0,
+            'totalLiabilityCy'         => $balanceSheet[1]['totalCyBalance'] ?? 0,
+            'totalLiabilityPy'         => $balanceSheet[1]['totalPyBalance'] ?? 0,
+            'totalEquityCy'            => $balanceSheet[2]['totalCyBalance'] ?? 0,
+            'totalEquityPy'            => $balanceSheet[2]['totalPyBalance'] ?? 0,
+            'equityLiabilityCyTotal'   => ($balanceSheet[1]['totalCyBalance'] ?? 0) + ($balanceSheet[2]['totalCyBalance'] ?? 0),
+            'equityLiabilityPyTotal'   => ($balanceSheet[1]['totalPyBalance'] ?? 0) + ($balanceSheet[2]['totalPyBalance'] ?? 0),
+            'currentDate'              => $currentDate,
+            'startDate'                => $startDate,
+            'endDate'                  => $endDate,
+            'previousStartDate'        => $pYStartDate,
+            'previousEndDate'          => $pYEndDate,
+            'currentYear'              => Carbon::parse($endDate)->year,
+            'previousYear'             => Carbon::parse($pYEndDate)->year,
+            'comparisonDate'           => $comparisonDate,
+            'filterDescription'        => $filterDescription,
+            'comparisonDescription'    => $comparisonDescription ?? null,
+            'company_financial_year_end' => $fiscalYearEnd,
+        ];
+
+        // --- Export (if requested) ---
+        if ($export) {
+            $fileName = 'balance_sheet_' . now()->format('Ymd_His') . '.xlsx';
+            return Excel::download(new BalanceSheetFirstLevelReportExportCYPY($record), $fileName);
+        }
+
+        return $record;
+    } catch (\Throwable $th) {
+        return $th;
     }
+}
+
+
+    // public function getBalanceSheetMajorRunAtDate($request)
+    // {
+    //     try {
+    //         $export = $request->export; // pdf, excel
+    //         $currentDate = Carbon::now()->format('d/M/Y');
+
+    //         $companyId = auth()->user()->current_company_id;
+    //         $company = Company::find($companyId);
+    //         if (!$company) {
+    //             throw new \Exception('Company not found');
+    //         }
+
+    //         $fiscalYearEnd = $company->fiscal_year_end ?? '12-31'; // default calendar year if not set
+
+    //         // Determine fiscal year range based on fiscal_year_end
+    //         $today = Carbon::now();
+    //         $fyEndThisYear = Carbon::createFromFormat('Y-m-d', $today->year . '-' . $fiscalYearEnd);
+
+    //         if ($today->gt($fyEndThisYear)) {
+    //             // After fiscal year end → current FY starts the next day after last FY end
+    //             $startOfFY = $fyEndThisYear->copy()->addDay();
+    //             $endOfFY = $fyEndThisYear->copy()->addYear();
+    //         } else {
+    //             // Before fiscal year end → current FY started after last year’s end
+    //             $endOfFY = $fyEndThisYear;
+    //             $startOfFY = $fyEndThisYear->copy()->subYear()->addDay();
+    //         }
+
+    //         // Use fiscal-year dates unless overridden by a specific date filter
+    //         $primaryDate = $this->parseDateFilter($request->primary_date, $request->primary_period_type);
+    //         $startDate = $primaryDate['start_date'] ?? $startOfFY->toDateString();
+    //         $endDate   = $primaryDate['end_date']   ?? $endOfFY->toDateString();
+
+    //         // ---- Comparison period (previous fiscal year) ----
+    //         $pYEndDate   = Carbon::parse($endDate)->subYear()->toDateString();
+    //         $pYStartDate = Carbon::parse($startDate)->subYear()->toDateString();
+
+    //         // $export = $request->export; // pdf, excel
+    //         // $currentDate = Carbon::now()->format('d/M/Y');
+
+    //         // // Parse primary date filter
+    //         // $primaryDate = $this->parseDateFilter($request->primary_date, $request->primary_period_type);
+    //         // $endDate = $primaryDate['end_date'];
+    //         // $startDate = $primaryDate['start_date'];
+
+    //         // Parse comparison date filter if provided
+    //         $comparisonDate = null;
+    //         if ($request->has('compare_with') && $request->compare_with !== 'none') {
+    //             $comparisonDate = $this->parseComparisonDate($endDate, $request->compare_with, $request->compare_period, $request->compare_value);
+    //             $pYEndDate = $comparisonDate['end_date'];
+    //             $pYStartDate = $comparisonDate['start_date'];
+    //         } else {
+    //             // Default to previous year if no comparison selected
+    //             $pYEndDate = Carbon::parse($endDate)->subYear()->endOfYear()->toDateString();
+    //             $pYStartDate = Carbon::parse($pYEndDate)->startOfYear()->toDateString();
+    //         }
+
+    //         // Get account types with their balances
+    //         $accountTypes = FinanceAccountType::whereIn("slug", ["asset", "liability", "equity"])
+    //             ->with([
+    //                 'accountCategories.accountSubCategories.accounts.accountEntries' => function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
+    //                     $query->whereHas('journalEntry', function ($query) {
+    //                         $query->where('status', 'published')
+    //                             ->where('company_id',  auth()->user()->current_company_id);
+    //                     })
+    //                         ->where(function ($query) use ($startDate, $endDate, $pYStartDate, $pYEndDate) {
+    //                             $query->whereBetween(DB::raw('DATE(date)'), [$startDate, $endDate])
+    //                                 ->orWhereBetween(DB::raw('DATE(date)'), [$pYStartDate, $pYEndDate]);
+    //                         });
+    //                 },
+    //                 'accountCategories.accountSubCategories.accounts.accountEntries.journalEntry:id,status'
+    //             ])
+    //             ->get();
+
+    //         // Calculate retained earnings for both periods
+    //         $currentRetainedEarnings = AccountEntriesCalculationHelper::calculateRetainedEarningsByDate($startDate, $endDate);
+    //         $previousRetainedEarnings = AccountEntriesCalculationHelper::calculateRetainedEarningsByDate($pYStartDate, $pYEndDate);
+
+    //         // Process balance sheet data
+    //         $balanceSheet = $this->processBalanceSheetData(
+    //             $accountTypes,
+    //             $startDate,
+    //             $endDate,
+    //             $pYStartDate,
+    //             $pYEndDate,
+    //             $currentRetainedEarnings,
+    //             $previousRetainedEarnings
+    //         );
+
+    //         // Prepare response
+    //         $record = [
+    //             'balanceSheet' => $balanceSheet,
+    //             'totalAssetCy' => $balanceSheet[0]['totalCyBalance'] ?? 0,
+    //             'totalAssetPy' => $balanceSheet[0]['totalPyBalance'] ?? 0,
+    //             'totalLiabilityCy' => $balanceSheet[1]['totalCyBalance'] ?? 0,
+    //             'totalLiabilityPy' => $balanceSheet[1]['totalPyBalance'] ?? 0,
+    //             'totalEquityCy' => $balanceSheet[2]['totalCyBalance'] ?? 0,
+    //             'totalEquityPy' => $balanceSheet[2]['totalPyBalance'] ?? 0,
+    //             'equityLiabilityCyTotal' => ($balanceSheet[1]['totalCyBalance'] ?? 0) + ($balanceSheet[2]['totalCyBalance'] ?? 0),
+    //             'equityLiabilityPyTotal' => ($balanceSheet[1]['totalPyBalance'] ?? 0) + ($balanceSheet[2]['totalPyBalance'] ?? 0),
+    //             'currentDate' => $currentDate,
+    //             'startDate' => $startDate,
+    //             'endDate' => $endDate,
+    //             'previousStartDate' => $pYStartDate,
+    //             'previousEndDate' => $pYEndDate,
+    //             'currentYear' => Carbon::parse($endDate)->year,
+    //             'previousYear' => Carbon::parse($pYEndDate)->year,
+    //             'comparisonDate' => $comparisonDate,
+    //             'filterDescription' => $this->getFilterDescription($request),
+    //             'comparisonDescription' => $comparisonDate ? $this->getComparisonDescription($request) : null,
+    //             'company_financial_year_end' => $company->fiscal_year_end,
+    //         ];
+
+    //         // Handle exports
+    //         if ($export) {
+    //             $fileName = 'balance_sheet_' . now()->format('Ymd_His') . '.xlsx';
+
+    //             return Excel::download(
+    //                 new BalanceSheetFirstLevelReportExportCYPY($record),
+    //                 $fileName
+    //             );
+    //         }
+
+    //         return $record;
+    //     } catch (\Throwable $th) {
+    //         return $th;
+    //     }
+    // }
 
     public function getCashSummaryReport($request)
     {
@@ -3183,8 +3360,8 @@ class FinanceAccountTypeService
 
             case 'previous_period':
                 // Compare with same duration before the current period
-                $currentStart = Carbon::parse($request->primary_start_date);
-                $currentEnd = Carbon::parse($request->primary_end_date);
+                $currentStart = Carbon::parse(request()->primary_start_date);
+                $currentEnd = Carbon::parse(request()->primary_end_date);
                 $duration = $currentStart->diffInDays($currentEnd);
 
                 return [
