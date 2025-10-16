@@ -26,7 +26,7 @@ class FinanceAccountEntryService
             $query = FinanceAccountEntry::whereHas('journalEntry', function ($query) {
                 $query->where('status', 'published')
                     ->where('company_id', auth()->user()->current_company_id);
-            })->whereHas('subCategory', function ($query) {
+            })->whereHas('account.subCategory', function ($query) {
                 $query->where('slug', 'cash-and-bank');
             });
 

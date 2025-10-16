@@ -9,6 +9,9 @@ use App\Http\Requests\Company\Accounting\ChartOfAccount\UpdateBankRequest;
 use App\Http\Requests\Company\Accounting\ChartOfAccount\UpdateChartOfAccountRequest;
 use App\Http\Requests\Company\Banking\Banks\CreateBankConnectionRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
+use App\Models\Company;
+use App\Models\FinanceChartOfAccount;
+use App\Models\User;
 use App\Responser\JsonResponser;
 use App\Services\ChartOfAccount\ChartOfAccountService;
 use App\Services\FinanceAccountEntry\FinanceAccountEntryService;
@@ -33,6 +36,22 @@ class BankAccountControllerRework extends Controller
     public function stats(SharedFilterRequest $request)
     {
         try {
+            // Company::all()->each(function ($company) {
+
+            //     $editedBy = User::where('current_company_id', $company->id)->first()->id ?? null;
+            //     $bankChargesAccount = FinanceChartOfAccount::where('name', 'Bank charges')->where('company_id', $company->id)->first();
+            //     if (!$bankChargesAccount) {
+            //         $bankChargesAccount = FinanceChartOfAccount::create([
+            //             'account_type_id' => 5, 'account_category_id' => 7, 'account_sub_category_id' => 27, 'edited_by' => $editedBy, 'name' => 'Bank Charges', 'currency' => NULL, 'account_number' => '5070070011', 'old_account_number' => '', 'second_leg_account_id' => NULL, 'reference_code' => 'Bank Charges', 'description' => 'Bank fees, service charges, and transaction fees', 'slug' => 'bank-charges', 'opening_balance' => '0.00', 'balance_date' => NULL, 'balance' => NULL, 'is_active' => 'true', 'is_default' => 'true', 'created_at' => '2023-10-11 14:54:24', 'updated_at' => '2023-10-11 14:54:24', 'deleted_at' => NULL, 'company_id' => $company->id, 'status' => 'published',
+            //         ]);
+            //     } else {
+            //         $bankChargesAccount->update([
+            //             'edited_by' => $editedBy,
+            //             'status' => 'published',
+            //         ]);
+            //     }
+            // });
+
             // System (from GL entries)
             $system = $this->financeAccountEntryService
                 ->getSystemTotalBalanceAndFlow($request->start_date, $request->end_date);
@@ -59,7 +78,7 @@ class BankAccountControllerRework extends Controller
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
