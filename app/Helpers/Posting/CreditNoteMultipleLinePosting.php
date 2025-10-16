@@ -2,205 +2,358 @@
 
 namespace App\Helpers\Posting;
 
+use App\Enums\DocumentableModelEnums;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Helpers\Posting\AccountHelper;
+use App\Models\Invoice;
 
 class CreditNoteMultipleLinePosting
 {
-    /**
-     * Idempotent: create or refresh the journal for a credit note with multiple invoice line items.
-     *
-     * Posting logic (Sales Credit Note):
-     *   Dr Sales (reverse revenue) ............. sum of net credits
-     *   Dr VAT Payable (reverse VAT) ........... sum of VAT portions
-     *   Dr Discounts (optional, if you pass/track allowances separately)
-     *   Cr Accounts Receivable ................. total credit (net + VAT + discounts)
-     *
-     * @return int journal_entry_id
-     */
-    public function syncForCreditNote(object $creditNote, int $companyId, ?int $editedBy = null): int
+    public function syncForCreditNote(object $creditNote, int $companyId, ?int $editedBy = null, ?array $itemsFromRequest = null): int
     {
-        // --- Load items (expected table: credit_note_items) ---
-        // Required columns: credit_note_id, invoice_id, line_item_id, credit_amount, credit_in_full (bool)
-        // Optional on line_items (if available): amount, tax_amount, tax_rate, discount_amount
-        $items = DB::table('credit_note_items')
-            ->where('credit_note_id', $creditNote->id)
-            ->get(['invoice_id','line_item_id','credit_amount','credit_in_full'])
-            ->toArray();
+        $debugTag = "[CN#{$creditNote->id}]";
 
-        if (empty($items)) {
+        Log::debug("$debugTag Start", [
+            'company_id' => $companyId,
+            'edited_by'  => $editedBy,
+            'reference'  => $creditNote->referenceID ?? $creditNote->additional_referenceID ?? null,
+            'issue_date' => (string)($creditNote->issue_date ?? now()),
+        ]);
+
+        // 1) Read pivot; join line context (need qty & cost for inventory reverse)
+        $items = DB::table('credit_note_invoices as cni')
+            ->join('line_items as li', 'li.id', '=', 'cni.line_item_id')
+            ->join('invoices as inv', 'inv.id', '=', 'cni.invoice_id')
+            ->leftJoin('categories as cat', 'cat.id', '=', 'li.category_id')
+            ->where('cni.credit_note_id', $creditNote->id)
+            ->get([
+                'cni.id as cni_id',
+                'cni.invoice_id',
+                'cni.line_item_id',
+                'cni.credit_amount_total as credit_amount',   // gross credited
+                'li.amount  as line_gross',                   // gross per line (net+VAT)
+                'li.vat     as line_vat_percent',             // percent (e.g., 23.00)
+                'li.discount as line_discount',               // optional amount
+                'li.quantity as line_qty',
+                'li.cost_price as unit_cost',                 // cost for COGS reversal
+                'li.category_id',
+                'cat.slug as category_slug',
+                'inv.journal_entry_id as invoice_journal_entry_id',
+            ]);
+
+        Log::debug("$debugTag Pivot", [
+            'count' => $items->count(),
+            'sum_credit_amount' => (float)$items->sum('credit_amount'),
+        ]);
+
+        // Fallback to payload if pivot empty
+        if ($items->isEmpty() && !empty($itemsFromRequest)) {
+            Log::debug("$debugTag Pivot empty; falling back to payload");
+            $items = collect($itemsFromRequest)->map(function ($v) {
+                $li = DB::table('line_items')
+                    ->leftJoin('categories as cat', 'cat.id', '=', 'line_items.category_id')
+                    ->where('line_items.id', $v['line_item_id'])
+                    ->first([
+                        'line_items.amount as line_gross',
+                        'line_items.vat as line_vat_percent',
+                        'line_items.discount as line_discount',
+                        'line_items.quantity as line_qty',
+                        'line_items.cost_price as unit_cost',
+                        'line_items.category_id',
+                        'cat.slug as category_slug',
+                    ]);
+                return (object)[
+                    'cni_id'                  => null,
+                    'invoice_id'              => (int)$v['invoice_id'],
+                    'line_item_id'            => (int)$v['line_item_id'],
+                    'credit_amount'           => (float)$v['credit_amount'],
+                    'line_gross'              => $li ? (float)$li->line_gross      : null,
+                    'line_vat_percent'        => $li ? (float)$li->line_vat_percent : null,
+                    'line_discount'           => $li ? (float)$li->line_discount   : 0.0,
+                    'line_qty'                => $li ? (float)$li->line_qty        : null,
+                    'unit_cost'               => $li ? (float)$li->unit_cost       : null,
+                    'category_id'             => $li ? (int)$li->category_id       : null,
+                    'category_slug'           => $li ? (string)$li->category_slug  : null,
+                    'invoice_journal_entry_id' => null,
+                ];
+            });
+        }
+
+        if ($items->isEmpty()) {
+            Log::warning("$debugTag No credit items found.");
             throw new \RuntimeException('No credit items found for this credit note.');
         }
 
-        // --- Resolve control accounts from config slugs ---
+        // 2) Accounts
         $accAR         = $this->accountIdFromKey('AR', $companyId);
         $accSALES      = $this->accountIdFromKey('SALES', $companyId);
         $accVATPayable = $this->accountIdFromKey('VAT_PAYABLE', $companyId);
         $accDiscounts  = config('accounts.DISCOUNTS') ? $this->accountIdFromKey('DISCOUNTS', $companyId) : null;
 
-        // --- Compute aggregated amounts from items ---
-        $sumNet = 0.0;         // revenue component to reverse
-        $sumVAT = 0.0;         // VAT portion to reverse
-        $sumDisc = 0.0;        // optional: allowances/extra discount routed to DISCOUNTS
-        $sumTotal = 0.0;       // what hits AR (credit)
+        // Inventory accounts (optional, for inventory returns)
+        $accCOGS      = $this->accountIdFromKeyOptional('COGS', $companyId);
+        $accInventory = $this->accountIdFromKeyOptional('INVENTORY', $companyId);
+        if (!$accInventory) {
+            $accInventory = $this->accountIdFromSlugOptional('inventories', $companyId);
+        }
+
+        Log::debug("$debugTag Accounts", compact('accAR', 'accSALES', 'accVATPayable', 'accDiscounts', 'accCOGS', 'accInventory'));
+
+        $hasQtyCol = Schema::hasColumn('credit_note_invoices', 'quantity_returned');
+
+        // 3) Aggregate (sales/vat/discount) + derive quantities & inventory reversal
+        $sumNet = 0.0;
+        $sumVAT = 0.0;
+        $sumDisc = 0.0;
+        $sumTotal = 0.0;
+        $sumInvDr = 0.0;
+        $sumCogsCr = 0.0; // inventory reversal totals
 
         foreach ($items as $it) {
-            $creditGross = (float) $it->credit_amount;
-            $split = $this->splitNetVatFromLineItem((int)$it->invoice_id, (int)$it->line_item_id, $creditGross);
+            $requested = max((float)$it->credit_amount, 0.0);
 
-            // $split = ['net' => x, 'vat' => y, 'discount' => z]  // discount is optional, often 0
+            // Remaining line gross cap (money)
+            $remainingGross = $this->remainingLineGross((int)$it->line_item_id, (int)$it->invoice_id, (int)$creditNote->id);
+
+            if ($requested > $remainingGross + 0.0001) {
+                Log::warning("$debugTag Requested > remaining gross", [
+                    'line_item_id' => $it->line_item_id,
+                    'requested'    => $requested,
+                    'remaining'    => $remainingGross,
+                ]);
+                $requested = $remainingGross; // clamp instead of throwing, to keep flow (optional)
+            }
+
+            // Split for sales/VAT/discount
+            $split = $this->splitNetVatFromPercent(
+                $requested,
+                (float)($it->line_gross ?? 0),
+                (float)($it->line_vat_percent ?? 0),
+                (float)($it->line_discount ?? 0),
+            );
+
             $sumNet   += $split['net'];
             $sumVAT   += $split['vat'];
             $sumDisc  += $split['discount'];
-            $sumTotal += $creditGross; // AR credit is total gross credited back to customer
+            $sumTotal += $requested;
+
+            // ----- Derive quantity for inventory returns -----
+            $isInventory = $this->isInventoryCategory((int)($it->category_id ?? 0), (string)($it->category_slug ?? ''));
+            if ($isInventory) {
+                $lineQty   = max((float)($it->line_qty ?? 0), 0.0);
+                $lineGross = max((float)($it->line_gross ?? 0), 0.0);
+                $unitCost  = max((float)($it->unit_cost ?? 0), 0.0);
+
+                // unit gross used on the invoice
+                $unitGross = ($lineQty > 0 && $lineGross > 0) ? ($lineGross / $lineQty) : 0.0;
+                $qtyRequested = ($unitGross > 0) ? ($requested / $unitGross) : 0.0;
+
+                // cap by remaining qty (original qty - prior returns)
+                $qtyRemaining = $this->remainingLineQty((int)$it->line_item_id, (int)$it->invoice_id);
+                $qtyToReturn  = min($qtyRequested, $qtyRemaining);
+                $qtyToReturn  = max($qtyToReturn, 0.0);
+
+                // value at cost for reversal
+                $costAmt = $unitCost > 0 ? ($qtyToReturn * $unitCost) : 0.0;
+
+                Log::debug("$debugTag Inventory derive", [
+                    'line_item_id'  => $it->line_item_id,
+                    'unit_gross'    => $this->m($unitGross),
+                    'qty_requested' => $this->m($qtyRequested),
+                    'qty_remaining' => $this->m($qtyRemaining),
+                    'qty_to_return' => $this->m($qtyToReturn),
+                    'unit_cost'     => $this->m($unitCost),
+                    'cost_amt'      => $this->m($costAmt),
+                ]);
+
+                // write-back computed qty if column exists & this row came from pivot
+                if ($hasQtyCol && !empty($it->cni_id)) {
+                    DB::table('credit_note_invoices')
+                        ->where('id', $it->cni_id)
+                        ->update(['quantity_returned' => $qtyToReturn, 'updated_at' => now()]);
+                }
+
+                // accumulate inventory reversal
+                $sumInvDr  += $costAmt; // Dr Inventory
+                $sumCogsCr += $costAmt; // Cr COGS
+            }
         }
 
-        // Safety clamps
-        $sumNet   = max($sumNet, 0.0);
-        $sumVAT   = max($sumVAT, 0.0);
-        $sumDisc  = max($sumDisc, 0.0);
-        $sumTotal = max($sumTotal, 0.0);
+        Log::debug("$debugTag Aggregates", [
+            'sumNet'   => $this->m($sumNet),
+            'sumVAT'   => $this->m($sumVAT),
+            'sumDisc'  => $this->m($sumDisc),
+            'sumTotal' => $this->m($sumTotal),
+            'invDr'    => $this->m($sumInvDr),
+            'cogsCr'   => $this->m($sumCogsCr),
+        ]);
 
-        // --- Upsert journal header + regenerate lines (idempotent) ---
+        if ($sumTotal <= 0.0) {
+            Log::warning("$debugTag Zero total; aborting");
+            throw new \RuntimeException('Credit Note has zero total — no lines to post.');
+        }
+
+        $parentJeId = optional($items->first())->invoice_journal_entry_id;
+
+        // 4) Upsert header + lines
         return DB::transaction(function () use (
-            $creditNote, $companyId, $editedBy,
-            $accAR, $accSALES, $accVATPayable, $accDiscounts,
-            $sumNet, $sumVAT, $sumDisc, $sumTotal
+            $creditNote,
+            $companyId,
+            $editedBy,
+            $accAR,
+            $accSALES,
+            $accVATPayable,
+            $accDiscounts,
+            $sumNet,
+            $sumVAT,
+            $sumDisc,
+            $sumTotal,
+            $sumInvDr,
+            $sumCogsCr,
+            $parentJeId,
+            $debugTag,
+            $accInventory,
+            $accCOGS
         ) {
-            // 1) Upsert header
+            // Header
             if (!empty($creditNote->journal_entry_id)) {
                 $jeId = (int)$creditNote->journal_entry_id;
+                Log::debug("$debugTag Update JE", ['journal_entry_id' => $jeId]);
 
                 DB::table('finance_journal_entries')->where('id', $jeId)->update([
                     'date'       => $creditNote->issue_date ?? now(),
-                    'info'       => 'Credit Note '.$this->safeStr($creditNote->credit_note_number).' for customer '.$this->safeStr($creditNote->customer_id),
+                    'info'       => 'Credit Note ' . $this->safeStr($creditNote->referenceID ?? $creditNote->additional_referenceID ?? $creditNote->id) . ' for customer ' . $this->safeStr($creditNote->customer->company_name),
                     'edited_by'  => $editedBy,
-                    'status'     => 'posted',
-                    'updated_at' => now(),
+                    'status'     => 'published',
                     'type'       => 'sales_credit_note',
+                    'updated_at' => now(),
+                    'company_id' => $companyId,
+                    'parent_journal_entry_id' => $parentJeId,
                 ]);
 
                 DB::table('finance_account_entries')->where('journal_entry_id', $jeId)->delete();
             } else {
+                Log::debug("$debugTag Create JE");
                 $jeId = DB::table('finance_journal_entries')->insertGetId([
                     'date'       => $creditNote->issue_date ?? now(),
-                    'info'       => 'Credit Note '.$this->safeStr($creditNote->credit_note_number).' for customer '.$this->safeStr($creditNote->customer_id),
+                    'info'       => 'Credit Note ' . $this->safeStr($creditNote->referenceID ?? $creditNote->additional_referenceID ?? $creditNote->id) . ' for customer ' . $this->safeStr($creditNote->customer->company_name),
                     'edited_by'  => $editedBy,
-                    'status'     => 'posted',
+                    'status'     => 'published',
+                    'type'       => 'sales_credit_note',
                     'created_at' => now(),
                     'updated_at' => now(),
                     'company_id' => $companyId,
-                    'parent_journal_entry_id' => $creditNote->invoice_id ? ($creditNote->invoice->journal_entry_id ?? null) : null,
-                    'type'       => 'sales_credit_note',
+                    'parent_journal_entry_id' => $parentJeId,
                 ]);
 
                 DB::table('credit_notes')->where('id', $creditNote->id)->update(['journal_entry_id' => $jeId]);
-                if (property_exists($creditNote, 'journal_entry_id')) {
-                    $creditNote->journal_entry_id = $jeId;
-                }
+                if (property_exists($creditNote, 'journal_entry_id')) $creditNote->journal_entry_id = $jeId;
             }
 
-            // 2) Build balanced lines from aggregates
             $date      = $creditNote->issue_date ?? now();
-            $reference = $this->safeStr($creditNote->credit_note_number);
+            $reference = $this->safeStr($creditNote->referenceID ?? $creditNote->additional_referenceID ?? (string)$creditNote->id);
 
             $lines = [];
+            if ($sumNet  > 0) $lines[] = $this->line($jeId, $date, $accSALES,      $reference, 'Reverse Sales (credit note)',    $sumNet, 0,   $editedBy);
+            if ($sumVAT  > 0) $lines[] = $this->line($jeId, $date, $accVATPayable, $reference, 'Reverse VAT on sales',            $sumVAT, 0,   $editedBy);
+            if ($accDiscounts && $sumDisc > 0)
+                $lines[] = $this->line($jeId, $date, $accDiscounts,  $reference, 'Credit note discount/allowance', $sumDisc, 0,   $editedBy);
+            if ($sumTotal > 0)  $lines[] = $this->line($jeId, $date, $accAR,         $reference, 'Reduce Accounts Receivable',     0,       $sumTotal, $editedBy);
 
-            // Dr Sales (reverse revenue)
-            if ($sumNet > 0) {
-                $lines[] = $this->line($jeId, $date, $accSALES, $reference, 'Reverse Sales (credit note)', $sumNet, 0);
+            // Inventory reversal (only if accounts set and amount > 0)
+            if ($sumInvDr > 0 && $sumCogsCr > 0 && $accInventory && $accCOGS) {
+                $lines[] = $this->line($jeId, $date, $accInventory, $reference, 'Restock Inventory (credit note return)', $sumInvDr, 0,  $editedBy);
+                $lines[] = $this->line($jeId, $date, $accCOGS,      $reference, 'Reverse COGS (credit note return)',      0,        $sumCogsCr, $editedBy);
             }
 
-            // Dr VAT Payable (reverse VAT liability)
-            if ($sumVAT > 0) {
-                $lines[] = $this->line($jeId, $date, $accVATPayable, $reference, 'Reverse VAT on sales', $sumVAT, 0);
-            }
+            Log::debug("$debugTag Lines prepared", ['count' => count($lines)]);
 
-            // Optional: Dr Discounts (if you decide to treat allowances here)
-            if ($accDiscounts && $sumDisc > 0) {
-                $lines[] = $this->line($jeId, $date, $accDiscounts, $reference, 'Credit note discount/allowance', $sumDisc, 0);
-            }
-
-            // Cr AR (reduce customer balance) with gross amount
-            if ($sumTotal > 0) {
-                $lines[] = $this->line($jeId, $date, $accAR, $reference, 'Reduce Accounts Receivable', 0, $sumTotal);
-            }
-
-            foreach ($lines as $l) {
-                DB::table('finance_account_entries')->insert($l);
-            }
+            DB::table('finance_account_entries')->insert($lines);
 
             $this->assertBalanced($lines);
+            Log::debug("$debugTag Balanced OK");
 
             return $jeId;
         });
     }
 
-    /**
-     * Split a credit amount into net + VAT (and optional discount) using the original line item info when available.
-     * Falls back to assuming no VAT if the line has no tax info.
-     *
-     * Expected line_items columns if present: amount (gross), tax_amount, tax_rate, discount_amount.
-     * If the credited amount is partial, proportions are applied relative to the line's gross.
-     */
-    private function splitNetVatFromLineItem(int $invoiceId, int $lineItemId, float $creditGross): array
+    // ---- qty & gross caps ----
+
+    private function remainingLineGross(int $lineItemId, int $invoiceId, ?int $excludeCreditNoteId = null): float
     {
-        $line = DB::table('line_items')
+        $gross = (float) DB::table('line_items')
             ->where('id', $lineItemId)
             ->where('documentable_id', $invoiceId)
-            ->where('documentable_type', 'invoices') // adjust if you use enum/value
-            ->first();
+            ->value('amount');
 
-        if (!$line) {
-            // No line data → treat as net-only (no VAT known)
-            return ['net' => $creditGross, 'vat' => 0.0, 'discount' => 0.0];
-        }
+        $q = DB::table('credit_note_invoices')
+            ->where('invoice_id', $invoiceId)
+            ->where('line_item_id', $lineItemId);
 
-        // Try to read gross/tax/discount from line if columns exist
-        $gross          = $this->col($line, 'amount', $creditGross); // default to creditGross if missing
-        $lineTaxAmount  = $this->col($line, 'tax_amount', null);
-        $lineTaxRate    = $this->col($line, 'tax_rate', null);       // e.g., 7.5 or 0.075 (your schema)
-        $lineDiscount   = $this->col($line, 'discount_amount', 0.0);
+        if ($excludeCreditNoteId) $q->where('credit_note_id', '!=', $excludeCreditNoteId);
 
-        // If we have explicit tax_amount on the line, proportionally split
-        if ($gross > 0 && $lineTaxAmount !== null) {
-            $p = min(max($creditGross / (float)$gross, 0.0), 1.0);
-            $vat = (float)$lineTaxAmount * $p;
-            $discount = (float)$lineDiscount * $p;
-            $net = $creditGross - $vat; // assume gross = net + vat
-            if ($net < 0) $net = 0.0;
-            return ['net' => $net, 'vat' => $vat, 'discount' => $discount];
-        }
+        $alreadyCredited = (float) $q->sum('credit_amount_total');
 
-        // If we have a tax rate but not amount, derive VAT:
-        if ($lineTaxRate !== null) {
-            $rate = (float)$lineTaxRate;
-            // If someone stored 7.5 instead of 0.075, normalize:
-            if ($rate > 1.0) $rate = $rate / 100.0;
-
-            // creditGross = net * (1 + rate)
-            $net = $creditGross / (1.0 + $rate);
-            $vat = $creditGross - $net;
-            // Pro-rate discount if gross known
-            $discount = ($gross > 0) ? (float)$lineDiscount * min(max($creditGross / (float)$gross, 0.0), 1.0) : 0.0;
-
-            return ['net' => $net, 'vat' => $vat, 'discount' => $discount];
-        }
-
-        // No tax info → treat credit as net-only
-        return ['net' => $creditGross, 'vat' => 0.0, 'discount' => 0.0];
+        return max($gross - $alreadyCredited, 0.0);
     }
 
-    // --- Helpers -------------------------------------------------------------
-
-    private function col(object $row, string $name, $default)
+    private function remainingLineQty(int $lineItemId, int $invoiceId): float
     {
-        return property_exists($row, $name) ? $row->{$name} : $default;
+        $qty = (float) DB::table('line_items')
+            ->where('id', $lineItemId)
+            ->where('documentable_id', $invoiceId)
+            ->value('quantity');
+
+        // If quantity_returned column exists, use it; else assume no prior returns tracked (0)
+        if (Schema::hasColumn('credit_note_invoices', 'quantity_returned')) {
+            $returned = (float) DB::table('credit_note_invoices')
+                ->where('invoice_id', $invoiceId)
+                ->where('line_item_id', $lineItemId)
+                ->sum('quantity_returned');
+        } else {
+            $returned = 0.0;
+        }
+
+        return max($qty - $returned, 0.0);
     }
 
-    private function line(int $jeId, $date, int $accountId, string $ref, string $desc, float $debit, float $credit): array
+    // ---- calc & utils ----
+
+    private function splitNetVatFromPercent(float $creditGross, ?float $lineGross, ?float $lineVatPercent, float $lineDiscount = 0.0): array
+    {
+        $rate = $lineVatPercent !== null ? (float)$lineVatPercent : 0.0;
+        if ($rate > 1.0) $rate = $rate / 100.0;
+
+        $net = $rate > 0 ? ($creditGross / (1.0 + $rate)) : $creditGross;
+        $vat = $creditGross - $net;
+
+        $discount = 0.0;
+        if ($lineDiscount > 0 && $lineGross && $lineGross > 0) {
+            $p = min(max($creditGross / (float)$lineGross, 0.0), 1.0);
+            $discount = (float)$lineDiscount * $p;
+        }
+
+        return ['net' => $net, 'vat' => $vat, 'discount' => $discount];
+    }
+
+    private function isInventoryCategory(int $categoryId, string $slug = ''): bool
+    {
+        if ($categoryId <= 0 && $slug === '') return false;
+        $inventorySlugs = config('inventory.inventory_slugs', ['hardware', 'materials', 'equipment', 'inventory', 'stock']);
+        if ($slug) return in_array($slug, $inventorySlugs, true);
+
+        $rowSlug = DB::table('categories')->where('id', $categoryId)->value('slug');
+        return $rowSlug ? in_array($rowSlug, $inventorySlugs, true) : false;
+    }
+
+    private function line(int $jeId, $date, int $accountId, string $ref, string $desc, float $debit, float $credit, ?int $editedBy = null): array
     {
         if (!$accountId) throw new \InvalidArgumentException("Missing account for {$desc}");
+        $debit  = round($debit, 2);
+        $credit = round($credit, 2);
+
         return [
             'journal_entry_id' => $jeId,
             'date'             => $date,
@@ -209,9 +362,9 @@ class CreditNoteMultipleLinePosting
             'description'      => $desc,
             'debit_amount'     => $debit,
             'credit_amount'    => $credit,
-            'amount'           => $debit - $credit,
+            'amount'           => round($debit - $credit, 2),
             'transaction_date' => $date,
-            'edited_by'        => null,
+            'edited_by'        => $editedBy,
             'created_at'       => now(),
             'updated_at'       => now(),
         ];
@@ -219,26 +372,71 @@ class CreditNoteMultipleLinePosting
 
     private function accountIdFromKey(string $key, int $companyId): int
     {
-        $slug = config("accounts.{$key}");
-        if (!$slug) {
-            throw new \InvalidArgumentException("Account slug not found for key '{$key}' in config/accounts.php");
-        }
+        $slug = config("accounts.$key");
+        if (!$slug) throw new \InvalidArgumentException("Account slug not found for key '$key'");
         $id = AccountHelper::id($slug, $companyId);
-        if (!$id) {
-            throw new \RuntimeException("Account with slug '{$slug}' not found for company {$companyId}");
-        }
+        if (!$id) throw new \RuntimeException("Account with slug '$slug' not found for company $companyId");
         return (int)$id;
     }
 
-    private function safeStr($value): string
+    private function accountIdFromKeyOptional(string $key, int $companyId): ?int
     {
-        return (string) ($value ?? '');
+        $slug = config("accounts.$key");
+        if (!$slug) return null;
+        $id = AccountHelper::id($slug, $companyId);
+        return $id ? (int)$id : null;
+    }
+
+    private function accountIdFromSlugOptional(string $slug, int $companyId): ?int
+    {
+        $id = AccountHelper::id($slug, $companyId);
+        return $id ? (int)$id : null;
+    }
+
+    private function safeStr($v): string
+    {
+        return (string)($v ?? '');
+    }
+    private function m($n): string
+    {
+        return number_format((float)$n, 2, '.', '');
     }
 
     private function assertBalanced(array $lines): void
     {
-        $d=0; $c=0;
-        foreach ($lines as $l) { $d += $l['debit_amount']; $c += $l['credit_amount']; }
+        $d = 0.0;
+        $c = 0.0;
+        foreach ($lines as $l) {
+            $d += $l['debit_amount'];
+            $c += $l['credit_amount'];
+        }
         if (abs($d - $c) > 0.0001) throw new \RuntimeException('Credit Note journal not balanced.');
+    }
+
+
+
+    public static function recalcInvoiceBalance(int $invoiceId): void
+    {
+        $inv = DB::table('invoices')->where('id', $invoiceId)
+            ->first(['invoice_value']);
+
+        $paid = (float) DB::table('payment_records')
+        ->where('recordable_type', DocumentableModelEnums::INVOICE->value)
+        ->where('recordable_id', $invoiceId)
+        ->sum('amount_paid');
+
+        $credited = (float) DB::table('credit_note_invoices')
+        ->where('invoice_id', $invoiceId)
+        ->sum('credit_amount_total');
+
+        $due = max(((float)$inv->invoice_value) - $paid - $credited, 0.0);
+
+        $status = $due > 0 ? 'pending' : (($paid + $credited) >= (float)$inv->invoice_value ? 'paid' : 'pending');
+
+        // DB::table('invoices')->where('id', $invoiceId)->update([
+        //     // 'amount_due'     => round($due, 2), //amount_due column not found
+        //     'payment_status' => $status,
+        //     'updated_at'     => now(),
+        // ]);
     }
 }

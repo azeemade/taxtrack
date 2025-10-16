@@ -56,7 +56,7 @@ class InvoiceController extends Controller
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -124,7 +124,7 @@ class InvoiceController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -170,6 +170,12 @@ class InvoiceController extends Controller
     {
         try {
             DB::beginTransaction();
+
+            //block write-off if invoice is already paid
+            if (in_array($invoice->payment_status, ['paid'])) {
+                throw new BadRequestException('Only unpaid or partially paid invoices can be written off', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
             $invoice->badDebt()->create($request->validated());
 
             //Post Bad Debt - Account Entries
@@ -183,7 +189,7 @@ class InvoiceController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -194,6 +200,12 @@ class InvoiceController extends Controller
     {
         try {
             DB::beginTransaction();
+
+            //block void if invoice is already paid or partially paid
+            if (in_array($invoice->payment_status, ['paid', 'partially_paid'])) {
+                throw new BadRequestException('Only unpaid invoices can be voided', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
             $invoice->update([
                 'status' => FinancialDocumentStatusEnums::VOID
             ]);

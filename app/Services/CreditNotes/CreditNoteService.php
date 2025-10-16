@@ -12,6 +12,7 @@ use App\Models\Customer;
 use App\Services\SharedServices\SharedActionService;
 use Carbon\Carbon;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class CreditNoteService
@@ -77,20 +78,49 @@ class CreditNoteService
             'currency_id' => $customer->currency_id,
             'referenceID' => $request['referenceID'] ?? $this->generateRefId(),
             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-            'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
+            'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value,
+            'journal_entry_id' => null,
         ]);
 
         foreach ($request['invoices'] as $value) {
-            $creditNoteInvoice = $record->creditNoteInvoices()->create([
-                ...$value,
-                'credit_amount_total' => $value['credit_amount']
+            DB::table('credit_note_invoices')->insert([
+                'credit_note_id'       => (int)$record->id,
+                'invoice_id'           => (int)$value['invoice_id'],
+                'line_item_id'         => (int)$value['line_item_id'],
+                'company_id'           => (int)$record->company_id,
+                'credit_amount_total'  => (float)$value['credit_amount'],   // map from payload
+                'status'               => $value['status'] ?? 'added',
+                'created_by'           => $record->created_by,
+                'created_at'           => now(),
+                'updated_at'           => now(),
             ]);
-            $creditNoteInvoice->lineItem()
-                ->where('id', $value['line_item_id'])
-                ->update([
-                    'credit_amount' => $value['credit_amount'],
-                    'full_credit' => $value['credit_in_full']
-                ]);
+    
+            // optional (UI flags only)
+            DB::table('line_items')
+              ->where('id', $value['line_item_id'])
+              ->update([
+                  'credit_amount' => $value['credit_amount'],
+                  'full_credit'   => !empty($value['credit_in_full']) ? 1 : 0,
+              ]);
+            
+            // $creditNoteInvoice = $record->creditNoteInvoices()->create([
+            //     // ...$value,
+            //     // 'credit_amount_total' => $value['credit_amount']
+
+            //     'invoice_id'          => (int)$value['invoice_id'],
+            //     'line_item_id'        => (int)$value['line_item_id'],
+            //     'company_id'          => (int)$record->company_id,
+            //     'credit_amount_total' => (float)$value['credit_amount'],   // map name difference
+            //     'status'              => $value['status'] ?? 'added',
+            //     'created_by'          => $record->created_by,
+            // ]);
+            // $creditNoteInvoice->lineItem()
+            //     ->where('id', $value['line_item_id'])
+            //     ->update([
+            //         'credit_amount' => $value['credit_amount'],
+            //         // 'full_credit' => $value['credit_in_full']
+            //         'full_credit'   => !empty($value['credit_in_full']) ? 1 : 0,
+            //     ]);
         }
 
         if ($request['save_status'] == 'send') {
@@ -201,5 +231,16 @@ class CreditNoteService
             "prefix" => 'ref-',
             "idLength" => 6,
         ]);
+    }
+
+    public function uniqueInvoices(int $creditNoteId, $oldInvoiceIds)
+    {
+        // Recalc balances for all impacted invoices (old + new)
+        $newInvoiceIds = DB::table('credit_note_invoices')
+            ->where('credit_note_id', (int)$creditNoteId)
+            ->pluck('invoice_id')
+            ->unique();
+
+        return array_merge($oldInvoiceIds, $newInvoiceIds);   
     }
 }

@@ -32,7 +32,7 @@ class AccountProvisioner
         // locate subcategory
         $sub = DB::table('finance_account_sub_categories')
             ->where('slug', $subCategorySlug)
-            ->first(['id','account_type_id','account_category_id','ref_code']);
+            ->first(['id', 'account_type_id', 'account_category_id', 'ref_code']);
 
         if (!$sub) {
             throw new \RuntimeException("Subcategory '{$subCategorySlug}' not found.");
@@ -40,18 +40,26 @@ class AccountProvisioner
 
         // generate account number based on subcategory ref_code + sequence (NNNN)
         $prefix = preg_replace('/\D+/', '', (string) $sub->ref_code) ?: '999999';
-        $seq = (int) DB::table('finance_chart_of_accounts')
+
+        $lastAccount = DB::table('finance_chart_of_accounts')
             ->where('company_id', $companyId)
             ->where('account_sub_category_id', $sub->id)
-            ->count() + 1;
+            ->where('account_number', 'like', $prefix . '%')
+            ->orderBy('account_number', 'desc')
+            ->value('account_number');
 
-        $accountNumber = $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        $lastSeq = $lastAccount
+            ? (int) substr($lastAccount, strlen($prefix))
+            : 0;
+
+
+        $accountNumber = $prefix . str_pad((string) ($lastSeq + 1), 4, '0', STR_PAD_LEFT);
 
         // create
         return (int) DB::table('finance_chart_of_accounts')->insertGetId([
             'account_type_id'        => $sub->account_type_id,
             'account_category_id'    => $sub->account_category_id,
-            'account_sub_category_id'=> $sub->id,
+            'account_sub_category_id' => $sub->id,
             'edited_by'              => null,
             'name'                   => $accountName,
             'currency'               => null,
@@ -64,9 +72,10 @@ class AccountProvisioner
             'opening_balance'        => '0.00',
             'balance_date'           => null,
             'balance'                => null,
-            'is_active'              => true,
-            'is_default'             => false,
-            'is_hidden'              => false,
+            "status"                 => "published",
+            'is_active'              => "true",
+            'is_default'             => "true",
+            'is_hidden'              => "false",
             'created_at'             => now(),
             'updated_at'             => now(),
             'deleted_at'             => null,
