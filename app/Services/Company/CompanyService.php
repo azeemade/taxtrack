@@ -240,8 +240,8 @@ class CompanyService
     {
         $company = $this->create($data, $user->id);
 
-        // (new CoaProvisionerFromConfig())
-        //     ->provisionForCompany($company->id, $user->id);
+        (new CoaProvisionerFromConfig())
+            ->provisionForCompany($company->id, $user->id);
 
         if (
             $user->companies->isEmpty() && isset($data['country_id'])
