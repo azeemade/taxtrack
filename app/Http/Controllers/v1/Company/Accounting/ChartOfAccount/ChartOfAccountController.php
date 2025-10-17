@@ -4,6 +4,7 @@ namespace App\Http\Controllers\v1\Company\Accounting\ChartOfAccount;
 
 use App\Exceptions\BadRequestException;
 use App\Exports\Accounting\ChartOfAccount\AccountTemplate;
+use App\Exports\Accounting\ChartOfAccount\AccountTemplateExport;
 use App\Exports\Accounting\ChartOfAccount\ChartOfAccountDownloadTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\Accounting\ChartOfAccount\StoreChartOfAccountRequest;
@@ -204,7 +205,13 @@ class ChartOfAccountController extends Controller
 
     public function getDownload()
     {
-        return Excel::download(new AccountTemplate(), 'chart_of_account_template.xlsx');
+        try {
+            return Excel::download(new AccountTemplateExport(), 'chart_of_account_template.xlsx');
+        } catch (BadRequestException $e) {
+            return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_CONFLICT);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
     }
 
     public function importAccount(Request $request)
@@ -219,7 +226,7 @@ class ChartOfAccountController extends Controller
 
         try {
             $result = $this->chartOfAccountService->importAccount($request);
-            
+
             if (!$result['success']) {
                 return JsonResponser::send(true, $result['message'], $result['errors'] ?? [], $result['code'] ?? 422);
             }
@@ -242,5 +249,4 @@ class ChartOfAccountController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
-
 }
