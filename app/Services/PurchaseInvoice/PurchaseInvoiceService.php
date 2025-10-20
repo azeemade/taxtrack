@@ -7,6 +7,7 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Helpers\Posting\PurchaseInvoicePosting;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\Vendor;
@@ -46,6 +47,9 @@ class PurchaseInvoiceService
         }
 
         if ($request['save_status'] == 'send') {
+             (new PurchaseInvoicePosting())
+                ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
+
             $this->sharedActionServices->emailEntity($record);
         }
 

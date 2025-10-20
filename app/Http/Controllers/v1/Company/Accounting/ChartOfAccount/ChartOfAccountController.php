@@ -246,7 +246,7 @@ class ChartOfAccountController extends Controller
         } catch (BadRequestException $e) {
             return JsonResponser::send(true, $e->getMessage(), [], Response::HTTP_CONFLICT);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 }

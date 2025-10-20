@@ -60,9 +60,7 @@ class InvoiceController extends Controller
             DB::beginTransaction();
             $record = $this->purchaseInvoiceService->updateOrCreate($request->validated());
 
-            (new PurchaseInvoicePosting())
-                ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
-
+        
             DB::commit();
             return JsonResponser::send(false, 'Purchase invoice issued successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -70,7 +68,7 @@ class InvoiceController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 

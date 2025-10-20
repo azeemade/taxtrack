@@ -5,6 +5,7 @@ namespace App\Services\ChartOfAccount;
 use App\Exceptions\BadRequestException;
 use App\Exports\Accounting\ChartOfAccount\ChartOfAccountExport;
 use App\Helpers\FinanceAccountBalanceHelper;
+use App\Helpers\Posting\AccountOpeningPosting;
 use App\Helpers\Posting\CoaProvisionerFromConfig;
 use App\Models\FinanceAccountCategory;
 use App\Models\FinanceAccountSubCategory;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Imports\Accounting\ChartOfAccount\ChartOfAccountImport;
 use App\Models\Bank;
+use App\Models\Company;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ChartOfAccountService
@@ -269,6 +271,10 @@ class ChartOfAccountService
 
             if (!$coa) {
                 throw new BadRequestException("Unable to create account.", Response::HTTP_CONFLICT);
+            }
+
+            if ($bank->opening_balance > 0 && $bank->balance_date) {
+                (new AccountOpeningPosting)->bankOpeningBalance($bank);
             }
 
             DB::commit();
@@ -721,16 +727,15 @@ class ChartOfAccountService
         try {
             DB::beginTransaction();
 
-            //delete all existing accounts where is_default is true.
-            //while importing, if the account is already exists, then update the account.
-            //if the account is not exists, then create the account.
-           
-
-            (new CoaProvisionerFromConfig())
-                    ->provisionForCompany(auth()->user()->current_company_id, auth()->user()->id);
+            $company = Company::all();
+            foreach ($company as $comp) {
+                $user = $comp->staff()->first();
+                $editedBy = $user ? $user->id : null;
+                (new CoaProvisionerFromConfig())
+                    ->provisionForCompany($comp->id, $editedBy);
+            }
 
             DB::commit();
-
         } catch (\Throwable $th) {
             DB::rollBack();
             throw $th;

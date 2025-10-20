@@ -22,5 +22,8 @@ return [
     'MATERIALS_SALES' => 'sales',
     'HARDWARE_SALES' => 'sales',
     'SOFTWARE_SALES' => 'sales',
-    'EQUIPMENT_SALES' => 'sales'
+    'EQUIPMENT_SALES' => 'sales',
+    'RETAINED_EARNINGS' => 'retained-earnings',
+    'ROUNDING_DIFF' => 'rounding-diff',
+    'PURCHASES'     => 'purchases',
 ];

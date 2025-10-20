@@ -97,6 +97,7 @@ class InvoiceService
             'invoice_value',
             'customer_id',
             'currency_id',
+            'status'
         )
             ->with([
                 'customer:id,company_name,email',
