@@ -137,6 +137,33 @@ class PurchaseOrderService
             })
             ->latest();
 
+        if (isset($request->filter_uninvoiced_shared) && $request->filter_uninvoiced_shared) {
+            $records->whereNull('invoice_id')
+                ->where('status', 'issued');
+        }
+
+        if (!$request->paginate) {
+            return $records->get();
+        }
+
+        return $records->paginate($request->limit);
+    }
+
+    public function dropdown($request)
+    {
+        $records = PurchaseOrder::query()
+            // ->select('id', 'recordable_id', 'recordable_type', 'purchase_order_value', 'share_status', 'vendor_id', 'invoice_id')
+            ->select('id', 'vendor_id', 'purchase_order_value', 'status', 'share_status', 'vendor_id', 'invoice_id', 'purchase_orderID', 'purchase_order_date')
+            ->when($request->status, function ($query) use ($request) {
+                return $query->where('status', $request->status);
+            })
+            ->latest();
+
+        if (isset($request->filter_uninvoiced_shared) && $request->filter_uninvoiced_shared) {
+            $records->whereNull('invoice_id')
+                ->where('status', 'issued');
+        }
+
         if (!$request->paginate) {
             return $records->get();
         }

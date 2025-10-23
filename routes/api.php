@@ -181,6 +181,7 @@ Route::group([
                             });
                         Route::get('/orders/generate/purchase-no', 'OrderController@generateOrderNumber');
                         Route::get('/orders/{id}/line-items', 'OrderController@purchaseOrderLineItems');
+                        Route::get('/orders/not-converted/shared', 'OrderController@ordersNotConvertedToInvoice');
                     });
 
                     //purchase invoice

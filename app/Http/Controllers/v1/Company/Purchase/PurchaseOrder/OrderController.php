@@ -118,4 +118,25 @@ class OrderController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function ordersNotConvertedToInvoice()
+    {
+        try {
+            //orders that have not been converted but shared to suppliers
+            //this removes records from list of orders to be converted to purchase invoice
+            $request = new \stdClass();
+            $request->paginate = false; // optional
+            $request->filter_uninvoiced_shared = true; // custom flag for the service
+            // $request->sort_by = "alphabetically";
+            $request->status = "issued";
+            // $request->q = "";
+            // $request->vendor_id = "";
+
+            $records = $this->purchaseOrderService->dropdown($request);
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 }

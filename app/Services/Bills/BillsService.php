@@ -7,6 +7,7 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Helpers\Posting\VendorBillPosting;
 use App\Models\PurchaseInvoice;
 use App\Models\Vendor;
 use App\Models\VendorBill;
@@ -53,10 +54,13 @@ class BillsService
 
         if ($request['save_status'] == 'send') {
             $this->sharedActionServices->emailEntity($record);
+
+            (new VendorBillPosting())->syncVendorBillJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
         }
 
         return $record;
     }
+
     public function view(int $id)
     {
         $record = VendorBill::select(
@@ -214,5 +218,9 @@ class BillsService
             "prefix" => 'VB-',
             "idLength" => 6,
         ]);
+    }
+
+    public function getBillById($id){
+        return VendorBill::where('id', $id)->first();
     }
 }

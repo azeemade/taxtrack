@@ -45,7 +45,7 @@ class ChartOfAccountService
                     }
                 }
             ])
-                ->where('company_id', $userCompanyId)
+                
                 ->when($searchParams, function ($query) use ($searchParams) {
                     return $query->where('name', 'LIKE', '%' . $searchParams . '%')
                         ->orWhere('account_number', $searchParams)
@@ -76,6 +76,7 @@ class ChartOfAccountService
                 ->when($carbonDateFilter, function ($query) use ($carbonDateFilter) {
                     return $query->where('created_at', '>=', $carbonDateFilter);
                 })
+                ->where('company_id', $userCompanyId)
                 ->orderBy("account_type_id", "ASC")
                 ->orderBy('account_number', "ASC");
 

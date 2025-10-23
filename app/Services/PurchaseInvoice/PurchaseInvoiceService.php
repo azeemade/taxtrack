@@ -47,8 +47,8 @@ class PurchaseInvoiceService
         }
 
         if ($request['save_status'] == 'send') {
-             (new PurchaseInvoicePosting())
-                ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
+            //  (new PurchaseInvoicePosting())
+            //     ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
 
             $this->sharedActionServices->emailEntity($record);
         }

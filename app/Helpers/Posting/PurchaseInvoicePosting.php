@@ -165,7 +165,7 @@ class PurchaseInvoicePosting
         if ($fallbackId) return (int)$fallbackId;
 
         // last resort (should exist in your expense CoA)
-        return $this->accountIdFromSlug('purchases', $companyId);
+        return $this->accountIdFromSlug('office-cost', $companyId);
     }
 
     private function discountAmount(float $unitTotal, float $discountField): float

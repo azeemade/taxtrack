@@ -12,7 +12,7 @@ return [
     'VAT_INPUT'   => 'input-vat',
     'COGS'        => 'cost-of-goods-sold',
     'FREIGHT_COSTS' => 'freight-costs',
-    'ADMIN_EXP'   => 'administrative-expenses',
+    'ADMIN_EXP'   => 'general-expenses',
     'INVENTORIES' => 'inventories',
     'INVENTORY' => 'inventories',
     'DELIVERY_INCOME' => 'other-income',
