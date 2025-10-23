@@ -136,4 +136,25 @@ class InvoiceController extends Controller
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
+
+    public function invoicesWithoutBillsAndShared()
+    {
+        try {
+            //invoices that have no bill but shared to suppliers
+            //this removes records from list of invoices to be converted to bills
+            $request = new \stdClass();
+            $request->paginate = false; // optional
+            $request->filter_no_bill_shared = true; // custom flag for the service
+            // $request->sort_by = "alphabetically";
+            $request->status = "issued";
+            // $request->q = "";
+            $request->vendor_id = null;
+
+            $records = $this->purchaseInvoiceService->dropdown($request);
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
 }

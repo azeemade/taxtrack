@@ -156,6 +156,40 @@ class PurchaseInvoiceService
         return $records->paginate($request->limit);
     }
 
+
+    public function dropdown($request)
+    {
+        $records = PurchaseInvoice::query()
+            ->select(
+                'id',
+                'purchase_invoiceID',
+                'invoice_start_date',
+                'purchase_invoices_total',
+                'share_status',
+                'vendor_id',
+                'purchase_order_id',
+                'invoice_end_date'
+            )
+            ->when($request->status, function ($query) use ($request) {
+                return $query->where('status', $request->status);
+            })
+            ->when($request->vendor_id, function ($query) use ($request) {
+                return $query->where('vendor_id', $request->vendor_id);
+            })
+            ->latest();
+
+        if (isset($request->filter_no_bill_shared) && $request->filter_no_bill_shared) {
+            $records->whereDoesntHave('vendorBill')
+                ->where('status', 'issued');
+        }
+
+        if (!$request->paginate) {
+            return $records->get();
+        }
+
+        return $records->paginate($request->limit);
+    }
+
     public function export($records, $exportType)
     {
         $recordHeadings = ['Supplier details', 'Purchase invoice ID', 'Start date', 'End date', 'Invoice value', 'Invoice status', 'Line item volume'];

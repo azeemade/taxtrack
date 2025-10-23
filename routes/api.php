@@ -202,6 +202,7 @@ Route::group([
                         Route::get('/invoices/generate/invoiceID', 'InvoiceController@generateInvoiceNumber');
                         Route::get('/invoices/{id}/purchase-order/{purchase_order}', 'InvoiceController@matchPurchaseOrder');
                         Route::get('/invoices/{id}/line-items', 'InvoiceController@purchaseInvoiceLineItems');
+                        Route::get('/invoices/without-bill/shared', 'InvoiceController@invoicesWithoutBillsAndShared');
                     });
 
                     //Record payment
