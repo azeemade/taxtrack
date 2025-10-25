@@ -10,6 +10,7 @@ use App\Http\Requests\Company\Purchase\PurchaseInvoice\CreatePurchaseInvoiceRequ
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\PurchaseInvoice\PurchaseInvoiceService;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -137,7 +138,7 @@ class InvoiceController extends Controller
         }
     }
 
-    public function invoicesWithoutBillsAndShared()
+    public function invoicesWithoutBillsAndShared(Request $request)
     {
         try {
             //invoices that have no bill but shared to suppliers
@@ -151,6 +152,10 @@ class InvoiceController extends Controller
             $request->vendor_id = null;
 
             $records = $this->purchaseInvoiceService->dropdown($request);
+
+            if (is_null($records)) {
+                 return JsonResponser::send(true, 'Record(s) found successfully', $records, Response::HTTP_OK);
+            }
 
             return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
