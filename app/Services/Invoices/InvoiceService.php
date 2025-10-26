@@ -72,7 +72,6 @@ class InvoiceService
         if (isset($request['save_status']) && $request['save_status'] == 'send') {
 
             $createdBy = Auth::id() ?? null;
-
             (new InvoicePosting())->syncInvoiceJournal($record, $record->company_id ?? null, $createdBy);
             
             $this->sharedActionServices->emailEntity($record);
@@ -97,6 +96,7 @@ class InvoiceService
             'invoice_value',
             'customer_id',
             'currency_id',
+            'status'
         )
             ->with([
                 'customer:id,company_name,email',

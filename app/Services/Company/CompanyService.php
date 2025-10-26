@@ -226,6 +226,11 @@ class CompanyService
             $data['postal_address_information']['phone_number'] = $data['postal_address_information']['phone_number'] ?? ($postalAddressInfo['phone_number'] ?? null);
         }
 
+        // Handle tax_type
+        if (isset($data['tax_type'])) {
+            $data['tax_type'] = $data['tax_type'] ?? $record->tax_type; //standard or integer
+        }
+
         $record->update($data);
         return $record;
     }

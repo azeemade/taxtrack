@@ -8,6 +8,7 @@ use App\Http\Requests\Company\Purchase\PurchaseOrder\CreatePurchaseOrderRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\PurchaseOrder\PurchaseOrderService;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -116,6 +117,45 @@ class OrderController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function ordersNotConvertedToInvoice(Request $request)
+    {
+        try {
+            // Orders that have not been converted but shared to suppliers
+            // This removes records from list of orders to be converted to purchase invoice
+
+            $serviceRequest = new \stdClass();
+            $serviceRequest->paginate = false; // optional
+            $serviceRequest->filter_uninvoiced_shared = true; // custom flag for the service
+            $serviceRequest->status = "issued";
+
+            // Collect vendor_id from the request if provided
+            if ($request->has('vendor_id') && !empty($request->vendor_id)) {
+                $serviceRequest->vendor_id = $request->vendor_id;
+            }
+
+            // Optional parameters that can be added if needed:
+            // $serviceRequest->sort_by = "alphabetically";
+            // $serviceRequest->q = "";
+
+            $records = $this->purchaseOrderService->dropdown($serviceRequest);
+
+            return JsonResponser::send(
+                false,
+                'Record(s) found successfully',
+                $records,
+                Response::HTTP_OK
+            );
+        } catch (\Throwable $th) {
+            return JsonResponser::send(
+                true,
+                'Internal Server Error',
+                $th->getMessage(),
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+                $th
+            );
         }
     }
 }

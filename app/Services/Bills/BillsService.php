@@ -7,6 +7,7 @@ use App\Enums\ShareStatusEnums;
 use App\Exceptions\BadRequestException;
 use App\Exports\GeneralReportExport;
 use App\Helpers\GeneralHelper;
+use App\Helpers\Posting\VendorBillPosting;
 use App\Models\PurchaseInvoice;
 use App\Models\Vendor;
 use App\Models\VendorBill;
@@ -53,10 +54,13 @@ class BillsService
 
         if ($request['save_status'] == 'send') {
             $this->sharedActionServices->emailEntity($record);
+
+            (new VendorBillPosting())->syncVendorBillJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
         }
 
         return $record;
     }
+
     public function view(int $id)
     {
         $record = VendorBill::select(
@@ -125,12 +129,13 @@ class BillsService
                 'repeat',
                 'repeat_period',
                 'created_at',
-                'vendor_bill_due_date'
+                'vendor_bill_due_date',
+                'status'
             )
             ->with([
                 'vendor:id,vendor_name,referenceID,primary_email',
                 'paymentRecords:id,amount_paid,amount_due,recordable_id,recordable_type',
-                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
+                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,account_id' => [
                     'category:id,name'
                 ]
             ])
@@ -214,5 +219,9 @@ class BillsService
             "prefix" => 'VB-',
             "idLength" => 6,
         ]);
+    }
+
+    public function getBillById($id){
+        return VendorBill::where('id', $id)->first();
     }
 }
