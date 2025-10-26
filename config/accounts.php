@@ -12,7 +12,7 @@ return [
     'VAT_INPUT'   => 'input-vat',
     'COGS'        => 'cost-of-goods-sold',
     'FREIGHT_COSTS' => 'freight-costs',
-    'ADMIN_EXP'   => 'administrative-expenses',
+    'ADMIN_EXP'   => 'general-expenses',
     'INVENTORIES' => 'inventories',
     'INVENTORY' => 'inventories',
     'DELIVERY_INCOME' => 'other-income',
@@ -22,5 +22,8 @@ return [
     'MATERIALS_SALES' => 'sales',
     'HARDWARE_SALES' => 'sales',
     'SOFTWARE_SALES' => 'sales',
-    'EQUIPMENT_SALES' => 'sales'
+    'EQUIPMENT_SALES' => 'sales',
+    'RETAINED_EARNINGS' => 'retained-earnings',
+    'ROUNDING_DIFF' => 'rounding-diff',
+    'PURCHASES'     => 'purchases',
 ];

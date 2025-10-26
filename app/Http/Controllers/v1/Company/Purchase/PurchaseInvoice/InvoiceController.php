@@ -10,6 +10,7 @@ use App\Http\Requests\Company\Purchase\PurchaseInvoice\CreatePurchaseInvoiceRequ
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\PurchaseInvoice\PurchaseInvoiceService;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -60,9 +61,7 @@ class InvoiceController extends Controller
             DB::beginTransaction();
             $record = $this->purchaseInvoiceService->updateOrCreate($request->validated());
 
-            (new PurchaseInvoicePosting())
-                ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
-
+        
             DB::commit();
             return JsonResponser::send(false, 'Purchase invoice issued successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
@@ -70,7 +69,7 @@ class InvoiceController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -136,6 +135,31 @@ class InvoiceController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+    public function invoicesWithoutBillsAndShared(Request $request)
+    {
+        try {
+            //invoices that have no bill but shared to suppliers
+            //this removes records from list of invoices to be converted to bills
+            $request = new \stdClass();
+            $request->paginate = false; // optional
+            $request->filter_no_bill_shared = true; // custom flag for the service
+            // $request->sort_by = "alphabetically";
+            $request->status = "issued";
+            // $request->q = "";
+            $request->vendor_id = null;
+
+            $records = $this->purchaseInvoiceService->dropdown($request);
+
+            if (is_null($records)) {
+                 return JsonResponser::send(true, 'Record(s) found successfully', $records, Response::HTTP_OK);
+            }
+
+            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 }

@@ -13,4 +13,13 @@ class AccountHelper
             ->where('company_id', $companyId)
             ->value('id');
     }
+
+    public static function idBySlug(int $companyId, string $slug): int
+    {
+        $accountId = self::id($slug, $companyId);
+        if (!$accountId) {
+            throw new \RuntimeException("Account with slug '{$slug}' not found for company ID {$companyId}.");
+        }
+        return (int)$accountId;
+    }
 }

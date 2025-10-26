@@ -93,4 +93,9 @@ class PurchaseInvoice extends Model
     {
         return $this->morphMany(LineItem::class, 'documentable');
     }
+
+    public function vendorBill()
+    {
+        return $this->hasOne(VendorBill::class);
+    }
 }

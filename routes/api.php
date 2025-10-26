@@ -181,6 +181,7 @@ Route::group([
                             });
                         Route::get('/orders/generate/purchase-no', 'OrderController@generateOrderNumber');
                         Route::get('/orders/{id}/line-items', 'OrderController@purchaseOrderLineItems');
+                        Route::get('/orders/not-converted/shared', 'OrderController@ordersNotConvertedToInvoice');
                     });
 
                     //purchase invoice
@@ -201,6 +202,7 @@ Route::group([
                         Route::get('/invoices/generate/invoiceID', 'InvoiceController@generateInvoiceNumber');
                         Route::get('/invoices/{id}/purchase-order/{purchase_order}', 'InvoiceController@matchPurchaseOrder');
                         Route::get('/invoices/{id}/line-items', 'InvoiceController@purchaseInvoiceLineItems');
+                        Route::get('/invoices/without-bill/shared', 'InvoiceController@invoicesWithoutBillsAndShared');
                     });
 
                     //Record payment
@@ -488,6 +490,7 @@ Route::group([
                         "namespace" => "Organization"
                     ], function () {
                         Route::put('update', 'OrganizationDetailsController@update');
+                        Route::put('update-vat-scheme', 'OrganizationDetailsController@updateVATScheme');
                         Route::get('view', 'OrganizationDetailsController@view');
                         Route::post('add-company', 'OrganizationDetailsController@addCompany');
                         Route::get('list-companies', 'OrganizationDetailsController@listCompanies');
