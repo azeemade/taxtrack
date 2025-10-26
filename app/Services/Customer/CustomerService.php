@@ -265,4 +265,7 @@ class CustomerService
         $pdf = Pdf::loadView('company.sales.customer.statement', ['record' => $record])->setPaper('a4', 'portrait');
         return $pdf->download('statement.pdf');
     }
+
+
+    public
 }

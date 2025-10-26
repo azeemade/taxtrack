@@ -490,6 +490,7 @@ Route::group([
                         "namespace" => "Organization"
                     ], function () {
                         Route::put('update', 'OrganizationDetailsController@update');
+                        Route::put('update-vat-scheme', 'OrganizationDetailsController@updateVATScheme');
                         Route::get('view', 'OrganizationDetailsController@view');
                         Route::post('add-company', 'OrganizationDetailsController@addCompany');
                         Route::get('list-companies', 'OrganizationDetailsController@listCompanies');

@@ -129,12 +129,13 @@ class BillsService
                 'repeat',
                 'repeat_period',
                 'created_at',
-                'vendor_bill_due_date'
+                'vendor_bill_due_date',
+                'status'
             )
             ->with([
                 'vendor:id,vendor_name,referenceID,primary_email',
                 'paymentRecords:id,amount_paid,amount_due,recordable_id,recordable_type',
-                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
+                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,account_id' => [
                     'category:id,name'
                 ]
             ])

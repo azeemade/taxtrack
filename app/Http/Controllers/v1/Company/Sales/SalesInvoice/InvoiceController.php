@@ -101,6 +101,12 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
+            $invoice = \App\Models\Invoice::findOrFail($id);
+
+            if ($invoice->status !== 'issued') {
+                return JsonResponser::send(true, 'You cannot record payment for an invoice that is not issued.', [], Response::HTTP_BAD_REQUEST);
+            }
+
             // Ensure model/model_id are set to this invoice id
             $payload = array_merge($request->validated(), [
                 'model'    => 'invoices',
@@ -118,7 +124,7 @@ class InvoiceController extends Controller
                 ->syncForPaymentRecord($record);
 
             DB::commit();
-            return JsonResponser::send(false, 'Invoice issued successfully', $record, Response::HTTP_OK);
+            return JsonResponser::send(false, 'Payment recorded successfully', $record, Response::HTTP_OK);
         } catch (BadRequestException $e) {
             DB::rollBack();
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());

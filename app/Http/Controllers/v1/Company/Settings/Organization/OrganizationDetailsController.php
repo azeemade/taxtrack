@@ -54,7 +54,23 @@ class OrganizationDetailsController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, $th, [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+        }
+    }
+
+
+    public function updateVATScheme(UpdateOrganizationDetailsRequest $request)
+    {
+        try {
+            DB::beginTransaction();
+            $record = $this->companyService->updateCompanyVATDetails($request->validated());
+            DB::commit();
+            return JsonResponser::send(false, 'Company details updated successfully', $record, Response::HTTP_OK);
+        } catch (BadRequestException $e) {
+            DB::rollBack();
+            return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
+        } catch (\Throwable $th) {
+            DB::rollBack();
             return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }

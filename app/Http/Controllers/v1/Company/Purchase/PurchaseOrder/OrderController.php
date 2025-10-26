@@ -8,6 +8,7 @@ use App\Http\Requests\Company\Purchase\PurchaseOrder\CreatePurchaseOrderRequest;
 use App\Http\Requests\Shared\SharedFilterRequest;
 use App\Responser\JsonResponser;
 use App\Services\PurchaseOrder\PurchaseOrderService;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -119,24 +120,42 @@ class OrderController extends Controller
         }
     }
 
-    public function ordersNotConvertedToInvoice()
+    public function ordersNotConvertedToInvoice(Request $request)
     {
         try {
-            //orders that have not been converted but shared to suppliers
-            //this removes records from list of orders to be converted to purchase invoice
-            $request = new \stdClass();
-            $request->paginate = false; // optional
-            $request->filter_uninvoiced_shared = true; // custom flag for the service
-            // $request->sort_by = "alphabetically";
-            $request->status = "issued";
-            // $request->q = "";
-            // $request->vendor_id = "";
+            // Orders that have not been converted but shared to suppliers
+            // This removes records from list of orders to be converted to purchase invoice
 
-            $records = $this->purchaseOrderService->dropdown($request);
+            $serviceRequest = new \stdClass();
+            $serviceRequest->paginate = false; // optional
+            $serviceRequest->filter_uninvoiced_shared = true; // custom flag for the service
+            $serviceRequest->status = "issued";
 
-            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+            // Collect vendor_id from the request if provided
+            if ($request->has('vendor_id') && !empty($request->vendor_id)) {
+                $serviceRequest->vendor_id = $request->vendor_id;
+            }
+
+            // Optional parameters that can be added if needed:
+            // $serviceRequest->sort_by = "alphabetically";
+            // $serviceRequest->q = "";
+
+            $records = $this->purchaseOrderService->dropdown($serviceRequest);
+
+            return JsonResponser::send(
+                false,
+                'Record(s) found successfully',
+                $records,
+                Response::HTTP_OK
+            );
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(
+                true,
+                'Internal Server Error',
+                $th->getMessage(),
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+                $th
+            );
         }
     }
 }
