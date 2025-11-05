@@ -44,6 +44,7 @@ class Invoice extends Model
             'issued_date' => $this->created_at,
             'due_date' => $this->due_date,
             'company' => $this->company,
+            'has_vat' => $this->lineItems->where('vat', '>', 0)->count() > 0,
             'line_items' => $this->lineItems->map(function ($item) {
                 return [
                     'description' => $item->item_details,

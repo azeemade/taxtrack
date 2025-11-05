@@ -57,7 +57,10 @@
             <thead>
                 <tr>
                     @forelse ($previewables['line_items'][0] as $key => $item)
-                        <th>{{ ucwords(str_replace('_', ' ', $key)) }}</th>
+                        @if ($key === 'vat' && (isset($previewables['has_vat']) && !$previewables['has_vat']))
+                        @else
+                            <th>{{ ucwords(str_replace('_', ' ', $key)) }}</th>
+                        @endif
                     @empty
                     @endforelse
                 </tr>
@@ -65,8 +68,11 @@
             <tbody>
                 @foreach ($previewables['line_items'] as $lineItem)
                     <tr>
-                        @forelse ($lineItem as $item)
-                            <td>{{ $item }}</td>
+                        @forelse ($lineItem as $key => $item)
+                            @if ($key === 'vat' && (isset($previewables['has_vat']) && !$previewables['has_vat']))
+                            @else
+                                <td>{{ $item }}</td>
+                            @endif
                         @empty
                         @endforelse
                     </tr>
@@ -113,12 +119,14 @@
         </table>
     </div>
 
-    <div class="terms">
-        <p>Terms and Conditions</p>
-        <textarea placeholder="Enter your T&C here">
-            {{ $previewables['terms_and_conditions'] }}
-        </textarea>
-    </div>
+    @if ($previewables['terms_and_conditions'])
+        <div class="terms">
+            <p>Terms and Conditions</p>
+            <textarea placeholder="Enter your T&C here">
+                {{ $previewables['terms_and_conditions'] }}
+            </textarea>
+        </div>
+    @endif
     </div>
 </body>
 
