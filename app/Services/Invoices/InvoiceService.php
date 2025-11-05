@@ -46,7 +46,8 @@ class InvoiceService
                 'quote_date' => $request['quote_date'] ?? now(),
                 'referenceID' => $this->generateRefId(),
                 'invoiceID' => $request['invoiceID'] ?? $this->generateInvoiceId(),
-                'is_recurring' => $request['save_status'] == 'recur' ? true : false,
+                // 'is_recurring' => $request['save_status'] == 'recur' ? true : false,
+                'is_recurring' => $request['repeat'] == 1 ? true : false,
                 'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
                 'status' => $request['save_status'] == FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
             ]
@@ -96,7 +97,13 @@ class InvoiceService
             'invoice_value',
             'customer_id',
             'currency_id',
-            'status'
+            'status',
+            'is_recurring',
+            'repeat',
+            'repeat_period',
+            'recurring_start_date',
+            'recurring_end_date'
+
         )
             ->with([
                 'customer:id,company_name,email',
