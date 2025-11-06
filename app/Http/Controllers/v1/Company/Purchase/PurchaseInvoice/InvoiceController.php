@@ -60,7 +60,6 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
             $record = $this->purchaseInvoiceService->updateOrCreate($request->validated());
-
         
             DB::commit();
             return JsonResponser::send(false, 'Purchase invoice issued successfully', $record, Response::HTTP_OK);
@@ -111,8 +110,8 @@ class InvoiceController extends Controller
             DB::beginTransaction();
             $record = $this->purchaseInvoiceService->updateOrCreate([...$request->validated(), "id" => $id]);
 
-            (new PurchaseInvoicePosting())
-                ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
+            // (new PurchaseInvoicePosting())
+            //     ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
                 
             DB::commit();
             return JsonResponser::send(false, 'Purchase invoice updated successfully', $record, Response::HTTP_OK);

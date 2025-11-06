@@ -28,9 +28,9 @@ class CreateDebitNoteRequest extends FormRequest
             'date_issued' => 'required|date_format:Y-m-d',
             'attachments' => 'nullable|string',
             'additional_referenceID' => 'nullable|string|max:20',
-            'save_status' => 'required|in:save,draft',
+            'save_status' => 'required|in:save,draft,send',
             'items' => 'required|array|min:1',
-            'items.*.model' => 'required|string|in:purchase_invoices,bills',
+            'items.*.model' => 'required|string|in:purchase_invoices,vendor_bills',
             'items.*.model_id' => 'required|integer',
             'items.*.line_item_id' => [
                 'required',

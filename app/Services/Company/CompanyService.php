@@ -74,6 +74,8 @@ class CompanyService
             'social_media',
             'registration_id',
             'terms_and_conditions',
+            'tax_type',
+            'vat_date'
         )
             ->find($currentUser->current_company_id);
 
@@ -87,6 +89,8 @@ class CompanyService
             "city" => isset($record['physical_address_information']['city_id']) ? $this->getCompanyAddressInfo('\Nnjeim\World\Models\City', $record['physical_address_information']['city_id']) : null,
             "state" => isset($record['physical_address_information']['state_id']) ? $this->getCompanyAddressInfo('\Nnjeim\World\Models\State', $record['physical_address_information']['state_id']) : null,
         ];
+        //  $record['vat_date'] = $currentUser->vat_date;
+
         return $record;
     }
 
@@ -228,7 +232,11 @@ class CompanyService
 
         // Handle tax_type
         if (isset($data['tax_type'])) {
-            $data['tax_type'] = $data['tax_type'] ?? $record->tax_type; //standard or integer
+            $data['tax_type'] = $data['tax_type']; //standard or integer
+        }
+
+        if (isset($data['vat_date'])) {
+            $data['vat_date'] = $data['vat_date'] ?? $record->vat_date; 
         }
 
         $record->update($data);

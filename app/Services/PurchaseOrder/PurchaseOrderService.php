@@ -153,22 +153,27 @@ class PurchaseOrderService
 
     public function dropdown($request)
     {
-        $records = PurchaseOrder::with('lineItems')
-            // ->select('id', 'recordable_id', 'recordable_type', 'purchase_order_value', 'share_status', 'vendor_id', 'invoice_id')
-            ->select('id', 'vendor_id', 'purchase_order_value', 'status', 'share_status', 'vendor_id', 'invoice_id', 'purchase_orderID', 'purchase_order_date')
+        $records = PurchaseOrder::select(
+            'id',
+            'vendor_id',
+            'purchase_order_value',
+            'status',
+            'share_status',
+            'invoice_id',
+            'purchase_orderID',
+            'purchase_order_date'
+        )
             ->when($request->status, function ($query) use ($request) {
                 return $query->where('status', $request->status);
             })
+            ->where(function ($query) {
+                $query->whereNull('invoice_id')
+                    ->where('status', 'issued')
+                    ->orWhereHas('purchaseInvoice', function ($q) {
+                        $q->where('status', '!=', 'issued');
+                    });
+            })
             ->latest();
-
-        // return $record->lineItems->load([
-        //     'category:id,name'
-        // ]);
-
-        if (isset($request->filter_uninvoiced_shared) && $request->filter_uninvoiced_shared) {
-            $records->whereNull('invoice_id')
-                ->where('status', 'issued');
-        }
 
         if (!$request->paginate) {
             return $records->get();
@@ -176,6 +181,7 @@ class PurchaseOrderService
 
         return $records->paginate($request->limit);
     }
+
 
     public function export($records, $exportType)
     {
