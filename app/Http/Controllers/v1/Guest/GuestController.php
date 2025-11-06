@@ -95,6 +95,9 @@ class GuestController extends Controller
         try {
             $records = Category::select('id', 'name', 'slug')
                 ->where('table', $request->table)
+                ->when($request->only_sales, function ($query) {
+                    $query->where('slug', 'sales')->orWhere('slug', 'others');
+                })
                 ->get();
 
             return JsonResponser::send(false, 'Record(s) found successfully!', $records, Response::HTTP_OK);
