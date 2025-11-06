@@ -1228,8 +1228,33 @@ class AccountReconciliationService
         $limit = (int)$request->get('limit', 20);
         $runs = $q->paginate($limit);
 
+        // Get all run IDs from current page
+        $runIds = $runs->getCollection()->pluck('id')->toArray();
+
+        // Load all records for these runs and compute counts dynamically
+        $recordsByRunId = [];
+        if (!empty($runIds)) {
+            $allRecords = ReconciliationRecord::where('company_id', $companyId)
+                ->whereIn('run_id', $runIds)
+                ->get();
+
+            // Group records by run_id and compute stats for each
+            foreach ($allRecords->groupBy('run_id') as $runId => $records) {
+                // summarizeLines can handle ReconciliationRecord models directly
+                $stats = $this->summarizeLines($records);
+                $recordsByRunId[$runId] = $stats['counts'];
+            }
+        }
+
         // Shape each row for the list UI
-        $runs->getCollection()->transform(function ($run) {
+        $runs->getCollection()->transform(function ($run) use ($recordsByRunId) {
+            // Use computed counts if available, otherwise fall back to stored values
+            $counts = $recordsByRunId[$run->id] ?? [
+                'discrepancies'     => (int)$run->discrepancies,
+                'dual_reflections'  => (int)$run->dual_reflections,
+                'no_discrepancies'  => (int)$run->no_discrepancies,
+            ];
+
             return [
                 'id'                => $run->id,
                 'account_id'        => $run->account_id,
@@ -1237,9 +1262,9 @@ class AccountReconciliationService
                 'batch_id'          => $run->batch_id,
                 'title'             => $run->title,
                 'counts'            => [
-                    'discrepancies'     => (int)$run->discrepancies,
-                    'dual_reflections'  => (int)$run->dual_reflections,
-                    'no_discrepancies'  => (int)$run->no_discrepancies,
+                    'discrepancies'     => (int)($counts['discrepancies'] ?? 0),
+                    'dual_reflections'  => (int)($counts['dual_reflections'] ?? 0),
+                    'no_discrepancies'  => (int)($counts['no_discrepancies'] ?? 0),
                 ],
                 'created_at'        => $run->created_at,
             ];
@@ -1284,7 +1309,7 @@ class AccountReconciliationService
         // Get all lines without pagination
         $lines = $linesQuery->get();
 
-        // Build stats from the full set
+        // Build stats from the full set (summarizeLines can handle ReconciliationRecord models directly)
         $stats = $this->summarizeLines($lines);
 
         return [
@@ -1295,9 +1320,9 @@ class AccountReconciliationService
                 'batch_id'    => $run->batch_id,
                 'title'       => $run->title,
                 'counts'      => [
-                    'discrepancies'     => (int) $run->discrepancies,
-                    'dual_reflections'  => (int) $run->dual_reflections,
-                    'no_discrepancies'  => (int) $run->no_discrepancies,
+                    'discrepancies'     => (int)($stats['counts']['discrepancies'] ?? 0),
+                    'dual_reflections'  => (int)($stats['counts']['dual_reflections'] ?? 0),
+                    'no_discrepancies'  => (int)($stats['counts']['no_discrepancies'] ?? 0),
                 ],
                 'created_at'  => $run->created_at,
             ],
@@ -1376,9 +1401,9 @@ class AccountReconciliationService
                 'batch_id'    => $run->batch_id,
                 'title'       => $run->title,
                 'counts'      => [
-                    'discrepancies'     => (int)$run->discrepancies,
-                    'dual_reflections'  => (int)$run->dual_reflections,
-                    'no_discrepancies'  => (int)$run->no_discrepancies,
+                    'discrepancies'     => (int)($stats['counts']['discrepancies'] ?? 0),
+                    'dual_reflections'  => (int)($stats['counts']['dual_reflections'] ?? 0),
+                    'no_discrepancies'  => (int)($stats['counts']['no_discrepancies'] ?? 0),
                 ],
                 'created_at'  => $run->created_at,
             ],
