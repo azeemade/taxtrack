@@ -19,11 +19,12 @@ return new class extends Migration
             $table->decimal('price', 15, 2)->default(0.00);
             $table->decimal('discount', 15, 2)->default(0.00);
             $table->decimal('vat', 15, 2)->default(0.00);
-            $table->decimal('credit_amount', 15, 2)->default(0.00); 
-            $table->boolean('full_credit')->default(false); 
-            $table->decimal('debit_amount', 15, 2)->default(0.00); 
-            $table->boolean('full_debit')->default(false); 
+            $table->decimal('credit_amount', 15, 2)->default(0.00);
+            $table->boolean('full_credit')->default(false);
+            $table->decimal('debit_amount', 15, 2)->default(0.00);
+            $table->boolean('full_debit')->default(false);
             $table->decimal('amount', 15, 2)->default(0.00);
+            $table->unsignedBigInteger('account_id')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('debit_note_id')->nullable();
             $table->unsignedBigInteger('category_id')->nullable();
@@ -34,7 +35,6 @@ return new class extends Migration
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
             $table->timestamps();
         });
-        
     }
 
     /**

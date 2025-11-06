@@ -46,6 +46,7 @@ class PurchaseOrder extends Model
             'issued_date' => $this->purchase_order_date,
             'due_date' => null,
             'company' => $this->company,
+            'has_vat' => $this->lineItems->where('vat', '>', 0)->count() > 0,
             'line_items' => $this->lineItems->map(function ($item) {
                 return [
                     'description' => $item->item_details,

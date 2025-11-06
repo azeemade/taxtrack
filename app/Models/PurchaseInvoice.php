@@ -48,6 +48,7 @@ class PurchaseInvoice extends Model
             'issued_date' => $this->invoice_start_date,
             'due_date' => $this->invoice_end_date,
             'company' => $this->company,
+            'has_vat' => $this->lineItems->where('vat', '>', 0)->count() > 0,
             'line_items' => $this->lineItems->map(function ($item) {
                 return [
                     'description' => $item->item_details,

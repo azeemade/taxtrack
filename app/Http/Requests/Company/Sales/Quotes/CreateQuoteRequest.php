@@ -61,7 +61,7 @@ class CreateQuoteRequest extends FormRequest
             'line_items' => 'required|array',
             'line_items.*.id' => 'sometimes|integer|exists:line_items,id',
             'line_items.*.item_details' => 'required|string|max:50',
-            'line_items.*.category_id' => 'required|integer|exists:categories,id',
+            'line_items.*.category_id' => 'required',
             'line_items.*.quantity' => 'required|numeric|min:0',
             'line_items.*.price' => 'required|numeric|min:0.00',
             'line_items.*.total_unit_price' => [
