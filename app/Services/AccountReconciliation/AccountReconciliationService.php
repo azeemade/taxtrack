@@ -773,43 +773,29 @@ class AccountReconciliationService
      */
     private function summarizeLines(\Illuminate\Support\Collection $lines): array
     {
-        $norm = $lines->map(function ($r) {
-            // Support array or Eloquent model
-            $get = fn($k) => is_array($r) ? ($r[$k] ?? null) : $r->{$k};
+        $toF = static fn($v) => $v === null ? 0.0 : (float) $v;
 
-            // Derive status if only classification exists
-            $status = $get('status');
-            if (!$status) {
-                $status = match ($get('classification')) {
-                    'no_discrepancy'  => 'matched',
-                    'dual_reflection' => 'mismatch',
-                    'discrepancy'     => 'unmatched',
-                    default           => null,
-                };
-            }
+        // Map statuses -> business labels
+        $countNoDisc  = $lines->where('status', 'matched')->count();
+        $countDual    = $lines->whereIn('status', ['mismatch', 'mismatched'])->count();
+        $countDisc    = $lines->where('status', 'unmatched')->count();
 
-            return [
-                'status'      => $status,
-                'bank_credit' => (float) ($get('bank_credit') ?? 0),
-                'bank_debit'  => (float) ($get('bank_debit')  ?? 0),
-                'app_credit'  => (float) ($get('app_credit')  ?? 0),
-                'app_debit'   => (float) ($get('app_debit')   ?? 0),
-            ];
-        });
+        // Txn counts
+        $bankCreditTxnCount = $lines->filter(fn($r) => $toF($r['bank_credit'] ?? null) > 0)->count();
+        $bankDebitTxnCount  = $lines->filter(fn($r) => $toF($r['bank_debit'] ?? null)  > 0)->count();
+        $appCreditTxnCount  = $lines->filter(fn($r) => $toF($r['app_credit']  ?? null) > 0)->count();
+        $appDebitTxnCount   = $lines->filter(fn($r) => $toF($r['app_debit']   ?? null) > 0)->count();
 
-        $toF = static fn($v) => $v ?? 0.0;
+        // Totals
+        $bankTotalCredits = $lines->sum(fn($r) => $toF($r['bank_credit'] ?? null));
+        $bankTotalDebits  = $lines->sum(fn($r) => $toF($r['bank_debit']  ?? null));
+        $appTotalCredits  = $lines->sum(fn($r) => $toF($r['app_credit']  ?? null));
+        $appTotalDebits   = $lines->sum(fn($r) => $toF($r['app_debit']   ?? null));
 
-        $countNoDisc = $norm->where('status', 'matched')->count();
-        $countDual   = $norm->where('status', 'mismatch')->count();
-        $countDisc   = $norm->where('status', 'unmatched')->count();
-
-        $bankTotalCredits = $norm->sum(fn($r) => $toF($r['bank_credit']));
-        $bankTotalDebits  = $norm->sum(fn($r) => $toF($r['bank_debit']));
-        $appTotalCredits  = $norm->sum(fn($r) => $toF($r['app_credit']));
-        $appTotalDebits   = $norm->sum(fn($r) => $toF($r['app_debit']));
-
+        // Differences (per side)
         $bankNet = $bankTotalCredits - $bankTotalDebits;
         $appNet  = $appTotalCredits  - $appTotalDebits;
+        $netGap  = $bankNet - $appNet; // helpful reconciliation indicator
 
         return [
             'counts' => [
@@ -819,79 +805,29 @@ class AccountReconciliationService
             ],
             'transactions' => [
                 'bank' => [
-                    'credit_count' => $norm->filter(fn($r) => $r['bank_credit'] > 0)->count(),
-                    'debit_count'  => $norm->filter(fn($r) => $r['bank_debit']  > 0)->count(),
+                    'credit_count' => $bankCreditTxnCount,
+                    'debit_count'  => $bankDebitTxnCount,
                 ],
                 'app' => [
-                    'credit_count' => $norm->filter(fn($r) => $r['app_credit'] > 0)->count(),
-                    'debit_count'  => $norm->filter(fn($r) => $r['app_debit']   > 0)->count(),
+                    'credit_count' => $appCreditTxnCount,
+                    'debit_count'  => $appDebitTxnCount,
                 ],
             ],
             'totals' => [
-                'bank' => ['credits' => $bankTotalCredits, 'debits' => $bankTotalDebits, 'net' => $bankNet],
-                'app'  => ['credits' => $appTotalCredits,  'debits' => $appTotalDebits,  'net' => $appNet],
-                'net_gap_between_bank_and_app' => $bankNet - $appNet,
+                'bank' => [
+                    'credits' => $bankTotalCredits,
+                    'debits'  => $bankTotalDebits,
+                    'net'     => $bankNet,     // credits - debits
+                ],
+                'app' => [
+                    'credits' => $appTotalCredits,
+                    'debits'  => $appTotalDebits,
+                    'net'     => $appNet,      // credits - debits
+                ],
+                'net_gap_between_bank_and_app' => $netGap, // bank.net - app.net
             ],
         ];
     }
-
-    // private function summarizeLines(\Illuminate\Support\Collection $lines): array
-    // {
-    //     $toF = static fn($v) => $v === null ? 0.0 : (float) $v;
-
-    //     // Map statuses -> business labels
-    //     $countNoDisc  = $lines->where('status', 'matched')->count();
-    //     $countDual    = $lines->whereIn('status', ['mismatch', 'mismatched'])->count();
-    //     $countDisc    = $lines->where('status', 'unmatched')->count();
-
-    //     // Txn counts
-    //     $bankCreditTxnCount = $lines->filter(fn($r) => $toF($r['bank_credit'] ?? null) > 0)->count();
-    //     $bankDebitTxnCount  = $lines->filter(fn($r) => $toF($r['bank_debit'] ?? null)  > 0)->count();
-    //     $appCreditTxnCount  = $lines->filter(fn($r) => $toF($r['app_credit']  ?? null) > 0)->count();
-    //     $appDebitTxnCount   = $lines->filter(fn($r) => $toF($r['app_debit']   ?? null) > 0)->count();
-
-    //     // Totals
-    //     $bankTotalCredits = $lines->sum(fn($r) => $toF($r['bank_credit'] ?? null));
-    //     $bankTotalDebits  = $lines->sum(fn($r) => $toF($r['bank_debit']  ?? null));
-    //     $appTotalCredits  = $lines->sum(fn($r) => $toF($r['app_credit']  ?? null));
-    //     $appTotalDebits   = $lines->sum(fn($r) => $toF($r['app_debit']   ?? null));
-
-    //     // Differences (per side)
-    //     $bankNet = $bankTotalCredits - $bankTotalDebits;
-    //     $appNet  = $appTotalCredits  - $appTotalDebits;
-    //     $netGap  = $bankNet - $appNet; // helpful reconciliation indicator
-
-    //     return [
-    //         'counts' => [
-    //             'discrepancies'     => $countDisc,
-    //             'dual_reflections'  => $countDual,
-    //             'no_discrepancies'  => $countNoDisc,
-    //         ],
-    //         'transactions' => [
-    //             'bank' => [
-    //                 'credit_count' => $bankCreditTxnCount,
-    //                 'debit_count'  => $bankDebitTxnCount,
-    //             ],
-    //             'app' => [
-    //                 'credit_count' => $appCreditTxnCount,
-    //                 'debit_count'  => $appDebitTxnCount,
-    //             ],
-    //         ],
-    //         'totals' => [
-    //             'bank' => [
-    //                 'credits' => $bankTotalCredits,
-    //                 'debits'  => $bankTotalDebits,
-    //                 'net'     => $bankNet,     // credits - debits
-    //             ],
-    //             'app' => [
-    //                 'credits' => $appTotalCredits,
-    //                 'debits'  => $appTotalDebits,
-    //                 'net'     => $appNet,      // credits - debits
-    //             ],
-    //             'net_gap_between_bank_and_app' => $netGap, // bank.net - app.net
-    //         ],
-    //     ];
-    // }
 
 
 
