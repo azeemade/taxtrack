@@ -25,43 +25,105 @@ class PurchaseInvoiceService
         $this->sharedActionServices = $sharedActionServices;
     }
 
+    // public function updateOrCreate($request)
+    // {
+    //     $record = PurchaseInvoice::updateOrCreate(
+    //         [
+    //             "id" => $request["id"] ?? null
+    //         ],
+    //         [
+    //             ...$request,
+    //             'purchase_order_date' => $request['purchase_order_date'] ?? PurchaseOrder::find($request['purchase_order_id'])?->purchase_order_date,
+    //             'purchase_invoiceID' => $this->generatePurchaseInvoiceId(),
+    //             'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
+    //             'status' => $request['save_status'] === FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
+    //         ]
+    //     );
+
+    //     if (isset($request["id"]) && $request["id"]) {
+    //         $record->editLineItems($request['line_items']);
+    //     } else {
+    //         $record->addLineItems($request['line_items']);
+    //     }
+
+    //     if ($request['save_status'] == 'send') {
+    //         //  (new PurchaseInvoicePosting())
+    //         //     ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
+
+    //         $this->sharedActionServices->emailEntity($record);
+    //     }
+
+    //     if ($request["purchase_order_id"]) {
+    //         $purchaseOrder = PurchaseOrder::find($request["purchase_order_id"]);
+    //         $purchaseOrder->update([
+    //             "invoice_id" => $record->id
+    //         ]);
+    //     }
+
+    //     return $record;
+    // }
+
     public function updateOrCreate($request)
     {
-        $record = PurchaseInvoice::updateOrCreate(
-            [
-                "id" => $request["id"] ?? null
-            ],
-            [
-                ...$request,
-                'purchase_order_date' => $request['purchase_order_date'] ?? PurchaseOrder::find($request['purchase_order_id'])?->purchase_order_date,
-                'purchase_invoiceID' => $this->generatePurchaseInvoiceId(),
-                'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
-                'status' => $request['save_status'] === FinancialDocumentStatusEnums::DRAFT->value ? FinancialDocumentStatusEnums::DRAFT->value : FinancialDocumentStatusEnums::ISSUED->value
-            ]
-        );
+        // Try to find existing record
+        $record = PurchaseInvoice::find($request["id"] ?? null);
 
-        if (isset($request["id"]) && $request["id"]) {
-            $record->editLineItems($request['line_items']);
+        if ($record) {
+            // ✅ Update existing record
+            $record->update([
+                ...$request,
+                // 'is_recurring' => $request['save_status'] == 'recur' ? true : false,
+                'is_recurring' => $request['repeat'] == 1 ? true : false,
+                'purchase_order_date' => $request['purchase_order_date']
+                    ?? PurchaseOrder::find($request['purchase_order_id'])?->purchase_order_date,
+                'share_status' => $request['save_status'] == 'send'
+                    ? ShareStatusEnums::SHARED->value
+                    : ShareStatusEnums::NOT_SHARED->value,
+                'status' => $request['save_status'] === FinancialDocumentStatusEnums::DRAFT->value
+                    ? FinancialDocumentStatusEnums::DRAFT->value
+                    : FinancialDocumentStatusEnums::ISSUED->value,
+            ]);
         } else {
-            $record->addLineItems($request['line_items']);
+            // ✅ Create new record (generate IDs only once)
+            $record = PurchaseInvoice::create([
+                ...$request,
+                // 'is_recurring' => $request['save_status'] == 'recur' ? true : false,
+                'is_recurring' => $request['repeat'] == 1 ? true : false,
+                'purchase_order_date' => $request['purchase_order_date']
+                    ?? PurchaseOrder::find($request['purchase_order_id'])?->purchase_order_date,
+                'purchase_invoiceID' => $this->generatePurchaseInvoiceId(),
+                'share_status' => $request['save_status'] == 'send'
+                    ? ShareStatusEnums::SHARED->value
+                    : ShareStatusEnums::NOT_SHARED->value,
+                'status' => $request['save_status'] === FinancialDocumentStatusEnums::DRAFT->value
+                    ? FinancialDocumentStatusEnums::DRAFT->value
+                    : FinancialDocumentStatusEnums::ISSUED->value,
+            ]);
         }
 
-        if ($request['save_status'] == 'send') {
-            //  (new PurchaseInvoicePosting())
-            //     ->syncPurchaseInvoiceJournal($record, (int)$record->company_id, (int)($record->created_by ?? null));
+        // ✅ Handle line items
+        if ($record->wasRecentlyCreated) {
+            $record->addLineItems($request['line_items']);
+        } else {
+            $record->editLineItems($request['line_items']);
+        }
 
+        // ✅ Handle sharing
+        if ($request['save_status'] == 'send') {
             $this->sharedActionServices->emailEntity($record);
         }
 
+        // ✅ Link purchase order to this invoice
         if ($request["purchase_order_id"]) {
             $purchaseOrder = PurchaseOrder::find($request["purchase_order_id"]);
-            $purchaseOrder->update([
+            $purchaseOrder?->update([
                 "invoice_id" => $record->id
             ]);
         }
 
         return $record;
     }
+
 
     public function view(int $id)
     {
@@ -79,11 +141,18 @@ class PurchaseInvoiceService
             'additional_charge',
             'purchase_invoices_total',
             'vendor_id',
+            'share_status',
+            'status',
+            'is_recurring',
+            'repeat',
+            'repeat_period',
+            'recurring_start_date',
+            'recurring_end_date'
         )
             ->with([
-                'purchaseOrder:id,purchase_order_no,purchase_order_date',
+                'purchaseOrder:id,purchase_order_no,purchase_order_date,purchase_orderID',
                 'vendor:id,vendor_name,primary_email',
-                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id' => [
+                'lineItems:id,item_details,category_id,quantity,price,discount,vat,amount,documentable_type,documentable_id,account_id' => [
                     'category:id,name'
                 ]
             ])

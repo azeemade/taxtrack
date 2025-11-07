@@ -773,29 +773,43 @@ class AccountReconciliationService
      */
     private function summarizeLines(\Illuminate\Support\Collection $lines): array
     {
-        $toF = static fn($v) => $v === null ? 0.0 : (float) $v;
+        $norm = $lines->map(function ($r) {
+            // Support array or Eloquent model
+            $get = fn($k) => is_array($r) ? ($r[$k] ?? null) : $r->{$k};
 
-        // Map statuses -> business labels
-        $countNoDisc  = $lines->where('status', 'matched')->count();
-        $countDual    = $lines->whereIn('status', ['mismatch', 'mismatched'])->count();
-        $countDisc    = $lines->where('status', 'unmatched')->count();
+            // Derive status if only classification exists
+            $status = $get('status');
+            if (!$status) {
+                $status = match ($get('classification')) {
+                    'no_discrepancy'  => 'matched',
+                    'dual_reflection' => 'mismatch',
+                    'discrepancy'     => 'unmatched',
+                    default           => null,
+                };
+            }
 
-        // Txn counts
-        $bankCreditTxnCount = $lines->filter(fn($r) => $toF($r['bank_credit'] ?? null) > 0)->count();
-        $bankDebitTxnCount  = $lines->filter(fn($r) => $toF($r['bank_debit'] ?? null)  > 0)->count();
-        $appCreditTxnCount  = $lines->filter(fn($r) => $toF($r['app_credit']  ?? null) > 0)->count();
-        $appDebitTxnCount   = $lines->filter(fn($r) => $toF($r['app_debit']   ?? null) > 0)->count();
+            return [
+                'status'      => $status,
+                'bank_credit' => (float) ($get('bank_credit') ?? 0),
+                'bank_debit'  => (float) ($get('bank_debit')  ?? 0),
+                'app_credit'  => (float) ($get('app_credit')  ?? 0),
+                'app_debit'   => (float) ($get('app_debit')   ?? 0),
+            ];
+        });
 
-        // Totals
-        $bankTotalCredits = $lines->sum(fn($r) => $toF($r['bank_credit'] ?? null));
-        $bankTotalDebits  = $lines->sum(fn($r) => $toF($r['bank_debit']  ?? null));
-        $appTotalCredits  = $lines->sum(fn($r) => $toF($r['app_credit']  ?? null));
-        $appTotalDebits   = $lines->sum(fn($r) => $toF($r['app_debit']   ?? null));
+        $toF = static fn($v) => $v ?? 0.0;
 
-        // Differences (per side)
+        $countNoDisc = $norm->where('status', 'matched')->count();
+        $countDual   = $norm->where('status', 'mismatch')->count();
+        $countDisc   = $norm->where('status', 'unmatched')->count();
+
+        $bankTotalCredits = $norm->sum(fn($r) => $toF($r['bank_credit']));
+        $bankTotalDebits  = $norm->sum(fn($r) => $toF($r['bank_debit']));
+        $appTotalCredits  = $norm->sum(fn($r) => $toF($r['app_credit']));
+        $appTotalDebits   = $norm->sum(fn($r) => $toF($r['app_debit']));
+
         $bankNet = $bankTotalCredits - $bankTotalDebits;
         $appNet  = $appTotalCredits  - $appTotalDebits;
-        $netGap  = $bankNet - $appNet; // helpful reconciliation indicator
 
         return [
             'counts' => [
@@ -805,29 +819,79 @@ class AccountReconciliationService
             ],
             'transactions' => [
                 'bank' => [
-                    'credit_count' => $bankCreditTxnCount,
-                    'debit_count'  => $bankDebitTxnCount,
+                    'credit_count' => $norm->filter(fn($r) => $r['bank_credit'] > 0)->count(),
+                    'debit_count'  => $norm->filter(fn($r) => $r['bank_debit']  > 0)->count(),
                 ],
                 'app' => [
-                    'credit_count' => $appCreditTxnCount,
-                    'debit_count'  => $appDebitTxnCount,
+                    'credit_count' => $norm->filter(fn($r) => $r['app_credit'] > 0)->count(),
+                    'debit_count'  => $norm->filter(fn($r) => $r['app_debit']   > 0)->count(),
                 ],
             ],
             'totals' => [
-                'bank' => [
-                    'credits' => $bankTotalCredits,
-                    'debits'  => $bankTotalDebits,
-                    'net'     => $bankNet,     // credits - debits
-                ],
-                'app' => [
-                    'credits' => $appTotalCredits,
-                    'debits'  => $appTotalDebits,
-                    'net'     => $appNet,      // credits - debits
-                ],
-                'net_gap_between_bank_and_app' => $netGap, // bank.net - app.net
+                'bank' => ['credits' => $bankTotalCredits, 'debits' => $bankTotalDebits, 'net' => $bankNet],
+                'app'  => ['credits' => $appTotalCredits,  'debits' => $appTotalDebits,  'net' => $appNet],
+                'net_gap_between_bank_and_app' => $bankNet - $appNet,
             ],
         ];
     }
+
+    // private function summarizeLines(\Illuminate\Support\Collection $lines): array
+    // {
+    //     $toF = static fn($v) => $v === null ? 0.0 : (float) $v;
+
+    //     // Map statuses -> business labels
+    //     $countNoDisc  = $lines->where('status', 'matched')->count();
+    //     $countDual    = $lines->whereIn('status', ['mismatch', 'mismatched'])->count();
+    //     $countDisc    = $lines->where('status', 'unmatched')->count();
+
+    //     // Txn counts
+    //     $bankCreditTxnCount = $lines->filter(fn($r) => $toF($r['bank_credit'] ?? null) > 0)->count();
+    //     $bankDebitTxnCount  = $lines->filter(fn($r) => $toF($r['bank_debit'] ?? null)  > 0)->count();
+    //     $appCreditTxnCount  = $lines->filter(fn($r) => $toF($r['app_credit']  ?? null) > 0)->count();
+    //     $appDebitTxnCount   = $lines->filter(fn($r) => $toF($r['app_debit']   ?? null) > 0)->count();
+
+    //     // Totals
+    //     $bankTotalCredits = $lines->sum(fn($r) => $toF($r['bank_credit'] ?? null));
+    //     $bankTotalDebits  = $lines->sum(fn($r) => $toF($r['bank_debit']  ?? null));
+    //     $appTotalCredits  = $lines->sum(fn($r) => $toF($r['app_credit']  ?? null));
+    //     $appTotalDebits   = $lines->sum(fn($r) => $toF($r['app_debit']   ?? null));
+
+    //     // Differences (per side)
+    //     $bankNet = $bankTotalCredits - $bankTotalDebits;
+    //     $appNet  = $appTotalCredits  - $appTotalDebits;
+    //     $netGap  = $bankNet - $appNet; // helpful reconciliation indicator
+
+    //     return [
+    //         'counts' => [
+    //             'discrepancies'     => $countDisc,
+    //             'dual_reflections'  => $countDual,
+    //             'no_discrepancies'  => $countNoDisc,
+    //         ],
+    //         'transactions' => [
+    //             'bank' => [
+    //                 'credit_count' => $bankCreditTxnCount,
+    //                 'debit_count'  => $bankDebitTxnCount,
+    //             ],
+    //             'app' => [
+    //                 'credit_count' => $appCreditTxnCount,
+    //                 'debit_count'  => $appDebitTxnCount,
+    //             ],
+    //         ],
+    //         'totals' => [
+    //             'bank' => [
+    //                 'credits' => $bankTotalCredits,
+    //                 'debits'  => $bankTotalDebits,
+    //                 'net'     => $bankNet,     // credits - debits
+    //             ],
+    //             'app' => [
+    //                 'credits' => $appTotalCredits,
+    //                 'debits'  => $appTotalDebits,
+    //                 'net'     => $appNet,      // credits - debits
+    //             ],
+    //             'net_gap_between_bank_and_app' => $netGap, // bank.net - app.net
+    //         ],
+    //     ];
+    // }
 
 
 
@@ -1164,8 +1228,33 @@ class AccountReconciliationService
         $limit = (int)$request->get('limit', 20);
         $runs = $q->paginate($limit);
 
+        // Get all run IDs from current page
+        $runIds = $runs->getCollection()->pluck('id')->toArray();
+
+        // Load all records for these runs and compute counts dynamically
+        $recordsByRunId = [];
+        if (!empty($runIds)) {
+            $allRecords = ReconciliationRecord::where('company_id', $companyId)
+                ->whereIn('run_id', $runIds)
+                ->get();
+
+            // Group records by run_id and compute stats for each
+            foreach ($allRecords->groupBy('run_id') as $runId => $records) {
+                // summarizeLines can handle ReconciliationRecord models directly
+                $stats = $this->summarizeLines($records);
+                $recordsByRunId[$runId] = $stats['counts'];
+            }
+        }
+
         // Shape each row for the list UI
-        $runs->getCollection()->transform(function ($run) {
+        $runs->getCollection()->transform(function ($run) use ($recordsByRunId) {
+            // Use computed counts if available, otherwise fall back to stored values
+            $counts = $recordsByRunId[$run->id] ?? [
+                'discrepancies'     => (int)$run->discrepancies,
+                'dual_reflections'  => (int)$run->dual_reflections,
+                'no_discrepancies'  => (int)$run->no_discrepancies,
+            ];
+
             return [
                 'id'                => $run->id,
                 'account_id'        => $run->account_id,
@@ -1173,9 +1262,9 @@ class AccountReconciliationService
                 'batch_id'          => $run->batch_id,
                 'title'             => $run->title,
                 'counts'            => [
-                    'discrepancies'     => (int)$run->discrepancies,
-                    'dual_reflections'  => (int)$run->dual_reflections,
-                    'no_discrepancies'  => (int)$run->no_discrepancies,
+                    'discrepancies'     => (int)($counts['discrepancies'] ?? 0),
+                    'dual_reflections'  => (int)($counts['dual_reflections'] ?? 0),
+                    'no_discrepancies'  => (int)($counts['no_discrepancies'] ?? 0),
                 ],
                 'created_at'        => $run->created_at,
             ];
@@ -1220,7 +1309,7 @@ class AccountReconciliationService
         // Get all lines without pagination
         $lines = $linesQuery->get();
 
-        // Build stats from the full set
+        // Build stats from the full set (summarizeLines can handle ReconciliationRecord models directly)
         $stats = $this->summarizeLines($lines);
 
         return [
@@ -1231,9 +1320,9 @@ class AccountReconciliationService
                 'batch_id'    => $run->batch_id,
                 'title'       => $run->title,
                 'counts'      => [
-                    'discrepancies'     => (int) $run->discrepancies,
-                    'dual_reflections'  => (int) $run->dual_reflections,
-                    'no_discrepancies'  => (int) $run->no_discrepancies,
+                    'discrepancies'     => (int)($stats['counts']['discrepancies'] ?? 0),
+                    'dual_reflections'  => (int)($stats['counts']['dual_reflections'] ?? 0),
+                    'no_discrepancies'  => (int)($stats['counts']['no_discrepancies'] ?? 0),
                 ],
                 'created_at'  => $run->created_at,
             ],
@@ -1312,9 +1401,9 @@ class AccountReconciliationService
                 'batch_id'    => $run->batch_id,
                 'title'       => $run->title,
                 'counts'      => [
-                    'discrepancies'     => (int)$run->discrepancies,
-                    'dual_reflections'  => (int)$run->dual_reflections,
-                    'no_discrepancies'  => (int)$run->no_discrepancies,
+                    'discrepancies'     => (int)($stats['counts']['discrepancies'] ?? 0),
+                    'dual_reflections'  => (int)($stats['counts']['dual_reflections'] ?? 0),
+                    'no_discrepancies'  => (int)($stats['counts']['no_discrepancies'] ?? 0),
                 ],
                 'created_at'  => $run->created_at,
             ],

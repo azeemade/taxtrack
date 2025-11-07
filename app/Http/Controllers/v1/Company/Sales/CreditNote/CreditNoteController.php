@@ -49,24 +49,27 @@ class CreditNoteController extends Controller
 
             $record = $this->creditNoteService->create($request->validated());
 
-            (new CreditNoteMultipleLinePosting())
-                ->syncForCreditNote(
-                    $record,
-                    (int)$record->company_id,
-                    (int)($record->created_by ?? null),
-                    $request->validated()['invoices'] ?? null
-                );
+            //Save status is send
+            if ($request->save_status == "send") {
+                (new CreditNoteMultipleLinePosting())
+                    ->syncForCreditNote(
+                        $record,
+                        (int)$record->company_id,
+                        (int)($record->created_by ?? null),
+                        $request->validated()['invoices'] ?? null
+                    );
 
 
-            // Recalculate affected invoices (only if issued; skip drafts)
-            if ($record->status === \App\Enums\FinancialDocumentStatusEnums::ISSUED->value) {
-                $invoiceIds = DB::table('credit_note_invoices')
-                    ->where('credit_note_id', $record->id)
-                    ->pluck('invoice_id')
-                    ->unique();
+                // Recalculate affected invoices (only if issued; skip drafts)
+                if ($record->status === \App\Enums\FinancialDocumentStatusEnums::ISSUED->value) {
+                    $invoiceIds = DB::table('credit_note_invoices')
+                        ->where('credit_note_id', $record->id)
+                        ->pluck('invoice_id')
+                        ->unique();
 
-                foreach ($invoiceIds as $invId) {
-                    CreditNoteMultipleLinePosting::recalcInvoiceBalance((int)$invId);
+                    foreach ($invoiceIds as $invId) {
+                        CreditNoteMultipleLinePosting::recalcInvoiceBalance((int)$invId);
+                    }
                 }
             }
 
@@ -117,18 +120,20 @@ class CreditNoteController extends Controller
                 'id' => (int)$id,
             ]);
 
-            // Post journal (pass payload items as fallback in case pivots aren't yet persisted)
-            (new CreditNoteMultipleLinePosting())
-                ->syncForCreditNote(
-                    $record,
-                    (int)$record->company_id,
-                    (int)($record->created_by ?? null),
-                    $payload['invoices'] ?? null
-                );
+            if ($request->save_status == "send") {
+                // Post journal (pass payload items as fallback in case pivots aren't yet persisted)
+                (new CreditNoteMultipleLinePosting())
+                    ->syncForCreditNote(
+                        $record,
+                        (int)$record->company_id,
+                        (int)($record->created_by ?? null),
+                        $payload['invoices'] ?? null
+                    );
 
-            $invoiceIds = $this->creditNoteService->uniqueInvoices((int)$record->id, $oldInvoiceIds);
-            foreach ($invoiceIds as $invId) {
-                CreditNoteMultipleLinePosting::recalcInvoiceBalance((int)$invId);
+                $invoiceIds = $this->creditNoteService->uniqueInvoices((int)$record->id, $oldInvoiceIds);
+                foreach ($invoiceIds as $invId) {
+                    CreditNoteMultipleLinePosting::recalcInvoiceBalance((int)$invId);
+                }
             }
 
             DB::commit();
@@ -138,7 +143,7 @@ class CreditNoteController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], \Symfony\Component\HttpFoundation\Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), \Symfony\Component\HttpFoundation\Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 

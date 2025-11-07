@@ -25,6 +25,8 @@ class UpdateOrganizationDetailsRequest extends FormRequest
             "name" => 'sometimes|string|max:100',
             "logo" => 'sometimes|nullable|string',
             "industry" => 'sometimes|string|max:50',
+            "tax_type" => 'sometimes|string|max:50',
+            "vat_date" => 'sometimes|string|max:50',
             "organization_type" => 'sometimes|string|max:20',
             "registration_id" => 'sometimes|string|max:20',
             "description" => 'sometimes|nullable|string|max:250',

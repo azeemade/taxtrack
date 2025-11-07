@@ -38,7 +38,8 @@ class BillsService
             ],
             [
                 ...$request,
-                'is_recurring' => $request['save_status'] == 'recur' ? true : false,
+                // 'is_recurring' => $request['save_status'] == 'recur' ? true : false,
+                'is_recurring' => $request['repeat'] == 1 ? true : false,
                 'purchase_invoice_due_date' => PurchaseInvoice::find($request['purchase_invoice_id'])?->invoice_end_date,
                 'vendor_billID' => $request['vendor_billID'] ?? $this->generateID(),
                 'share_status' => $request['save_status'] == 'send' ? ShareStatusEnums::SHARED->value : ShareStatusEnums::NOT_SHARED->value,
@@ -82,6 +83,8 @@ class BillsService
             'recurring_end_date',
             'repeat',
             'repeat_period',
+            'status',
+            'share_status'
         )
             ->with([
                 'vendor:id,vendor_name,referenceID,primary_email',

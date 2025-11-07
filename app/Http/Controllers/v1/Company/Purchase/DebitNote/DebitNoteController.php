@@ -47,8 +47,9 @@ class DebitNoteController extends Controller
 
             $record = $this->debitNoteService->create($request->validated());
 
-            (new DebitNotePosting())
-                ->syncForDebitNote($record, (int)$record->company_id, (int)($record->created_by ?? null));
+            //if save_status = save
+            // (new DebitNotePosting())
+            //     ->syncForDebitNote($record, (int)$record->company_id, (int)($record->created_by ?? null));
 
             DB::commit();
             return JsonResponser::send(false, 'Debit note created successfully', $record, Response::HTTP_OK);
@@ -57,7 +58,7 @@ class DebitNoteController extends Controller
             return JsonResponser::send(true, $e->getMessage(), [], $e->getCode());
         } catch (\Throwable $th) {
             DB::rollBack();
-            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 
@@ -86,8 +87,9 @@ class DebitNoteController extends Controller
 
             $record = $this->debitNoteService->update([...$request->validated(), "id" => $id]);
 
-            (new DebitNotePosting())
-                ->syncForDebitNote($record, (int)$record->company_id, (int)($record->created_by ?? null));
+            //if save_status = save
+            // (new DebitNotePosting())
+            //     ->syncForDebitNote($record, (int)$record->company_id, (int)($record->created_by ?? null));
 
             DB::commit();
             return JsonResponser::send(false, 'Debit note updated successfully', $record, Response::HTTP_OK);
