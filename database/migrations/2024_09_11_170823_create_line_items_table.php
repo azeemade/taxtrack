@@ -24,7 +24,6 @@ return new class extends Migration
             $table->decimal('debit_amount', 15, 2)->default(0.00);
             $table->boolean('full_debit')->default(false);
             $table->decimal('amount', 15, 2)->default(0.00);
-            $table->unsignedBigInteger('account_id')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('debit_note_id')->nullable();
             $table->unsignedBigInteger('category_id')->nullable();
