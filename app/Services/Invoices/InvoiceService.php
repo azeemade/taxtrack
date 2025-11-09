@@ -53,7 +53,7 @@ class InvoiceService
             ]
         );
 
-        $record->customer->decrement('current_balance', $record->invoice_value);  
+        $record->customer->decrement('current_balance', $record->invoice_value);
 
         if (isset($request["id"]) && $request["id"]) {
             $record->editLineItems($request['line_items']);
@@ -66,17 +66,20 @@ class InvoiceService
             $quote->update([
                 'status' => FinancialDocumentStatusEnums::CONVERTED_TO_INVOICE->value
             ]);
-
-           
         }
 
         if (isset($request['save_status']) && $request['save_status'] == 'send') {
 
             $createdBy = Auth::id() ?? null;
             (new InvoicePosting())->syncInvoiceJournal($record, $record->company_id ?? null, $createdBy);
-            
+
             $this->sharedActionServices->emailEntity($record);
         }
+
+        $record['line_items'] = $record->lineItems->map(function ($item) {
+            $item['category_id'] = $item->category->name === "Sales" ? $item->category_id : $item->category->name;
+            return $item;
+        });
 
         return $record;
     }
@@ -117,6 +120,11 @@ class InvoiceService
         if (!$record) {
             throw new BadRequestException("Invoice not found!", Response::HTTP_NOT_FOUND);
         }
+
+        $record['line_items'] = $record->lineItems->map(function ($item) {
+            $item['category_id'] = $item->category->name === "Sales" ? $item->category_id : $item->category->name;
+            return $item;
+        });
 
         return $record;
     }
