@@ -584,7 +584,7 @@ Route::group([
                 Route::group([
                     "namespace" => "SharedActions"
                 ], function () {
-                    Route::post('/shared/file-upload', 'SharedActionController@uploadFile');
+                    Route::match(['get', 'post'], '/shared/file-upload', 'SharedActionController@uploadFile');
                     Route::match(['get', 'post', 'put', 'delete'], '/shared/{prefix}/{model}/{id}/{action}', 'SharedActionController');
                     // Bulk Upload Routes
                     Route::group([
