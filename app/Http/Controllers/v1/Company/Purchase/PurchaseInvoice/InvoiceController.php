@@ -148,7 +148,7 @@ class InvoiceController extends Controller
             // $request->sort_by = "alphabetically";
             $request->status = "issued";
             // $request->q = "";
-            $request->vendor_id = null;
+            $request->vendor_id = $request->query('vendor_id');
 
             $records = $this->purchaseInvoiceService->dropdown($request);
 
