@@ -15,7 +15,7 @@ trait ManageLineItemTrait
             if (
                 isset($value['category_id']) &&
                 $value['category_id'] &&
-                !Category::find($value['category_id'])
+                !is_numeric($value['category_id'])
             ) {
                 $value['category_id'] = $this->createCategory($value['category_id'])->id;
             }
