@@ -250,6 +250,10 @@ class CompanySubscriptionService
         if (!$subscriber) {
             throw new BadRequestException('Subscriber not found', Response::HTTP_BAD_REQUEST);
         }
+        
+        if(!$subscriber->currentPlanHistory){
+            throw new BadRequestException('No active subscriber found', Response::HTTP_BAD_REQUEST);
+        }
 
         $cancellation = SubscriptionCancellation::create([
             'request_date' => Carbon::now(),
