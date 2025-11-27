@@ -148,17 +148,17 @@ class InvoiceController extends Controller
             // $request->sort_by = "alphabetically";
             $request->status = "issued";
             // $request->q = "";
-            $request->vendor_id = null;
+            $request->vendor_id = $request->query->get('vendor_id');
 
             $records = $this->purchaseInvoiceService->dropdown($request);
 
-            if (is_null($records)) {
-                 return JsonResponser::send(true, 'Record(s) found successfully', $records, Response::HTTP_OK);
+            if ($records->isEmpty()) {
+                return JsonResponser::send(true, 'No records found', [], Response::HTTP_OK);
             }
 
-            return JsonResponser::send(false, 'Record(s) found successfully', $records, Response::HTTP_OK);
+            return JsonResponser::send(false, 'Records found successfully', $records, Response::HTTP_OK);
         } catch (\Throwable $th) {
-            return JsonResponser::send(true, 'Internal Server Error', $th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
+            return JsonResponser::send(true, 'Internal Server Error', [], Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 }
