@@ -77,7 +77,7 @@ class InvoiceService
         }
 
         $record['line_items'] = $record->lineItems->map(function ($item) {
-            $item['category_id'] = $item->category->name === "Sales" ? $item->category_id : $item->category->name;
+            $item['category_id'] = strtolower($item->category->name) === "sales" ? $item->category_id : $item->category->name;
             return $item;
         });
 
@@ -122,7 +122,7 @@ class InvoiceService
         }
 
         $record['line_items'] = $record->lineItems->map(function ($item) {
-            $item['category_id'] = $item->category->name === "Sales" ? $item->category_id : $item->category->name;
+            $item['category_id'] = strtolower($item->category->name) === "sales" ? $item->category_id : $item->category->name;
             return $item;
         });
 
